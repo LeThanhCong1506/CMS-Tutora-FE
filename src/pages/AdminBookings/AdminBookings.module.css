@@ -1,0 +1,679 @@
+/* ============================================================================
+   Admin Bookings — list + detail page styles
+   Tokens: navy #1a2238, gold #d4b483, neutral grays
+   ============================================================================ */
+
+/* ─── Page shell ─────────────────────────────────────────────────────────── */
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.title {
+    margin: 0;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a2238;
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.headerStats {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(212, 180, 131, 0.14);
+    border: 1px solid rgba(212, 180, 131, 0.35);
+}
+
+.statLabel {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.statValue {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a2238;
+}
+
+/* ─── Filter bar ─────────────────────────────────────────────────────────── */
+.filterBar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.searchGroup {
+    flex: 1 1 280px;
+    min-width: 240px;
+}
+
+.filterLabel {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: 0.01em;
+}
+
+.filterSelect,
+.filterInput {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #1a2238;
+    font: inherit;
+    font-size: 13.5px;
+}
+
+.filterSelect:focus,
+.filterInput:focus {
+    border-color: #1a2238;
+    outline: 3px solid rgba(26, 34, 56, 0.12);
+}
+
+.searchInputWrap {
+    display: flex;
+    gap: 6px;
+}
+
+.searchInputWrap .filterInput {
+    flex: 1;
+}
+
+.searchBtn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #1a2238;
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: filter 0.15s ease;
+}
+
+.searchBtn:hover {
+    filter: brightness(1.1);
+}
+
+.resetBtn {
+    align-self: flex-end;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.resetBtn:hover {
+    border-color: #1a2238;
+    background: #f9fafb;
+}
+
+/* ─── Table cell helpers ─────────────────────────────────────────────────── */
+.bookingId {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-weight: 700;
+    color: #1a2238;
+}
+
+.cellStack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cellPrimary {
+    font-weight: 600;
+    color: #1a2238;
+    font-size: 13.5px;
+}
+
+.cellSecondary {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.cellMoney {
+    font-weight: 700;
+    color: #1a2238;
+    font-variant-numeric: tabular-nums;
+}
+
+.viewBtn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #1a2238;
+    background: #fff;
+    color: #1a2238;
+    font-weight: 600;
+    font-size: 12.5px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.viewBtn:hover {
+    background: #1a2238;
+    color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Detail page styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.detailPage {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #1a2238;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.15s ease;
+}
+
+.backBtn:hover {
+    background: #f3f4f6;
+}
+
+.detailHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+
+.detailHeaderTitle {
+    margin: 0;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a2238;
+}
+
+.detailHeaderMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 12.5px;
+}
+
+.detailHeaderRight {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cardGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.card {
+    padding: 20px 22px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.cardFull {
+    grid-column: 1 / -1;
+}
+
+.cardTitle {
+    margin: 0 0 14px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a2238;
+    letter-spacing: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cardTitle::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 16px;
+    border-radius: 2px;
+    background: #d4b483;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.row:last-child {
+    border-bottom: 0;
+}
+
+.rowLabel {
+    color: #6b7280;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.rowValue {
+    color: #1a2238;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+.rowValueStrong {
+    font-weight: 800;
+    color: #1a2238;
+    font-size: 15px;
+}
+
+.partyRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.partyRow:last-child {
+    border-bottom: 0;
+}
+
+.partyAvatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    object-fit: cover;
+    background: #e5e7eb;
+}
+
+.partyAvatarPlaceholder {
+    display: grid;
+    place-items: center;
+    background: #1a2238;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.partyInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.partyName {
+    font-weight: 600;
+    color: #1a2238;
+    font-size: 14px;
+}
+
+.partyMeta {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.partyRole {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7a4f12;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.cancelCard {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.cancelCard .cardTitle::before {
+    background: #dc2626;
+}
+
+.loadingWrap,
+.errorWrap {
+    display: grid;
+    place-items: center;
+    min-height: 320px;
+    padding: 32px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #1a2238;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.errorActions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.gapBanner {
+    padding: 12px 16px;
+    background: #fffbeb;
+    border: 1px dashed #f59e0b;
+    border-radius: 10px;
+    color: #78350f;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.gapBanner strong {
+    color: #92400e;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phase 2 cards: Timeline / Lessons / Payment breakdown
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.emptyMini {
+    padding: 20px 0;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13.5px;
+}
+
+/* ─── Timeline ──────────────────────────────────────────────────────────── */
+.timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.timelineItem {
+    display: flex;
+    gap: 14px;
+    padding: 4px 0;
+}
+
+.timelineDotWrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    padding-top: 6px;
+}
+
+.timelineDot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #d1d5db;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #d1d5db;
+    z-index: 1;
+}
+
+.timelineDotActive {
+    background: #d4b483;
+    box-shadow: 0 0 0 2px #d4b483, 0 0 0 5px rgba(212, 180, 131, 0.25);
+}
+
+.timelineLine {
+    flex: 1;
+    width: 2px;
+    background: #e5e7eb;
+    margin-top: 2px;
+    min-height: 24px;
+}
+
+.timelineContent {
+    flex: 1;
+    padding-bottom: 18px;
+}
+
+.timelineHeader {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.timelineLabel {
+    font-weight: 600;
+    color: #1a2238;
+    font-size: 13.5px;
+}
+
+.timelineTime {
+    color: #6b7280;
+    font-size: 12.5px;
+}
+
+/* ─── Lessons table ─────────────────────────────────────────────────────── */
+.lessonsScroll {
+    overflow-x: auto;
+    margin: 0 -22px -20px;
+    padding: 0 22px 20px;
+}
+
+.lessonsTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 720px;
+}
+
+.lessonsTable thead th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #f9fafb;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.lessonsTable tbody td {
+    padding: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+    color: #1a2238;
+}
+
+.lessonsTable tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.lessonsTable tbody tr:hover {
+    background: #fafbfc;
+}
+
+.lessonNumCell {
+    font-weight: 700;
+    color: #1a2238;
+    width: 40px;
+}
+
+.lessonTimeStack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.lessonTimeSecondary {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.lessonTags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.lessonTag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(212, 180, 131, 0.18);
+    color: #7a4f12;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.lessonMoney {
+    font-weight: 600;
+    color: #1a2238;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.dim {
+    color: #9ca3af;
+}
+
+/* ─── Payment breakdown ─────────────────────────────────────────────────── */
+.paymentGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.paymentCol {
+    display: flex;
+    flex-direction: column;
+}
+
+.subSection {
+    margin: 0 0 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+}
+
+.inlineBadge {
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .paymentGrid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .page,
+    .detailPage {
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 22px;
+    }
+
+    .filterBar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filterGroup {
+        min-width: 0;
+    }
+
+    .cardGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .detailHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

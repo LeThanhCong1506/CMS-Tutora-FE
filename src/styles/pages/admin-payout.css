@@ -1,0 +1,163 @@
+/* ===== ADMIN PAYOUT PAGE ===== */
+
+.admin-payout-container {
+    padding: 24px;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.payout-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.payout-page-header-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.payout-header {
+    margin-bottom: 24px;
+}
+
+.payout-detail-grid {
+    margin-bottom: 24px;
+}
+
+.fraud-flag-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #fff1f0;
+    border-left: 4px solid #ff4d4f;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.fraud-flag-icon {
+    color: #ff4d4f;
+    margin-right: 12px;
+    font-size: 18px;
+}
+
+.trust-score-gauge {
+    text-align: center;
+    padding: 16px 0;
+}
+
+.payout-timeline {
+    padding: 16px;
+}
+
+.bank-info-display {
+    background-color: #fafafa;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #f0f0f0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.stat-value {
+    font-weight: 500;
+}
+
+.timeline-dot-approving {
+    color: #52c41a;
+}
+
+.timeline-dot-pending {
+    color: #faad14;
+}
+
+/* Table card overflow fix */
+.payout-table-card {
+    overflow: hidden;
+}
+
+.payout-table-card .ant-table-wrapper {
+    overflow-x: auto;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .admin-payout-container {
+        padding: 12px;
+    }
+
+    /* Stack header vertically */
+    .payout-page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .payout-page-header-actions {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .payout-page-header-actions .ant-btn {
+        flex: 1;
+        font-size: 13px;
+        padding: 4px 8px;
+    }
+
+    /* Title sizing */
+    .payout-page-header h2.ant-typography {
+        font-size: 18px !important;
+        margin: 0;
+    }
+
+    /* Tabs scrollable */
+    .payout-table-card .ant-tabs-nav-list {
+        gap: 0;
+    }
+
+    .payout-table-card .ant-tabs-tab {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    /* Compact stat cards */
+    .admin-payout-container .ant-statistic-title {
+        font-size: 11px;
+    }
+
+    .admin-payout-container .ant-statistic-content {
+        font-size: 18px;
+    }
+
+    .admin-payout-container .ant-statistic-content-value {
+        font-size: 18px;
+    }
+
+    /* Stat card padding */
+    .admin-payout-container .ant-card-body {
+        padding: 12px !important;
+    }
+
+    .stat-item {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .bank-info-display {
+        padding: 12px;
+    }
+
+    /* Table card padding */
+    .payout-table-card > .ant-card-body {
+        padding: 0 10px 10px !important;
+    }
+}

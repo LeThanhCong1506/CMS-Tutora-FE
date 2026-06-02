@@ -1,0 +1,184 @@
+/* ============================================================================
+   react-toastify — TUTORA brand override
+   Import AFTER 'react-toastify/dist/ReactToastify.css' để cascade thắng default.
+   Design tokens đồng bộ với BookingModal / ErrorPage / NotificationDropdown:
+     - Navy #1a2238 (primary, info)
+     - Gold #d4b483 (brand accent, warning)
+     - Success green #15803d, Error red #dc2626
+     - Border-radius 12px, Bricolage Grotesque + IBM Plex Sans
+   ============================================================================ */
+
+/* -----------------------------------------------------------------------------
+   Container — Desktop giữ top-right (config từ App.tsx), Mobile override → bottom-center
+   ----------------------------------------------------------------------------- */
+.Toastify__toast-container {
+    width: 380px;
+    padding: 8px;
+    z-index: 99999;
+}
+
+/* Mobile: ép về bottom-center bất kể prop position trong App.tsx */
+@media (max-width: 768px) {
+    .Toastify__toast-container {
+        top: auto !important;
+        bottom: 16px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 32px);
+        max-width: 420px;
+        padding: 0;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Toast card — base
+   ----------------------------------------------------------------------------- */
+.Toastify__toast {
+    min-height: 60px;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 12px 28px -8px rgba(15, 23, 42, 0.18);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    color: #1a2238;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Body layout (icon + text row) */
+.Toastify__toast-body {
+    padding: 0;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #1a2238;
+}
+
+.Toastify__toast-body > div:last-child {
+    flex: 1;
+    padding: 2px 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Icon — recolor default SVG theo type, đặt trong "chip" tròn nhẹ
+   ----------------------------------------------------------------------------- */
+.Toastify__toast-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    margin-inline-end: 0;
+    background: rgba(15, 23, 42, 0.05);
+}
+
+.Toastify__toast-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* -----------------------------------------------------------------------------
+   Type variants — accent color cho icon background + SVG fill
+   ----------------------------------------------------------------------------- */
+
+/* Success — green */
+.Toastify__toast--success .Toastify__toast-icon {
+    background: rgba(21, 128, 61, 0.12);
+}
+.Toastify__toast--success .Toastify__toast-icon svg {
+    fill: #15803d;
+}
+
+/* Error — red */
+.Toastify__toast--error .Toastify__toast-icon {
+    background: rgba(220, 38, 38, 0.12);
+}
+.Toastify__toast--error .Toastify__toast-icon svg {
+    fill: #dc2626;
+}
+
+/* Warning — gold (brand accent) */
+.Toastify__toast--warning .Toastify__toast-icon {
+    background: rgba(212, 180, 131, 0.22);
+}
+.Toastify__toast--warning .Toastify__toast-icon svg {
+    fill: #7a4f12;
+}
+
+/* Info — navy */
+.Toastify__toast--info .Toastify__toast-icon {
+    background: rgba(26, 34, 56, 0.1);
+}
+.Toastify__toast--info .Toastify__toast-icon svg {
+    fill: #1a2238;
+}
+
+/* Default (no type) — neutral */
+.Toastify__toast--default .Toastify__toast-icon {
+    background: rgba(15, 23, 42, 0.06);
+}
+.Toastify__toast--default .Toastify__toast-icon svg {
+    fill: #6b7280;
+}
+
+/* -----------------------------------------------------------------------------
+   Close button — subtle, hover bg
+   ----------------------------------------------------------------------------- */
+.Toastify__close-button {
+    align-self: flex-start;
+    padding: 4px;
+    margin-top: -2px;
+    margin-right: -4px;
+    border-radius: 6px;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, background 0.15s ease;
+    color: #6b7280;
+}
+
+.Toastify__close-button > svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.Toastify__close-button:hover {
+    opacity: 1;
+    background: rgba(15, 23, 42, 0.06);
+    color: #1a2238;
+}
+
+/* -----------------------------------------------------------------------------
+   Progress bar — keep visible per user request; recolor theo type
+   ----------------------------------------------------------------------------- */
+.Toastify__progress-bar {
+    height: 3px;
+    bottom: 0;
+    opacity: 1;
+}
+
+.Toastify__progress-bar--success { background: #15803d; }
+.Toastify__progress-bar--error   { background: #dc2626; }
+.Toastify__progress-bar--warning { background: #d4b483; }
+.Toastify__progress-bar--info    { background: #1a2238; }
+
+/* Default (no type) → navy */
+.Toastify__progress-bar-theme--light:not(.Toastify__progress-bar--success):not(.Toastify__progress-bar--error):not(.Toastify__progress-bar--warning):not(.Toastify__progress-bar--info) {
+    background: #1a2238;
+}
+
+/* -----------------------------------------------------------------------------
+   Subtle hover lift trên card
+   ----------------------------------------------------------------------------- */
+.Toastify__toast:hover {
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 16px 32px -8px rgba(15, 23, 42, 0.22);
+}

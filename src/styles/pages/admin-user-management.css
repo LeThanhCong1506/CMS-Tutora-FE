@@ -1,0 +1,816 @@
+/* ===== ADMIN USER MANAGEMENT PAGE ===== */
+
+/* Main Layout - styles handled by admin-layout.css */
+.user-mgmt-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-cream);
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+/* ===== HEADER AREA ===== */
+.user-mgmt-header {
+    width: 100%;
+    padding: 32px 32px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Breadcrumbs */
+.user-mgmt-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.breadcrumb-link {
+    color: var(--color-navy-60);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--color-navy);
+}
+
+.breadcrumb-separator {
+    color: var(--color-navy-40);
+}
+
+.breadcrumb-current {
+    color: var(--color-navy);
+    font-weight: 500;
+}
+
+/* Page Title */
+.user-mgmt-title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.user-mgmt-title {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--color-navy);
+    line-height: 1.2;
+    margin: 0;
+}
+
+.user-mgmt-subtitle {
+    color: var(--color-navy-60);
+    margin: 4px 0 0;
+    font-size: 16px;
+}
+
+/* ===== FILTER & TOOLBAR ===== */
+.user-mgmt-toolbar {
+    padding: 0 32px 24px;
+    width: 100%;
+}
+
+.user-mgmt-toolbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Search */
+/* Search row groups the text input + submit button so they always stay
+   side-by-side, even on mobile (where the parent toolbar stacks vertically). */
+.user-mgmt-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    /* Full search row (input + button) — bounded so it doesn't crowd the filters. */
+    max-width: 640px;
+    min-width: 0;
+}
+
+.user-mgmt-search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.user-mgmt-search-input {
+    width: 100%;
+    height: 48px;
+    padding-left: 48px;
+    padding-right: 16px;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-white);
+    border: 1px solid #e5e7eb;
+    color: var(--color-navy);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.user-mgmt-search-input::placeholder {
+    color: var(--color-navy-40);
+}
+
+.user-mgmt-search-input:focus {
+    border-color: rgba(212, 180, 131, 0.5);
+    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.1);
+}
+
+.user-mgmt-search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-navy-40);
+    font-size: 20px;
+    pointer-events: none;
+}
+
+/* Search submit button — sibling of the input, matches the 48px height
+   used across the toolbar (filter dropdowns, export button) so the row
+   reads as one cohesive control strip. Manual trigger pattern: typing
+   only updates local state; this button (or pressing Enter) fires the API. */
+.user-mgmt-search-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 48px;
+    padding: 0 22px;
+    border-radius: var(--radius-xl);
+    border: none;
+    background-color: var(--color-navy);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background-color 0.18s ease, transform 0.1s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.user-mgmt-search-btn-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.user-mgmt-search-btn:hover:not(:disabled) {
+    background-color: #2a3248;
+    box-shadow: 0 4px 10px rgba(26, 34, 56, 0.15);
+}
+
+.user-mgmt-search-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.user-mgmt-search-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.35);
+}
+
+.user-mgmt-search-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Filters */
+.user-mgmt-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-mgmt-filter-group {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+/* Native <select> styled to match the rest of the toolbar.
+   Both filter selects share the same min-width so they line up regardless
+   of the selected option's text length ("Hoạt động" vs "Vai trò: Tất cả"). */
+.user-mgmt-filter-btn {
+    /* Strip browser-default chrome so we can draw our own */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    height: 48px;
+    min-width: 200px;
+    padding: 0 44px 0 16px;       /* right padding leaves room for the custom chevron */
+    border-radius: var(--radius-xl);
+    background-color: var(--color-white);
+    border: 1px solid #e5e7eb;
+    color: var(--color-navy);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 48px;            /* vertical-center text without using flex on <select> */
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+    /* Custom chevron — matches the navy used across the admin portal */
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%231a2238' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+}
+
+.user-mgmt-filter-btn:hover {
+    border-color: rgba(212, 180, 131, 0.5);
+}
+
+.user-mgmt-filter-btn:focus-visible {
+    outline: none;
+    border-color: var(--color-gold);
+    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.18);
+}
+
+/* Legacy icon slot inside the filter button — hidden because the custom
+   chevron in the background-image is now the single source of truth */
+.user-mgmt-filter-btn .material-symbols-outlined {
+    display: none;
+}
+
+/* Divider */
+.user-mgmt-divider {
+    display: none;
+    width: 1px;
+    height: 32px;
+    background-color: #e5e7eb;
+    margin: 0 8px;
+}
+
+@media (min-width: 768px) {
+    .user-mgmt-divider {
+        display: block;
+    }
+}
+
+/* Export Button */
+.user-mgmt-export-btn {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-gold);
+    color: var(--color-navy);
+    background-color: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-mgmt-export-btn:hover {
+    background-color: rgba(212, 180, 131, 0.1);
+}
+
+.user-mgmt-export-btn .material-symbols-outlined {
+    color: var(--color-gold);
+    font-size: 20px;
+}
+
+/* ===== TABLE CONTAINER ===== */
+.user-mgmt-table-container {
+    flex: 1;
+    padding: 0 32px 32px;
+    overflow: hidden;
+}
+
+.user-mgmt-table-wrapper {
+    background-color: var(--color-white);
+    width: 100%;
+    height: 100%;
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #f3f4f6;
+    overflow: hidden;
+}
+
+/* Table Header */
+.user-mgmt-table-header {
+    display: grid;
+    grid-template-columns: 4fr 2fr 2fr 2fr 1fr 1fr;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #f3f4f6;
+    background-color: rgba(249, 250, 251, 0.5);
+}
+
+.user-mgmt-table-header>div {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-navy-50);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.user-mgmt-col-actions {
+    text-align: right;
+}
+
+/* Table Body */
+.user-mgmt-table-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+}
+
+.user-mgmt-row {
+    display: grid;
+    grid-template-columns: 4fr 2fr 2fr 2fr 1fr 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: var(--radius-xl);
+    transition: background-color 0.2s ease;
+}
+
+.user-mgmt-row:hover {
+    background-color: rgba(250, 249, 246, 0.5);
+}
+
+/* User Identity Column */
+.user-mgmt-user-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-mgmt-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
+}
+
+.user-mgmt-avatar-suspended {
+    filter: grayscale(0.3);
+}
+
+.user-mgmt-avatar-initials {
+    background-color: rgba(26, 34, 56, 0.05);
+    color: var(--color-navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    font-family: var(--font-serif);
+    border: 1px solid #f3f4f6;
+}
+
+.user-mgmt-user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-mgmt-user-name {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-navy);
+    line-height: 1.3;
+}
+
+.user-mgmt-user-email {
+    font-size: 14px;
+    color: var(--color-navy-50);
+}
+
+/* Role Badges */
+.user-mgmt-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-lg);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.user-mgmt-badge-tutor {
+    background-color: rgba(212, 180, 131, 0.1);
+    color: var(--color-navy);
+    border: 1px solid rgba(212, 180, 131, 0.2);
+}
+
+.user-mgmt-badge-student {
+    background-color: #f3f4f6;
+    color: var(--color-navy-60);
+    border: 1px solid #e5e7eb;
+}
+
+/* Date Column */
+.user-mgmt-col-date {
+    font-size: 14px;
+    color: var(--color-navy-70);
+    font-weight: 500;
+}
+
+/* Performance Column */
+.user-mgmt-performance {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-mgmt-star {
+    color: #16a34a;
+    font-size: 18px;
+}
+
+.user-mgmt-rating {
+    font-size: 14px;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.user-mgmt-rating-max {
+    font-size: 12px;
+    color: var(--color-navy-40);
+}
+
+.user-mgmt-flag {
+    color: var(--color-burgundy);
+    font-size: 18px;
+}
+
+.user-mgmt-flags {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-burgundy);
+}
+
+.user-mgmt-flags-detail {
+    font-size: 12px;
+    color: rgba(99, 27, 27, 0.8);
+}
+
+.user-mgmt-warning {
+    color: #f59e0b;
+    font-size: 18px;
+}
+
+.user-mgmt-warning-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ea580c;
+}
+
+.user-mgmt-no-data {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-navy-40);
+}
+
+/* Status Badges */
+.user-mgmt-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.user-mgmt-status-active {
+    background-color: #d1fae5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.user-mgmt-status-suspended {
+    background-color: var(--color-white);
+    color: var(--color-burgundy);
+    border: 1px solid var(--color-burgundy);
+}
+
+.user-mgmt-status-pending {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+.user-mgmt-status-probation {
+    background-color: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+/* Action Button */
+.user-mgmt-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    background: none;
+    border: none;
+    color: var(--color-navy-40);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.user-mgmt-action-btn:hover {
+    background-color: #f3f4f6;
+    color: var(--color-navy);
+}
+
+/* ===== PAGINATION ===== */
+.user-mgmt-pagination {
+    padding: 16px 24px;
+    border-top: 1px solid #f3f4f6;
+    background-color: rgba(249, 250, 251, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-mgmt-pagination-info {
+    color: var(--color-navy-50);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.user-mgmt-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-mgmt-page-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    border: 1px solid #e5e7eb;
+    background-color: transparent;
+    color: var(--color-navy-60);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-mgmt-page-btn:hover {
+    background-color: var(--color-white);
+    color: var(--color-navy);
+}
+
+.user-mgmt-page-btn .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.user-mgmt-page-number {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-navy-60);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-mgmt-page-number:hover {
+    background-color: #f3f4f6;
+}
+
+.user-mgmt-page-active {
+    background-color: var(--color-navy);
+    color: var(--color-gold);
+    font-weight: 700;
+    border-color: var(--color-navy);
+}
+
+.user-mgmt-pagination-ellipsis {
+    color: var(--color-navy-40);
+}
+
+/* ===== SIDEBAR PROFILE SECTION ===== */
+.admin-profile-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(212, 180, 131, 0.2);
+    border: 1px solid rgba(212, 180, 131, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-gold);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.admin-profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-profile-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-white);
+}
+
+.admin-profile-role {
+    font-size: 12px;
+    color: var(--color-white-40);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 1200px) {
+
+    .user-mgmt-table-header,
+    .user-mgmt-row {
+        grid-template-columns: 3fr 1.5fr 1.5fr 1.5fr 1fr 0.5fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .user-mgmt-main {
+        margin-left: 0;
+    }
+
+    .user-mgmt-header {
+        padding: 16px 12px 12px;
+    }
+
+    .user-mgmt-title {
+        font-size: 22px;
+    }
+
+    .user-mgmt-subtitle {
+        font-size: 13px;
+    }
+
+    .user-mgmt-toolbar {
+        padding: 0 12px 12px;
+    }
+
+    .user-mgmt-toolbar-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    /* Keep the input + button on the same row on mobile too — stacking
+       them vertically would feel awkward for a search action. */
+    .user-mgmt-search-row {
+        width: 100%;
+        max-width: 100%;
+        gap: 8px;
+    }
+
+    .user-mgmt-search-wrapper {
+        max-width: 100%;
+    }
+
+    .user-mgmt-search-input {
+        height: 42px;
+        font-size: 13px;
+        padding-right: 16px;
+    }
+
+    .user-mgmt-search-btn {
+        height: 42px;
+        padding: 0 14px;
+        font-size: 13px;
+    }
+
+    .user-mgmt-filters {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .user-mgmt-filter-group {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .user-mgmt-filter-btn {
+        height: 40px;
+        font-size: 13px;
+        line-height: 40px;
+        /* Allow shrinking below the desktop min-width on narrow screens */
+        min-width: 0;
+        width: 100%;
+    }
+
+    .user-mgmt-export-btn {
+        width: 100%;
+        height: 40px;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .user-mgmt-table-container {
+        padding: 0 12px 12px;
+    }
+
+    .user-mgmt-table-wrapper {
+        border-radius: 16px;
+    }
+
+    .user-mgmt-table-header {
+        display: none;
+    }
+
+    .user-mgmt-row {
+        grid-template-columns: 1fr;
+        padding: 14px;
+        gap: 10px;
+        border: 1px solid #f3f4f6;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        background: #fff;
+    }
+
+    .user-mgmt-col-identity {
+        grid-column: 1 / -1;
+    }
+
+    .user-mgmt-avatar {
+        width: 40px;
+        height: 40px;
+    }
+
+    .user-mgmt-user-name {
+        font-size: 15px;
+    }
+
+    .user-mgmt-user-email {
+        font-size: 12px;
+    }
+
+    /* Show role, date, status side by side on mobile */
+    .user-mgmt-col-role,
+    .user-mgmt-col-date,
+    .user-mgmt-col-performance,
+    .user-mgmt-col-status {
+        display: inline-flex;
+        font-size: 12px;
+    }
+
+    .user-mgmt-col-actions {
+        text-align: left;
+    }
+
+    .user-mgmt-action-btn {
+        margin-left: 0;
+    }
+
+    .user-mgmt-pagination {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 16px;
+    }
+
+    .user-mgmt-pagination-info {
+        font-size: 12px;
+    }
+}
+
+/* Drop the search-button icon prefix on very narrow phones so the
+   button doesn't crowd the input. The label alone is enough context. */
+@media (max-width: 480px) {
+    .user-mgmt-search-btn-icon {
+        display: none;
+    }
+    .user-mgmt-search-btn {
+        padding: 0 12px;
+    }
+}

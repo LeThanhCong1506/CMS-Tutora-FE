@@ -1,0 +1,48 @@
+/* ===== GLOBAL STYLES ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    /* Fluid font-size scaling for large screens */
+    /* 16px at 1024px viewport -> 20px at 2560px viewport -> 24px at 3840px (4K) */
+    font-size: clamp(100%, 87.5% + 0.25vw, 150%);
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--color-cream);
+    color: var(--color-navy);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== LARGE SCREEN SCALING ===== */
+/*
+ * Use CSS zoom for proportional scaling on large screens.
+ * This scales everything (fonts, spacing, borders) proportionally.
+ * Works in Chrome, Edge, Safari. Firefox uses font-size fallback.
+ */
+
+/* Scale up for 1920px+ screens (Full HD+) */
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+}

@@ -1,0 +1,82 @@
+/* ===== CSS CUSTOM PROPERTIES ===== */
+:root {
+    /* ===== FLUID TYPOGRAPHY SCALE ===== */
+    /* Base: 16px at 1024px viewport, scales up to 20px at 2560px viewport */
+    --fluid-base: clamp(1rem, 0.875rem + 0.25vw, 1.25rem);
+
+    /* Font sizes - fluid scaling */
+    --font-size-xs: clamp(0.75rem, 0.7rem + 0.1vw, 0.875rem);      /* 12px -> 14px */
+    --font-size-sm: clamp(0.875rem, 0.8rem + 0.15vw, 1rem);        /* 14px -> 16px */
+    --font-size-base: clamp(1rem, 0.9rem + 0.2vw, 1.25rem);        /* 16px -> 20px */
+    --font-size-lg: clamp(1.125rem, 1rem + 0.25vw, 1.5rem);        /* 18px -> 24px */
+    --font-size-xl: clamp(1.25rem, 1.1rem + 0.35vw, 1.75rem);      /* 20px -> 28px */
+    --font-size-2xl: clamp(1.5rem, 1.25rem + 0.5vw, 2.25rem);      /* 24px -> 36px */
+    --font-size-3xl: clamp(1.875rem, 1.5rem + 0.75vw, 3rem);       /* 30px -> 48px */
+    --font-size-4xl: clamp(2.25rem, 1.75rem + 1vw, 4rem);          /* 36px -> 64px */
+    --font-size-5xl: clamp(3rem, 2.25rem + 1.5vw, 5rem);           /* 48px -> 80px */
+
+    /* Fluid spacing - scales with viewport */
+    --space-xs: clamp(0.25rem, 0.2rem + 0.1vw, 0.375rem);          /* 4px -> 6px */
+    --space-sm: clamp(0.5rem, 0.4rem + 0.2vw, 0.75rem);            /* 8px -> 12px */
+    --space-md: clamp(1rem, 0.8rem + 0.4vw, 1.5rem);               /* 16px -> 24px */
+    --space-lg: clamp(1.5rem, 1.2rem + 0.6vw, 2.25rem);            /* 24px -> 36px */
+    --space-xl: clamp(2rem, 1.5rem + 1vw, 3.5rem);                 /* 32px -> 56px */
+    --space-2xl: clamp(3rem, 2rem + 2vw, 6rem);                    /* 48px -> 96px */
+    --space-3xl: clamp(4rem, 2.5rem + 3vw, 8rem);                  /* 64px -> 128px */
+
+    /* Container max-widths - fluid for large screens */
+    --container-sm: min(640px, 90vw);
+    --container-md: min(768px, 90vw);
+    --container-lg: min(1024px, 90vw);
+    --container-xl: min(1280px, 92vw);
+    --container-2xl: min(1536px, 94vw);
+    --container-3xl: min(2000px, 95vw);
+    --container-4xl: min(2400px, 96vw);
+    --container-full: min(3000px, 98vw);
+
+    /* Colors */
+    --color-cream: #faf9f6;
+    --color-cream-light: #f2f0e4;
+    --color-navy: #1a2238;
+    --color-burgundy: #631b1b;
+    --color-gold: #d4b483;
+    --color-green: #3d4a3e;
+    --color-white: #ffffff;
+
+    /* Opacity Colors */
+    --color-navy-60: rgba(26, 34, 56, 0.6);
+    --color-navy-40: rgba(26, 34, 56, 0.4);
+    --color-navy-05: rgba(26, 34, 56, 0.05);
+    --color-burgundy-60: rgba(99, 27, 27, 0.6);
+    --color-burgundy-10: rgba(99, 27, 27, 0.1);
+    --color-white-80: rgba(255, 255, 255, 0.8);
+    --color-white-70: rgba(255, 255, 255, 0.7);
+    --color-white-40: rgba(255, 255, 255, 0.4);
+    --color-white-10: rgba(255, 255, 255, 0.1);
+    --color-cream-light-50: rgba(242, 240, 228, 0.5);
+    --color-cream-light-20: rgba(242, 240, 228, 0.2);
+    --color-cream-light-10: rgba(242, 240, 228, 0.1);
+
+    /* Typography */
+    --font-primary: "Bricolage Grotesque", system-ui, sans-serif;
+    --font-serif: "IBM Plex Serif", Georgia, serif;
+
+    /* Shadows */
+    --shadow-soft: 0px 20px 50px -12px rgba(26, 34, 56, 0.08);
+    --shadow-medium: 0px 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0px 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+    /* Border Radius */
+    --radius-sm: 10.5px;
+    --radius-md: 14px;
+    --radius-lg: 21px;
+    --radius-xl: 28px;
+    --radius-2xl: 42px;
+    --radius-3xl: 56px;
+    --radius-full: 9999px;
+
+    /* Spacing */
+    --section-padding: clamp(3.5rem, 2.5rem + 2vw, 8rem);  /* 56px -> 128px responsive */
+    --section-padding-y: clamp(3.5rem, 2.5rem + 2vw, 8rem);
+    --section-padding-x: clamp(1.5rem, 1rem + 1.5vw, 4rem);
+}

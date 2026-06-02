@@ -1,0 +1,130 @@
+/* ===== INPUT GROUP COMPONENT ===== */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-group__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.input-group__label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-navy-60);
+    transition: color 0.2s ease;
+}
+
+.input-group:focus-within .input-group__label {
+    color: var(--color-burgundy);
+}
+
+.input-group__link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-gold);
+    transition: color 0.2s ease;
+}
+
+.input-group__link:hover {
+    color: var(--color-burgundy);
+}
+
+.input-group__field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-group__icon {
+    position: absolute;
+    left: 14px;
+    font-size: 20px;
+    color: var(--color-navy-40);
+    transition: color 0.2s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+}
+
+.input-group:focus-within .input-group__icon {
+    color: var(--color-burgundy);
+}
+
+.input-group__input {
+    width: 100%;
+    padding: 14px 14px 14px 48px;
+    font-size: 14px;
+    font-family: var(--font-primary);
+    color: var(--color-navy);
+    background-color: var(--color-cream-light);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-group__input::placeholder {
+    color: var(--color-navy-40);
+}
+
+.input-group__input:hover {
+    border-color: var(--color-navy-05);
+}
+
+.input-group__input:focus {
+    border-color: var(--color-burgundy);
+    background-color: var(--color-white);
+    box-shadow: 0 0 0 4px rgba(99, 27, 27, 0.1);
+}
+
+/* Autofill styling fix */
+.input-group__input:-webkit-autofill,
+.input-group__input:-webkit-autofill:hover,
+.input-group__input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 30px var(--color-cream-light) inset !important;
+    -webkit-text-fill-color: var(--color-navy) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ===== RESPONSIVE — MOBILE ===== */
+@media (max-width: 768px) {
+    .input-group__input {
+        /* iOS prevents zoom on inputs with font-size >= 16px */
+        font-size: 16px;
+        padding: 16px 16px 16px 48px;
+        min-height: 48px;
+        border-radius: var(--radius-md);
+    }
+
+    .input-group__label {
+        font-size: 11px;
+    }
+
+    .input-group__link {
+        font-size: 12px;
+        /* Larger touch target */
+        padding: 4px 0;
+    }
+
+    .input-group__icon {
+        font-size: 18px;
+        left: 16px;
+    }
+}
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 400px) {
+    .input-group__input {
+        padding: 14px 14px 14px 44px;
+    }
+
+    .input-group__icon {
+        left: 14px;
+    }
+}

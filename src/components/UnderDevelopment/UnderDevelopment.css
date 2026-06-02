@@ -1,0 +1,71 @@
+/* ===== UNDER DEVELOPMENT BANNER ===== */
+/* Non-blocking inline banner to indicate feature is under development */
+
+.under-dev-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    color: #92400e;
+    font-weight: 500;
+    flex-wrap: wrap;
+}
+
+.under-dev-banner-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.under-dev-banner-text {
+    flex: 1;
+    min-width: 150px;
+    line-height: 1.4;
+}
+
+.under-dev-banner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    background: rgba(146, 64, 14, 0.1);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #92400e;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.under-dev-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: underDevPulse 2s ease-in-out infinite;
+}
+
+@keyframes underDevPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .under-dev-banner {
+        padding: 10px 14px;
+        font-size: 13px;
+        gap: 8px;
+    }
+
+    .under-dev-banner-badge {
+        font-size: 10px;
+        padding: 3px 10px;
+    }
+}

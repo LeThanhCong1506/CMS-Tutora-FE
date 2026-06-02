@@ -1,0 +1,133 @@
+/* ===== GLOBAL MOBILE PERFORMANCE OPTIMIZATIONS ===== */
+/* This file overrides expensive CSS properties on mobile devices
+   to eliminate jank, lag, and sluggish interactions.
+   Imported LAST in index.css so it takes highest precedence. */
+
+/* ---- Mobile-specific optimizations (≤768px) ---- */
+@media (max-width: 768px) {
+
+    /* 1. DISABLE EXPENSIVE BLUR EFFECTS
+       filter: blur() and backdrop-filter: blur() are GPU-intensive
+       on mobile. Remove or reduce them for smooth performance. */
+
+    *[class*="blob"],
+    *[class*="glow"],
+    *[class*="decoration"] {
+        filter: none !important;
+        opacity: 0 !important;
+        display: none !important;
+    }
+
+    /* 2. REPLACE transition: all WITH SPECIFIC PROPERTIES
+       transition: all forces the browser to check every animatable
+       CSS property on each frame — extremely wasteful on mobile. */
+
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    [class*="btn"],
+    [class*="card"],
+    [class*="tag"],
+    [class*="badge"],
+    [class*="link"],
+    [class*="tab"],
+    [class*="toggle"],
+    [class*="social-btn"] {
+        transition: background-color 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease,
+            opacity 0.15s ease,
+            box-shadow 0.15s ease !important;
+    }
+
+    /* 3. DISABLE HOVER TRANSFORMS ON TOUCH DEVICES
+       Hover effects with transform cause layout recalculation.
+       Touch devices don't have hover, so these just cause glitches. */
+
+    button:hover,
+    a:hover,
+    [class*="btn"]:hover,
+    [class*="card"]:hover,
+    [class*="social-btn"]:hover,
+    [class*="link"]:hover {
+        transform: none !important;
+    }
+
+    /* Keep active press feedback minimal and GPU-friendly */
+    button:active,
+    [class*="btn"]:active {
+        transform: scale(0.98) !important;
+    }
+
+    /* 4. DISABLE ENTRY ANIMATIONS
+       fadeIn, slideIn, etc. animations can cause frame drops
+       during initial page load on mobile. */
+
+    .animate-fade-in-up,
+    [class*="animate-"],
+    [class*="fade-in"] {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* 5. OPTIMIZE TAP RESPONSIVENESS
+       Remove the 300ms tap delay highlight on touch devices. */
+
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [class*="btn"] {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+
+    /* 6. REDUCE BACKDROP-FILTER ON MOBILE
+       backdrop-filter is one of the most expensive CSS properties.
+       Remove it on mobile for modals/overlays. */
+
+    [class*="overlay"],
+    [class*="modal-backdrop"],
+    [class*="modal__overlay"] {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* 7. ENABLE GPU ACCELERATION for scrolling containers */
+    [class*="scroll"]:not(.trusted-scroll),
+    [class*="list"],
+    [class*="grid"] {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 8. PRESERVE trusted-banner scroll animation on mobile */
+    .trusted-scroll {
+        animation: trusted-scroll 25s linear infinite !important;
+        will-change: transform;
+    }
+
+    /* 8. REDUCE BOX-SHADOW COMPLEXITY
+       Complex box-shadows cause expensive repaints on mobile. */
+    [class*="card"]:hover,
+    [class*="form"]:hover {
+        box-shadow: none !important;
+    }
+}
+
+/* ---- Reduce motion for users who prefer it ---- */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

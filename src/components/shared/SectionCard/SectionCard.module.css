@@ -1,0 +1,76 @@
+/* ===== SECTION CARD — Shared Component ===== */
+/* Based on TutorPortal ".sectionCard" pattern */
+
+.sectionCard {
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+    background-color: #fff;
+    border: 1.2px solid rgba(62, 47, 40, 0.1);
+    overflow: hidden;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+.sectionHeader.withBorder {
+    border-bottom: 1.2px solid rgba(62, 47, 40, 0.1);
+}
+
+.sectionTitle {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 700;
+    color: #1a2238;
+    margin: 0;
+}
+
+.headerAction {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.paddedContent {
+    padding: 20px;
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+    .sectionCard {
+        border-radius: 12px;
+    }
+
+    .sectionHeader {
+        padding: 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .sectionTitle {
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .paddedContent {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sectionHeader {
+        padding: 12px;
+    }
+
+    .sectionTitle {
+        font-size: 14px;
+    }
+
+    .paddedContent {
+        padding: 12px;
+    }
+}

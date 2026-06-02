@@ -1,0 +1,837 @@
+/* ===== SHARED PORTAL LAYOUT ===== */
+/* Dark Navy Sidebar on LEFT, Cream/White Main Content on RIGHT */
+/* Collapsible sidebar: 68px collapsed, 288px on hover */
+
+/* Main Layout */
+.layout {
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    color: #1a2238;
+    background-color: #f2f0e4;
+}
+
+/* ===== SIDEBAR (Collapsible) ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 68px;
+    height: 100vh;
+    background-color: #1a2238;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar:hover {
+    width: 288px;
+}
+
+/* Sidebar Logo */
+.sidebarLogo {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    gap: 10.5px;
+    min-height: 68px;
+    box-sizing: border-box;
+}
+
+.logoLink {
+    display: flex;
+    align-items: center;
+    gap: 10.5px;
+    text-decoration: none;
+    color: #f2f0e4;
+}
+
+.logoText {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 28px;
+    letter-spacing: -0.52px;
+    color: #f2f0e4;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.2s ease 0.05s;
+}
+
+.sidebar:hover .logoText {
+    opacity: 1;
+}
+
+/* Sidebar Navigation */
+.sidebarNav {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 3.5px;
+    flex: 1;
+}
+
+.navItem {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10.5px;
+    padding: 10.5px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(242, 240, 228, 0.7);
+    font-size: 14px;
+    line-height: 21px;
+    font-weight: 500;
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 40px;
+    box-sizing: border-box;
+}
+
+.navItem:hover {
+    background-color: rgba(242, 240, 228, 0.1);
+    color: rgba(242, 240, 228, 0.9);
+}
+
+.navItemActive {
+    background-color: #f2f0e4;
+    color: #1a2238;
+}
+
+.navItem svg {
+    width: 17.5px;
+    height: 17.5px;
+    flex-shrink: 0;
+}
+
+/* Material Symbols icon (Admin portal) */
+.materialIcon {
+    font-size: 20px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.navText {
+    flex: 1;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.2s ease 0.05s;
+    overflow: hidden;
+}
+
+.sidebar:hover .navText {
+    opacity: 1;
+}
+
+/* Nav Badge (inline) — hiển thị khi sidebar expanded (hover) */
+.navBadge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background-color: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease 0.05s;
+}
+
+.sidebar:hover .navBadge {
+    opacity: 1;
+}
+
+/* Nav Badge Dot — floating ở góc icon khi sidebar collapsed (không hover).
+   Crossfade với .navBadge inline khi sidebar mở rộng. */
+.navBadgeDot {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    background-color: #ef4444;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #1a2238;
+    box-sizing: border-box;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.sidebar:hover .navBadgeDot {
+    opacity: 0;
+}
+
+/* Khi navItem đang active (background sáng), đổi border dot cho contrast */
+.navItemActive .navBadgeDot {
+    border-color: #f2f0e4;
+}
+
+/* Sidebar User Profile */
+.sidebarUser {
+    border-top: 1.2px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 8px;
+}
+
+.userCard {
+    display: flex;
+    align-items: center;
+    gap: 10.5px;
+    padding: 10.5px;
+    border-radius: 10.5px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.userAvatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 9999px;
+    background-color: #3d4a3e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.userAvatarImg {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.userInitials {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px;
+    line-height: 21px;
+    font-weight: 700;
+    color: #f2f0e4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.2s ease 0.05s;
+    overflow: hidden;
+}
+
+.sidebar:hover .userInfo {
+    opacity: 1;
+}
+
+.userName {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12.3px;
+    line-height: 17.5px;
+    font-weight: 700;
+    color: #f2f0e4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.userRoleText {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10.5px;
+    line-height: 14px;
+    color: rgba(242, 240, 228, 0.5);
+}
+
+/* ===== MAIN CONTENT AREA (Right Side) ===== */
+.main {
+    margin-left: 68px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f2f0e4;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Push content when sidebar is hovered */
+.sidebar:hover ~ .main {
+    margin-left: 288px;
+}
+
+/* ===== HEADER ===== */
+.header {
+    width: 100%;
+    height: 56px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.5);
+    border-bottom: 1.2px solid rgba(62, 47, 40, 0.1);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.headerContainer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Header Left */
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+/* Header Right Section */
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 21px;
+    flex-shrink: 0;
+}
+
+/* Force Ant Design Popconfirm wrapper (span) to align properly */
+.headerRight > * {
+    display: flex !important;
+    align-items: center !important;
+    align-self: center;
+    line-height: 0;
+}
+
+/* Notification Button */
+.notificationBtn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px;
+    border-radius: 9999px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.notificationBtn:hover {
+    background-color: rgba(62, 47, 40, 0.05);
+}
+
+.notificationIconWrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notificationIconWrap svg {
+    width: 22px;
+    height: 22px;
+    color: #1a2238;
+}
+
+.notificationBadge {
+    position: absolute;
+    top: 4.25px;
+    right: 5.25px;
+    min-width: 14px;
+    height: 15px;
+    padding: 0 2px;
+    border-radius: 9999px;
+    background-color: #631b1b;
+    border: 1px solid #f2f0e4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notificationBadge span {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10px;
+    line-height: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* Header User */
+.headerUser {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.headerUserInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.headerUserName {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+    color: #1a2238;
+    white-space: nowrap;
+}
+
+.headerUserRole {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 600;
+    color: rgba(62, 47, 40, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Header Avatar (initials variant) */
+.headerAvatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 9999px;
+    background-color: #3d4a3e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f2f0e4;
+}
+
+/* Header Avatar (image variant — clickable wrapper) */
+.headerAvatarWrap {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    border-radius: 9999px;
+    overflow: hidden;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.headerAvatarImg {
+    width: 35px;
+    height: 35px;
+    border-radius: 9999px;
+    object-fit: cover;
+    display: block;
+}
+
+.headerAvatarHover {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.headerAvatarWrap:hover .headerAvatarHover {
+    opacity: 1;
+}
+
+/* Logout Button (header) */
+.logoutBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 8px;
+    background: none;
+    border: 1px solid rgba(26, 34, 56, 0.15);
+    cursor: pointer;
+    color: #1a2238;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.logoutBtn:hover {
+    background-color: rgba(99, 27, 27, 0.08);
+    border-color: rgba(99, 27, 27, 0.3);
+    color: #631b1b;
+}
+
+/* ===== CONTENT AREA ===== */
+.contentArea {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+    width: 100%;
+    min-height: 0;
+}
+
+/* ===== AVATAR LIGHTBOX ===== */
+.lightboxOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    backdrop-filter: blur(8px);
+    animation: lightboxFadeIn 0.2s ease;
+}
+
+@keyframes lightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.lightboxContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    animation: lightboxZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lightboxZoomIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.lightboxClose {
+    position: absolute;
+    top: -48px;
+    right: -48px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    backdrop-filter: blur(4px);
+}
+
+.lightboxClose:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+}
+
+.lightboxImg {
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.lightboxInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.lightboxName {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.2px;
+}
+
+.lightboxRole {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* ===== MOBILE MENU ===== */
+.menuBtn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #1a2238;
+    transition: background-color 0.2s ease;
+}
+
+.menuBtn:hover {
+    background-color: rgba(26, 34, 56, 0.05);
+}
+
+.sidebarClose {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    margin-left: auto;
+    border-radius: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #f2f0e4;
+    transition: background-color 0.2s ease;
+}
+
+.sidebarClose:hover {
+    background-color: rgba(242, 240, 228, 0.1);
+}
+
+/* Sidebar Overlay for Mobile */
+.sidebarOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(26, 34, 56, 0.5);
+    z-index: 99;
+}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablet: sidebar slides in/out from left */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 288px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar:hover {
+        width: 288px;
+    }
+
+    .sidebarOpen {
+        transform: translateX(0);
+    }
+
+    /* Show all text on mobile (sidebar is full-width overlay) */
+    .sidebar .logoText,
+    .sidebar .navText,
+    .sidebar .userInfo,
+    .sidebar .navBadge {
+        opacity: 1;
+    }
+
+    /* Mobile sidebar luôn full-width khi mở → ẩn dot floating, dùng inline badge */
+    .sidebar .navBadgeDot {
+        opacity: 0;
+    }
+
+    .main {
+        margin-left: 0;
+        transition: none;
+    }
+
+    /* Prevent sidebar hover from pushing main content on mobile/tablet */
+    .sidebar:hover ~ .main {
+        margin-left: 0;
+    }
+
+    .main {
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Remove backdrop-filter on mobile to prevent containing block issues */
+    .header {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(255, 255, 255, 0.95);
+    }
+
+    .menuBtn {
+        display: flex;
+    }
+
+    .sidebarClose {
+        display: flex;
+    }
+
+    .sidebarOverlay {
+        display: block;
+    }
+
+    .headerLeft {
+        display: none;
+    }
+
+    .layout {
+        overflow-x: hidden;
+    }
+}
+
+/* Mobile: hide user info, compact header */
+@media (max-width: 768px) {
+    .header {
+        padding: 0 12px;
+        height: 48px;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(255, 255, 255, 0.95);
+    }
+
+    .headerContainer {
+        gap: 8px;
+    }
+
+    .headerUserName,
+    .headerUserRole,
+    .headerUserInfo {
+        display: none;
+    }
+
+    .headerLeft {
+        display: none;
+    }
+
+    .headerRight {
+        gap: 8px;
+    }
+
+    /* --- Unified icon sizing: all 38x38 --- */
+
+    .notificationBtn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border-radius: 8px;
+    }
+
+    .notificationIconWrap {
+        width: 100%;
+        height: 100%;
+    }
+
+    .notificationIconWrap svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .headerAvatar {
+        width: 38px;
+        height: 38px;
+        font-size: 13px;
+    }
+
+    .headerAvatarImg {
+        width: 38px;
+        height: 38px;
+    }
+
+    .logoutBtn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border: none;
+        border-radius: 8px;
+        background-color: rgba(26, 34, 56, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }
+
+    .logoutBtn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .menuBtn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .menuBtn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .notificationBadge {
+        top: 4px;
+        right: 4px;
+        min-width: 14px;
+        height: 14px;
+        border-width: 1.5px;
+    }
+
+    .notificationBadge span {
+        font-size: 8px;
+    }
+}
+
+/* ===== PRINT ===== */
+@media print {
+    .sidebar,
+    .menuBtn,
+    .sidebarOverlay {
+        display: none !important;
+    }
+
+    .main {
+        margin-left: 0;
+    }
+}

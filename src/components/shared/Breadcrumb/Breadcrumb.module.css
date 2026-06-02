@@ -1,0 +1,144 @@
+/* =========================================
+   BREADCRUMB - CLASSIC E-COMMERCE DESIGN
+========================================= */
+
+.breadcrumbWrapper {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    width: 100%;
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #4b5563; /* Subtle gray */
+    font-size: 13.5px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px 14px 6px 0;
+    transition: all 0.2s;
+    text-decoration: none;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.backButton:hover {
+    color: #005bb5;
+}
+
+.backButton svg {
+    flex-shrink: 0;
+}
+
+.divider {
+    width: 1px;
+    height: 16px;
+    background-color: #e5e7eb;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.breadcrumbNav {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.breadcrumbNav::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+.breadcrumbList {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: nowrap;
+}
+
+.breadcrumbItem {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 400;
+    color: #4b5563; /* Active page color */
+    flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.breadcrumbItem.active {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.breadcrumbItem.active .breadcrumbText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.breadcrumbLink {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Space between Home icon and text */
+    color: #005bb5; /* Vibrant link blue */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumbLink:hover {
+    color: #003d82;
+}
+
+.breadcrumbText {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: inherit;
+}
+
+.separator {
+    color: #9ca3af; /* Gray slash */
+    margin: 0 10px;
+    font-weight: 400;
+}
+
+/* On mobile, allow the breadcrumb to scroll nicely */
+@media (max-width: 768px) {
+    .breadcrumbWrapper {
+        padding: 8px 0;
+    }
+    
+    .backButton {
+        padding: 6px 10px 6px 0;
+    }
+    
+    .backButton span {
+        display: none; /* Icon only on mobile */
+    }
+    
+    .divider {
+        margin-right: 10px;
+    }
+
+    .breadcrumbItem {
+        font-size: 13px;
+    }
+    
+    .separator {
+        margin: 0 8px;
+    }
+}
+
+
