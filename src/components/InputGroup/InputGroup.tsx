@@ -60,6 +60,13 @@ interface InputGroupProps {
     };
     showPasswordToggle?: boolean; // Prop để bật/tắt chức năng toggle password
     disabled?: boolean;
+    error?: string;
+    hint?: string;
+    autoComplete?: string;
+    inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+    onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+    onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const InputGroup: React.FC<InputGroupProps> = ({
@@ -73,7 +80,14 @@ const InputGroup: React.FC<InputGroupProps> = ({
     onChange,
     rightLink,
     showPasswordToggle = false,
-    disabled = false
+    disabled = false,
+    error,
+    hint,
+    autoComplete,
+    inputMode,
+    onBlur,
+    onKeyDown,
+    onKeyUp,
 }) => {
     // State để quản lý việc hiển thị password
     const [showPassword, setShowPassword] = useState(false);
@@ -81,9 +95,11 @@ const InputGroup: React.FC<InputGroupProps> = ({
     // Xác định type thực tế của input
     // Nếu type ban đầu là "password" và showPasswordToggle = true, cho phép toggle
     const actualType = (type === 'password' && showPasswordToggle && showPassword) ? 'text' : type;
+    const message = error || hint;
+    const messageId = message ? `${id}-message` : undefined;
 
     return (
-        <div className="input-group">
+        <div className={`input-group${error ? ' input-group--error' : ''}`}>
             <div className="input-group__header">
                 <label htmlFor={id} className="input-group__label">
                     {label}
@@ -95,7 +111,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
                 )}
             </div>
 
-            <div className="input-group__field" style={{ position: 'relative' }}>
+            <div className={`input-group__field${type === 'password' && showPasswordToggle ? ' input-group__field--with-toggle' : ''}`}>
                 <span className="input-group__icon">
                     {renderIcon(icon)}
                 </span>
@@ -107,7 +123,14 @@ const InputGroup: React.FC<InputGroupProps> = ({
                     placeholder={placeholder}
                     value={value}
                     onChange={onChange}
+                    onBlur={onBlur}
+                    onKeyDown={onKeyDown}
+                    onKeyUp={onKeyUp}
+                    autoComplete={autoComplete}
+                    inputMode={inputMode}
                     disabled={disabled}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={messageId}
                 />
 
                 {/* Nút toggle password - chỉ hiển thị khi type='password' và showPasswordToggle=true */}
@@ -115,29 +138,20 @@ const InputGroup: React.FC<InputGroupProps> = ({
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                            position: 'absolute',
-                            right: '12px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6B7280',
-                            transition: 'color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#1F2937'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
+                        className="input-group__password-toggle"
+                        disabled={disabled}
                         aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
                     >
                         {renderIcon(showPassword ? 'visibility_off' : 'visibility')}
                     </button>
                 )}
             </div>
+
+            {message && (
+                <p id={messageId} className={`input-group__message${error ? ' input-group__message--error' : ''}`}>
+                    {message}
+                </p>
+            )}
         </div>
     );
 };

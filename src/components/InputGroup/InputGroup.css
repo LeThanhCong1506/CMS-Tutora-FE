@@ -69,6 +69,10 @@
     transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.input-group__field--with-toggle .input-group__input {
+    padding-right: 48px;
+}
+
 .input-group__input::placeholder {
     color: var(--color-navy-40);
 }
@@ -80,6 +84,62 @@
 .input-group__input:focus {
     border-color: var(--color-burgundy);
     background-color: var(--color-white);
+    box-shadow: 0 0 0 4px rgba(99, 27, 27, 0.1);
+}
+
+.input-group__input:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.input-group__password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--color-navy-60);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.input-group__password-toggle:hover {
+    color: var(--color-navy);
+    background-color: var(--color-navy-05);
+}
+
+.input-group__password-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.input-group__message {
+    margin: -2px 0 0;
+    color: var(--color-navy-60);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.input-group__message--error {
+    color: var(--color-burgundy);
+}
+
+.input-group--error .input-group__label,
+.input-group--error .input-group__icon {
+    color: var(--color-burgundy);
+}
+
+.input-group--error .input-group__input {
+    border-color: rgba(99, 27, 27, 0.72);
+    background-color: rgba(99, 27, 27, 0.035);
+}
+
+.input-group--error .input-group__input:focus {
     box-shadow: 0 0 0 4px rgba(99, 27, 27, 0.1);
 }
 
