@@ -42,9 +42,12 @@
     --color-gold: #d4b483;
     --color-green: #3d4a3e;
     --color-white: #ffffff;
+    --color-primary: var(--color-burgundy);
 
     /* Opacity Colors */
+    --color-navy-70: rgba(26, 34, 56, 0.7);
     --color-navy-60: rgba(26, 34, 56, 0.6);
+    --color-navy-50: rgba(26, 34, 56, 0.5);
     --color-navy-40: rgba(26, 34, 56, 0.4);
     --color-navy-05: rgba(26, 34, 56, 0.05);
     --color-burgundy-60: rgba(99, 27, 27, 0.6);
@@ -56,6 +59,7 @@
     --color-cream-light-50: rgba(242, 240, 228, 0.5);
     --color-cream-light-20: rgba(242, 240, 228, 0.2);
     --color-cream-light-10: rgba(242, 240, 228, 0.1);
+    --color-stone-100: rgba(62, 47, 40, 0.1);
 
     /* Typography */
     --font-primary: "Bricolage Grotesque", system-ui, sans-serif;
@@ -63,6 +67,7 @@
 
     /* Shadows */
     --shadow-soft: 0px 20px 50px -12px rgba(26, 34, 56, 0.08);
+    --shadow-strong: 0px 24px 60px -16px rgba(26, 34, 56, 0.18);
     --shadow-medium: 0px 20px 25px -5px rgba(0, 0, 0, 0.1),
         0px 8px 10px -6px rgba(0, 0, 0, 0.1);
 

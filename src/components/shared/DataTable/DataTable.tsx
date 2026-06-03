@@ -3,7 +3,7 @@ import styles from './DataTable.module.css';
 
 // ─── Column Definition ─────────────────────────────────
 
-export interface DataTableColumn<T = any> {
+export interface DataTableColumn<T = object> {
     /** Unique key for this column */
     key: string;
     /** Column header text */
@@ -39,7 +39,7 @@ export interface PaginationConfig {
 
 // ─── Component Props ────────────────────────────────────
 
-export interface DataTableProps<T = any> {
+export interface DataTableProps<T = object> {
     /** Column definitions */
     columns: DataTableColumn<T>[];
     /** Data array to display */
@@ -60,6 +60,8 @@ export interface DataTableProps<T = any> {
     pagination?: PaginationConfig;
     /** Custom className for the outer wrapper */
     className?: string;
+    /** Visual style. Use embedded when the table sits inside a SectionCard. Default: default */
+    variant?: 'default' | 'embedded';
     /** Minimum table width (for horizontal scroll on mobile). Default: 700 */
     minWidth?: number;
 }
@@ -82,8 +84,6 @@ function TablePagination({ config }: { config: PaginationConfig }) {
     const { current, pageSize, total, onChange } = config;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    if (totalPages <= 1) return null;
-
     // Calculate visible page numbers (show max 5 pages)
     const pageNumbers = useMemo(() => {
         const pages: number[] = [];
@@ -100,6 +100,8 @@ function TablePagination({ config }: { config: PaginationConfig }) {
         }
         return pages;
     }, [current, totalPages]);
+
+    if (totalPages <= 1) return null;
 
     const startItem = (current - 1) * pageSize + 1;
     const endItem = Math.min(current * pageSize, total);
@@ -185,7 +187,7 @@ function EmptyState({ text, icon }: { text: string; icon?: React.ReactNode }) {
 
 // ─── Main DataTable Component ───────────────────────────
 
-function DataTable<T extends Record<string, any>>({
+function DataTable<T extends object>({
     columns,
     data,
     rowKey,
@@ -196,6 +198,7 @@ function DataTable<T extends Record<string, any>>({
     onRowClick,
     pagination,
     className,
+    variant = 'default',
     minWidth = 700,
 }: DataTableProps<T>) {
     const getRowKey = (record: T, index: number): string | number => {
@@ -209,8 +212,20 @@ function DataTable<T extends Record<string, any>>({
         return null;
     };
 
+    const handleRowKeyDown = (
+        event: React.KeyboardEvent<HTMLTableRowElement>,
+        record: T,
+        rowIndex: number,
+    ) => {
+        if (!onRowClick) return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        event.preventDefault();
+        onRowClick(record, rowIndex);
+    };
+
     return (
-        <div className={`${styles.tableWrapper} ${className || ''}`}>
+        <div className={`${styles.tableWrapper} ${variant === 'embedded' ? styles.embedded : ''} ${className || ''}`}>
             {loading ? (
                 <LoadingSpinner text={loadingText} />
             ) : data.length === 0 ? (
@@ -243,6 +258,9 @@ function DataTable<T extends Record<string, any>>({
                                         key={getRowKey(record, rowIndex)}
                                         className={`${styles.row} ${onRowClick ? styles.clickableRow : ''}`}
                                         onClick={() => onRowClick?.(record, rowIndex)}
+                                        onKeyDown={(event) => handleRowKeyDown(event, record, rowIndex)}
+                                        tabIndex={onRowClick ? 0 : undefined}
+                                        aria-label={onRowClick ? 'Mở chi tiết dòng' : undefined}
                                     >
                                         {columns.map((col) => (
                                             <td

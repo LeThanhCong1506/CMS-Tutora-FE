@@ -34,11 +34,8 @@ const StatCard: React.FC<StatCardProps> = ({
     onClick,
     className,
 }) => {
-    return (
-        <div
-            className={`${styles.statCard} ${onClick ? styles.clickable : ''} ${className || ''}`}
-            onClick={onClick}
-        >
+    const content = (
+        <>
             <div className={styles.statHeader}>
                 <div className={styles.statIcon}>{icon}</div>
                 {badge && (
@@ -50,6 +47,24 @@ const StatCard: React.FC<StatCardProps> = ({
             <div className={styles.statValue}>{value}</div>
             <div className={styles.statLabel}>{label}</div>
             {subLabel && <div className={styles.statSubLabel}>{subLabel}</div>}
+        </>
+    );
+
+    if (onClick) {
+        return (
+            <button
+                type="button"
+                className={`${styles.statCard} ${styles.clickable} ${className || ''}`}
+                onClick={onClick}
+            >
+                {content}
+            </button>
+        );
+    }
+
+    return (
+        <div className={`${styles.statCard} ${className || ''}`}>
+            {content}
         </div>
     );
 };

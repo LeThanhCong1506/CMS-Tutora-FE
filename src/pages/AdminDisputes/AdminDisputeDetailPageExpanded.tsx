@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import IssueWarningModal from './components/IssueWarningModal';
@@ -19,6 +19,14 @@ import { formatCurrency, formatDateTime, formatRelativeTime, formatDisputeType }
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
 
+type DisputeChatMessage = {
+    senderName?: string | null;
+    senderId?: string | number | null;
+    sentAt?: string | null;
+    content?: string | null;
+    message?: string | null;
+};
+
 const AdminDisputeDetailPageExpanded = () => {
     const { disputeId } = useParams<{ disputeId: string }>();
 
@@ -33,7 +41,7 @@ const AdminDisputeDetailPageExpanded = () => {
     const [adminNotes, setAdminNotes] = useState('');
 
     // Chat history
-    const [chatMessages, setChatMessages] = useState<any[]>([]);
+    const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
 
     // Modal states
@@ -44,14 +52,7 @@ const AdminDisputeDetailPageExpanded = () => {
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Fetch dispute detail
-    useEffect(() => {
-        if (disputeId) {
-            fetchDisputeDetail(disputeId);
-        }
-    }, [disputeId]);
-
-    const fetchDisputeDetail = async (id: string) => {
+    const fetchDisputeDetail = useCallback(async (id: string) => {
         try {
             setLoading(true);
             setError(null);
@@ -63,28 +64,37 @@ const AdminDisputeDetailPageExpanded = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // Fetch dispute detail
+    useEffect(() => {
+        if (disputeId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchDisputeDetail(disputeId);
+        }
+    }, [disputeId, fetchDisputeDetail]);
 
     // Fetch chat history when switching to chat tab
-    const fetchChatHistory = async () => {
+    const fetchChatHistory = useCallback(async () => {
         if (!disputeId) return;
         try {
             setChatLoading(true);
             const data = await getDisputeChatHistory(disputeId);
-            setChatMessages(data);
+            setChatMessages(data as DisputeChatMessage[]);
         } catch (err) {
             console.error('Error fetching chat history:', err);
             setChatMessages([]);
         } finally {
             setChatLoading(false);
         }
-    };
+    }, [disputeId]);
 
     useEffect(() => {
         if (activeTab === 'chat' && chatMessages.length === 0) {
-            fetchChatHistory();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchChatHistory();
         }
-    }, [activeTab]);
+    }, [activeTab, chatMessages.length, fetchChatHistory]);
 
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
