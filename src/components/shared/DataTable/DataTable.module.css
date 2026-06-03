@@ -11,6 +11,12 @@
     overflow: hidden;
 }
 
+.embedded {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 /* Scrollable container for horizontal overflow on mobile */
 .tableScroll {
     width: 100%;
@@ -60,6 +66,12 @@
 
 .clickableRow:hover {
     background-color: rgba(242, 240, 228, 0.35);
+}
+
+.clickableRow:focus-visible {
+    outline: 2px solid #1a2238;
+    outline-offset: -2px;
+    background-color: rgba(242, 240, 228, 0.4);
 }
 
 /* ─── Cells ────────────────────────────────────── */

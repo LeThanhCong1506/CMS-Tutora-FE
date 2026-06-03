@@ -6,6 +6,7 @@
 @import "./styles/base/mobile-performance.css";
 
 /* ===== Admin pages ===== */
+@import "./styles/pages/admin-shared.css";
 @import "./styles/pages/admin-dashboard.css";
 @import "./styles/pages/admin-vetting.css";
 @import "./styles/pages/admin-dispute.css";

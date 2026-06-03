@@ -18,6 +18,7 @@ const AdminLayout: React.FC = () => {
         { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group' },
         { path: '/admin-portal/bookings', label: 'Quản lý booking', materialIcon: 'event_note' },
         { path: '/admin-portal/vetting', label: 'Kiểm duyệt', materialIcon: 'description', badge: pendingCount },
+        { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel' },
         { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning' },
         { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance' },
         { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring' },
@@ -33,6 +34,9 @@ const AdminLayout: React.FC = () => {
         }
         if (path === '/admin-portal/bookings') {
             return pathname.startsWith('/admin-portal/bookings');
+        }
+        if (path === '/admin-portal/disputes') {
+            return pathname.startsWith('/admin-portal/disputes');
         }
         return pathname === path;
     };

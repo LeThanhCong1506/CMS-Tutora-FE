@@ -4,12 +4,16 @@ import styles from './SectionCard.module.css';
 export interface SectionCardProps {
     /** Optional title displayed in the card header */
     title?: string;
+    /** Optional helper text displayed under the title */
+    subtitle?: React.ReactNode;
     /** Optional action element (button/link) rendered on the right side of the header */
     headerAction?: React.ReactNode;
     /** Whether the header has a bottom border separator. Default: true */
     headerBorder?: boolean;
     /** Card content */
     children: React.ReactNode;
+    /** Optional footer rendered below the content */
+    footer?: React.ReactNode;
     /** If true, children are wrapped with default padding. Default: false (no padding, full control) */
     padded?: boolean;
     /** Custom className */
@@ -24,14 +28,16 @@ export interface SectionCardProps {
  */
 const SectionCard: React.FC<SectionCardProps> = ({
     title,
+    subtitle,
     headerAction,
     headerBorder = true,
     children,
+    footer,
     padded = false,
     className,
     dataTour,
 }) => {
-    const hasHeader = title || headerAction;
+    const hasHeader = title || subtitle || headerAction;
 
     return (
         <div
@@ -40,13 +46,17 @@ const SectionCard: React.FC<SectionCardProps> = ({
         >
             {hasHeader && (
                 <div className={`${styles.sectionHeader} ${headerBorder ? styles.withBorder : ''}`}>
-                    {title && <h3 className={styles.sectionTitle}>{title}</h3>}
+                    <div className={styles.sectionHeaderText}>
+                        {title && <h3 className={styles.sectionTitle}>{title}</h3>}
+                        {subtitle && <p className={styles.sectionSubtitle}>{subtitle}</p>}
+                    </div>
                     {headerAction && <div className={styles.headerAction}>{headerAction}</div>}
                 </div>
             )}
             <div className={padded ? styles.paddedContent : undefined}>
                 {children}
             </div>
+            {footer && <div className={styles.sectionFooter}>{footer}</div>}
         </div>
     );
 };

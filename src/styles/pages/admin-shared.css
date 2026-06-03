@@ -1,0 +1,197 @@
+/* ===== ADMIN UI SHARED PATTERNS ===== */
+
+.admin-ui-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.admin-ui-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    border: 1px solid transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.admin-ui-button .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.admin-ui-button-primary {
+    background: var(--color-navy);
+    color: var(--color-white);
+    box-shadow: var(--shadow-soft);
+}
+
+.admin-ui-button-primary:hover {
+    background: #24304f;
+}
+
+.admin-ui-button-secondary {
+    background: var(--color-white);
+    border-color: var(--color-stone-100);
+    color: var(--color-navy);
+}
+
+.admin-ui-button-secondary:hover {
+    border-color: rgba(26, 34, 56, 0.22);
+    background: var(--color-cream);
+}
+
+.admin-ui-button-danger {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: #dc2626;
+}
+
+.admin-ui-button-danger:hover {
+    background: rgba(220, 38, 38, 0.12);
+}
+
+.admin-ui-button-success {
+    background: var(--color-green);
+    color: var(--color-white);
+}
+
+.admin-ui-button-success:hover {
+    background: rgba(61, 74, 62, 0.92);
+}
+
+.admin-ui-button:focus-visible,
+.admin-ui-search-input:focus-visible {
+    outline: 2px solid rgba(212, 180, 131, 0.9);
+    outline-offset: 2px;
+}
+
+.admin-ui-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.admin-ui-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-bottom: 1.2px solid rgba(62, 47, 40, 0.08);
+    background: rgba(250, 249, 246, 0.45);
+}
+
+.admin-ui-search {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+    max-width: 420px;
+}
+
+.admin-ui-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: var(--color-navy-40);
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.admin-ui-search-input {
+    width: 100%;
+    height: 38px;
+    padding: 8px 14px 8px 40px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-navy);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.admin-ui-search-input::placeholder {
+    color: var(--color-navy-40);
+}
+
+.admin-ui-entity {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.admin-ui-entity-primary {
+    color: var(--color-navy);
+    font-weight: 700;
+}
+
+.admin-ui-entity-secondary {
+    color: var(--color-navy-50);
+    font-size: 12px;
+    line-height: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-ui-code-chip {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--color-navy);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-ui-amount {
+    color: var(--color-navy);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-ui-table-meta {
+    color: var(--color-navy-60);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.admin-ui-muted-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--color-navy-50);
+}
+
+@media (max-width: 768px) {
+    .admin-ui-actions,
+    .admin-ui-toolbar {
+        width: 100%;
+    }
+
+    .admin-ui-button {
+        min-height: 36px;
+        padding: 8px 12px;
+    }
+
+    .admin-ui-search {
+        max-width: none;
+        min-width: 100%;
+    }
+}
