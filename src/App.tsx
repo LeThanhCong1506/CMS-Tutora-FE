@@ -34,6 +34,8 @@ const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBoo
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
+const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
+const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPageExpanded'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
@@ -69,6 +71,7 @@ function App() {
 
   // Check token expiry khi route thay đổi
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkTokenExpiry();
   }, [location.pathname, checkTokenExpiry]);
 
@@ -124,6 +127,8 @@ function App() {
               <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
               <Route path="financials" element={<AdminFinancialsPage />} />
               <Route path="warnings" element={<AdminWarningsPage />} />
+              <Route path="disputes" element={<AdminDisputesPage />} />
+              <Route path="disputes/:id" element={<AdminDisputeDetailPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="payouts" element={<PayoutOverviewPage />} />

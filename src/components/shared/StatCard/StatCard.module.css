@@ -10,6 +10,11 @@
     padding: 18px;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    appearance: none;
     transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 
@@ -20,6 +25,11 @@
 .statCard.clickable:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
+}
+
+.statCard.clickable:focus-visible {
+    outline: 2px solid #1a2238;
+    outline-offset: 2px;
 }
 
 .statHeader {

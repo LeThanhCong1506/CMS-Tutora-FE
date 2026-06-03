@@ -104,6 +104,13 @@ const getInitials = (name: string) => {
 const generateAvatarUrl = (name: string) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3d4a3e&color=f2f0e4&size=128`;
 
+const getNotificationUserId = (notification: unknown) => {
+    if (!notification || typeof notification !== 'object') return undefined;
+
+    const { userid } = notification as { userid?: unknown };
+    return typeof userid === 'string' ? userid : undefined;
+};
+
 // ─── Component ───
 
 const PortalLayout: React.FC<PortalLayoutProps> = ({
@@ -137,6 +144,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
     // Close sidebar on route change
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSidebarOpenInternal(false);
     }, [location.pathname]);
 
@@ -165,6 +173,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
             'User';
         const initials = getInitials(displayName);
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUserData({
             name: displayName,
             initials,
@@ -209,10 +218,11 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
         fetchCount();
 
         const handleCountUpdate = (count: number) => setNotificationCount(count);
-        const handleNewNotification = (notification: any) => {
+        const handleNewNotification = (notification: unknown) => {
             const user = getUserInfoFromToken();
             const currentUserId = user?.userId || user?.sub;
-            if (notification.userid && currentUserId && notification.userid !== currentUserId) return;
+            const notificationUserId = getNotificationUserId(notification);
+            if (notificationUserId && currentUserId && notificationUserId !== currentUserId) return;
             setNotificationCount(prev => prev + 1);
         };
 
@@ -257,7 +267,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
             >
                 {/* Logo */}
                 <div className={styles.sidebarLogo}>
-                    <Link to="/" className={styles.logoLink}>
+                    <Link to="/admin-portal/dashboard" className={styles.logoLink}>
                         <LogoIcon />
                         <span className={styles.logoText}>TUTORA</span>
                     </Link>
@@ -271,11 +281,16 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
                 {/* Navigation */}
                 <nav className={styles.sidebarNav}>
-                    {navItems.map((item) => (
-                        <div
+                    {navItems.map((item) => {
+                        const active = checkActive(item.path);
+
+                        return (
+                            <button
+                            type="button"
                             key={item.path}
-                            className={`${styles.navItem} ${checkActive(item.path) ? styles.navItemActive : ''}`}
+                            className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
                             title={item.label}
+                            aria-current={active ? 'page' : undefined}
                             {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
                             onClick={() => {
                                 navigate(item.path);
@@ -301,8 +316,9 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                                     <span className={styles.navBadge}>{item.badge}</span>
                                 </>
                             )}
-                        </div>
-                    ))}
+                            </button>
+                        );
+                    })}
                     {sidebarNavFooter}
                 </nav>
 
