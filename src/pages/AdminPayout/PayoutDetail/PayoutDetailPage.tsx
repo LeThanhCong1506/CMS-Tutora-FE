@@ -1,25 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    Typography, Breadcrumb, Card, Row, Col, Space,
-    Button, Descriptions, Tag, Divider, Skeleton
-} from 'antd';
-import {
-    ArrowLeftOutlined,
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    UserOutlined,
-    BankOutlined,
-    WalletOutlined,
-    InfoCircleOutlined
-} from '@ant-design/icons';
+import { toast } from 'react-toastify';
 import {
     getPayoutRequestDetail,
     approvePayoutRequest,
-    rejectPayoutRequest
+    rejectPayoutRequest,
 } from '../../../services/adminPayout.service';
 import type { AdminWithdrawalDetail } from '../../../types/adminPayout.types';
-import { formatCurrency, formatDateTime } from '../../../utils/formatters';
+import { formatApprovalDecision, formatCurrency, formatDateTime } from '../../../utils/formatters';
+import { PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
 import WithdrawalStatusBadge from '../WithdrawalStatusBadge';
 import FraudFlagsCard from './components/FraudFlagsCard';
 import TrustScoreCard from './components/TrustScoreCard';
@@ -27,26 +16,65 @@ import PayoutTimeline from './components/PayoutTimeline';
 import ApproveWithdrawalModal from './components/ApproveWithdrawalModal';
 import RejectWithdrawalModal from './components/RejectWithdrawalModal';
 import '../../../styles/pages/admin-payout.css';
-import { toast } from 'react-toastify';
 
-const { Title, Text } = Typography;
+type ApiError = {
+    response?: {
+        data?: {
+            message?: string;
+        };
+    };
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+    const apiError = error as ApiError;
+    return apiError?.response?.data?.message || fallback;
+};
+
+const decisionVariant = (decision: string | null): 'success' | 'warning' | 'error' | 'neutral' => {
+    switch (decision) {
+        case 'AUTO_APPROVE':
+            return 'success';
+        case 'AUTO_REJECT':
+            return 'error';
+        case 'DELAYED':
+        case 'MANUAL_REVIEW':
+            return 'warning';
+        default:
+            return 'neutral';
+    }
+};
+
+const DetailItem = ({
+    label,
+    children,
+    wide = false,
+}: {
+    label: string;
+    children: React.ReactNode;
+    wide?: boolean;
+}) => (
+    <div className={`payout-info-item ${wide ? 'wide' : ''}`}>
+        <span className="payout-info-label">{label}</span>
+        <div className="payout-info-value">{children}</div>
+    </div>
+);
 
 const PayoutDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [detail, setDetail] = useState<AdminWithdrawalDetail | null>(null);
-
-    // Modal states
     const [approveModalOpen, setApproveModalOpen] = useState(false);
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
 
+    const requestId = Number.parseInt(id || '', 10);
+
     const fetchDetail = useCallback(async () => {
-        if (!id) return;
+        if (!Number.isFinite(requestId)) return;
         setLoading(true);
         try {
-            const data = await getPayoutRequestDetail(parseInt(id));
+            const data = await getPayoutRequestDetail(requestId);
             setDetail(data);
         } catch (error) {
             console.error('Failed to fetch payout detail:', error);
@@ -54,45 +82,46 @@ const PayoutDetailPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [id]);
+    }, [requestId]);
 
     useEffect(() => {
-        fetchDetail();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchDetail();
     }, [fetchDetail]);
 
     const handleApprove = async (note: string) => {
-        if (!id) return;
+        if (!Number.isFinite(requestId)) return;
         setActionLoading(true);
         try {
-            const result = await approvePayoutRequest(parseInt(id), note);
+            const result = await approvePayoutRequest(requestId, note);
             if (result.success) {
                 toast.success(result.message || 'Đã phê duyệt và chuyển tiền thành công');
-                fetchDetail(); // Refresh data
+                void fetchDetail();
                 setApproveModalOpen(false);
             } else {
                 toast.error(result.message || 'Phê duyệt thất bại');
             }
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi phê duyệt');
+        } catch (error) {
+            toast.error(getErrorMessage(error, 'Có lỗi xảy ra khi phê duyệt'));
         } finally {
             setActionLoading(false);
         }
     };
 
     const handleReject = async (reason: string) => {
-        if (!id) return;
+        if (!Number.isFinite(requestId)) return;
         setActionLoading(true);
         try {
-            const result = await rejectPayoutRequest(parseInt(id), reason);
+            const result = await rejectPayoutRequest(requestId, reason);
             if (result.success) {
                 toast.success('Đã từ chối yêu cầu rút tiền');
-                fetchDetail();
+                void fetchDetail();
                 setRejectModalOpen(false);
             } else {
                 toast.error(result.message || 'Từ chối thất bại');
             }
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi từ chối');
+        } catch (error) {
+            toast.error(getErrorMessage(error, 'Có lỗi xảy ra khi từ chối'));
         } finally {
             setActionLoading(false);
         }
@@ -100,154 +129,186 @@ const PayoutDetailPage: React.FC = () => {
 
     if (loading && !detail) {
         return (
-            <div className="admin-payout-container">
-                <Skeleton active paragraph={{ rows: 10 }} />
-            </div>
+            <PageContainer
+                eyebrow="Thanh toán"
+                title={`Yêu cầu rút tiền #${id || '---'}`}
+                subtitle="Đang tải dữ liệu quyết toán."
+                maxWidth="wide"
+            >
+                <SectionCard padded>
+                    <div className="admin-ui-muted-state">Đang tải chi tiết yêu cầu...</div>
+                </SectionCard>
+            </PageContainer>
         );
     }
 
-    if (!detail) return null;
+    if (!detail) {
+        return (
+            <PageContainer
+                eyebrow="Thanh toán"
+                title="Không tìm thấy yêu cầu"
+                subtitle="Yêu cầu rút tiền không tồn tại hoặc bạn không có quyền truy cập."
+                maxWidth="wide"
+                headerAction={
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={() => navigate('/admin-portal/payouts')}
+                    >
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        Tổng quan
+                    </button>
+                }
+            >
+                <SectionCard padded>
+                    <div className="admin-ui-muted-state">Không có dữ liệu để hiển thị.</div>
+                </SectionCard>
+            </PageContainer>
+        );
+    }
 
     const { requestInfo, tutorInfo, scoreBreakdown, fraudFlags, walletInfo, timeline } = detail;
     const isPending = ['pending', 'pending_review', 'delayed'].includes(requestInfo.status);
 
     return (
-        <div className="admin-payout-container">
-            <div className="payout-header">
-                <Space orientation="vertical" style={{ width: '100%' }}>
-                    <Breadcrumb
-                        items={[
-                            { title: 'Quản trị' },
-                            { title: 'Quản lý thanh toán', onClick: () => navigate('/admin-portal/payouts'), className: 'clickable' },
-                            { title: `Yêu cầu #${id}` },
-                        ]}
-                    />
-                    <Row justify="space-between" align="middle">
-                        <Col>
-                            <Title level={2} style={{ margin: 0 }}>
-                                <Button
-                                    icon={<ArrowLeftOutlined />}
-                                    type="text"
-                                    onClick={() => navigate('/admin-portal/payouts')}
-                                    style={{ marginRight: '8px' }}
-                                />
-                                Yêu cầu rút tiền #{id}
-                            </Title>
-                        </Col>
-                        <Col>
-                            <Space>
-                                {isPending && (
-                                    <>
-                                        <Button
-                                            danger
-                                            icon={<CloseCircleOutlined />}
-                                            onClick={() => setRejectModalOpen(true)}
-                                        >
-                                            Từ chối
-                                        </Button>
-                                        <Button
-                                            type="primary"
-                                            icon={<CheckCircleOutlined />}
-                                            onClick={() => setApproveModalOpen(true)}
-                                        >
-                                            Phê duyệt & Chuyển tiền
-                                        </Button>
-                                    </>
+        <PageContainer
+            eyebrow="Thanh toán"
+            title={`Yêu cầu rút tiền #${id}`}
+            subtitle="Kiểm tra thông tin quyết toán, trust score, ví và timeline trước khi xử lý."
+            maxWidth="wide"
+            headerAction={
+                <div className="admin-ui-actions">
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={() => navigate('/admin-portal/payouts')}
+                    >
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        Tổng quan
+                    </button>
+                    {isPending ? (
+                        <>
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-danger"
+                                onClick={() => setRejectModalOpen(true)}
+                                disabled={actionLoading}
+                            >
+                                <span className="material-symbols-outlined">cancel</span>
+                                Từ chối
+                            </button>
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-success"
+                                onClick={() => setApproveModalOpen(true)}
+                                disabled={actionLoading}
+                            >
+                                <span className="material-symbols-outlined">check_circle</span>
+                                Phê duyệt & chuyển tiền
+                            </button>
+                        </>
+                    ) : (
+                        <WithdrawalStatusBadge status={requestInfo.status} />
+                    )}
+                </div>
+            }
+        >
+            <div className="payout-detail-layout">
+                <div className="payout-detail-main">
+                    <SectionCard
+                        title="Thông tin quyết toán"
+                        subtitle="Thông tin yêu cầu, quyết định xử lý và tài khoản nhận tiền."
+                        headerAction={<WithdrawalStatusBadge status={requestInfo.status} />}
+                        padded
+                    >
+                        <div className="payout-info-grid">
+                            <DetailItem label="Số tiền yêu cầu">
+                                <span className="admin-ui-amount payout-amount-strong">
+                                    {formatCurrency(requestInfo.amount)}
+                                </span>
+                            </DetailItem>
+                            <DetailItem label="Ngày tạo">
+                                {formatDateTime(requestInfo.createdAt)}
+                            </DetailItem>
+                            <DetailItem label="Ngày xử lý">
+                                {requestInfo.processedAt ? formatDateTime(requestInfo.processedAt) : '---'}
+                            </DetailItem>
+                            <DetailItem label="Hình thức duyệt">
+                                <StatusBadge variant={decisionVariant(requestInfo.decision)} shape="tag">
+                                    {formatApprovalDecision(requestInfo.decision)}
+                                </StatusBadge>
+                            </DetailItem>
+                            <DetailItem label="Mã giao dịch PayOS" wide>
+                                {requestInfo.payosTransactionId ? (
+                                    <span className="admin-ui-code-chip">{requestInfo.payosTransactionId}</span>
+                                ) : (
+                                    <span className="admin-ui-table-meta">---</span>
                                 )}
-                                {!isPending && (
-                                    <WithdrawalStatusBadge status={requestInfo.status} />
-                                )}
-                            </Space>
-                        </Col>
-                    </Row>
-                </Space>
+                            </DetailItem>
+                        </div>
+
+                        <div className="payout-bank-panel">
+                            <div className="payout-subsection-title">
+                                <span className="material-symbols-outlined">account_balance</span>
+                                Thông tin tài khoản nhận
+                            </div>
+                            <div className="payout-info-grid compact">
+                                <DetailItem label="Ngân hàng">{requestInfo.bankName || 'N/A'}</DetailItem>
+                                <DetailItem label="Số tài khoản">
+                                    <strong>{requestInfo.accountNumber || 'N/A'}</strong>
+                                </DetailItem>
+                                <DetailItem label="Chủ tài khoản" wide>
+                                    {requestInfo.accountHolderName || 'N/A'}
+                                </DetailItem>
+                            </div>
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Thông tin gia sư & ví"
+                        subtitle="Đối chiếu hồ sơ gia sư với số dư ví trước khi ra quyết định."
+                        padded
+                    >
+                        <div className="payout-split-grid">
+                            <div className="payout-info-grid compact">
+                                <DetailItem label="Họ tên">
+                                    <strong>{tutorInfo.name}</strong>
+                                </DetailItem>
+                                <DetailItem label="Email">{tutorInfo.email || 'N/A'}</DetailItem>
+                                <DetailItem label="Số điện thoại">{tutorInfo.phone || 'N/A'}</DetailItem>
+                                <DetailItem label="Ngày tham gia">
+                                    {formatDateTime(tutorInfo.joinedAt)}
+                                </DetailItem>
+                            </div>
+                            <div className="payout-wallet-panel">
+                                <div className="payout-subsection-title">
+                                    <span className="material-symbols-outlined">account_balance_wallet</span>
+                                    Số dư ví hiện tại
+                                </div>
+                                <DetailItem label="Số dư khả dụng">
+                                    <span className="admin-ui-amount payout-success-amount">
+                                        {formatCurrency(walletInfo.availableBalance)}
+                                    </span>
+                                </DetailItem>
+                                <DetailItem label="Tổng thu nhập">
+                                    {formatCurrency(tutorInfo.totalEarnings)}
+                                </DetailItem>
+                                <DetailItem label="Buổi học hoàn thành">
+                                    {tutorInfo.completedLessons.toLocaleString('vi-VN')}
+                                </DetailItem>
+                            </div>
+                        </div>
+                    </SectionCard>
+
+                    <PayoutTimeline events={timeline} loading={loading} />
+                </div>
+
+                <aside className="payout-detail-side">
+                    <TrustScoreCard scoreData={scoreBreakdown} loading={loading} />
+                    <FraudFlagsCard flags={fraudFlags} loading={loading} />
+                </aside>
             </div>
 
-            <Row gutter={[16, 16]}>
-                <Col xs={24} lg={16}>
-                    <Space orientation="vertical" style={{ width: '100%' }} size={16}>
-                        {/* Main Info Card */}
-                        <Card title={<Space><InfoCircleOutlined /><span>Thông tin yêu quyết toán</span></Space>}>
-                            <Descriptions column={{ xs: 1, sm: 2 }}>
-                                <Descriptions.Item label="Số tiền yêu cầu">
-                                    <Text strong style={{ fontSize: '18px', color: '#1890ff' }}>{formatCurrency(requestInfo.amount)}</Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Trạng thái">
-                                    <WithdrawalStatusBadge status={requestInfo.status} />
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Ngày tạo">
-                                    {formatDateTime(requestInfo.createdAt)}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Ngày xử lý">
-                                    {requestInfo.processedAt ? formatDateTime(requestInfo.processedAt) : '---'}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Hình thức duyệt">
-                                    <Tag color={requestInfo.decision === 'AUTO_APPROVE' ? 'green' : 'orange'}>
-                                        {requestInfo.decision || 'N/A'}
-                                    </Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Mã Giao dịch PayOS">
-                                    {requestInfo.payosTransactionId ? <Tag color="blue">{requestInfo.payosTransactionId}</Tag> : '---'}
-                                </Descriptions.Item>
-                            </Descriptions>
-
-                            <Divider style={{ margin: '16px 0' }} />
-
-                            <Title level={5}><BankOutlined /> Thông tin tài khoản nhận</Title>
-                            <div className="bank-info-display">
-                                <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-                                    <Descriptions.Item label="Ngân hàng">{requestInfo.bankName || 'N/A'}</Descriptions.Item>
-                                    <Descriptions.Item label="Số tài khoản"><Text strong>{requestInfo.accountNumber || 'N/A'}</Text></Descriptions.Item>
-                                    <Descriptions.Item label="Chủ tài khoản">{requestInfo.accountHolderName || 'N/A'}</Descriptions.Item>
-                                </Descriptions>
-                            </div>
-                        </Card>
-
-                        {/* Tutor Info */}
-                        <Card title={<Space><UserOutlined /><span>Thông tin Gia sư</span></Space>}>
-                            <Row gutter={24}>
-                                <Col span={12}>
-                                    <Descriptions column={1} size="small">
-                                        <Descriptions.Item label="Họ tên"><Text strong>{tutorInfo.name}</Text></Descriptions.Item>
-                                        <Descriptions.Item label="Email">{tutorInfo.email}</Descriptions.Item>
-                                        <Descriptions.Item label="Số điện thoại">{tutorInfo.phone}</Descriptions.Item>
-                                        <Descriptions.Item label="Ngày tham gia">{formatDateTime(tutorInfo.joinedAt)}</Descriptions.Item>
-                                    </Descriptions>
-                                </Col>
-                                <Col span={12} style={{ borderLeft: '1px solid #f0f0f0' }}>
-                                    <Title level={5}><WalletOutlined /> Số dư ví hiện tại</Title>
-                                    <Descriptions column={1} size="small">
-                                        <Descriptions.Item label="Số dư khả dụng">
-                                            <Text strong color="green">{formatCurrency(walletInfo.availableBalance)}</Text>
-                                        </Descriptions.Item>
-                                        <Descriptions.Item label="Tổng thu nhập">
-                                            {formatCurrency(tutorInfo.totalEarnings)}
-                                        </Descriptions.Item>
-                                        <Descriptions.Item label="Số buổi học hoàn thành">
-                                            {tutorInfo.completedLessons}
-                                        </Descriptions.Item>
-                                    </Descriptions>
-                                </Col>
-                            </Row>
-                        </Card>
-
-                        {/* Timeline */}
-                        <PayoutTimeline events={timeline} loading={loading} />
-                    </Space>
-                </Col>
-
-                <Col xs={24} lg={8}>
-                    <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                        {/* Trust Score */}
-                        <TrustScoreCard scoreData={scoreBreakdown} loading={loading} />
-
-                        {/* Fraud Flags */}
-                        <FraudFlagsCard flags={fraudFlags} loading={loading} />
-                    </Space>
-                </Col>
-            </Row>
-
-            {/* Modals */}
             <ApproveWithdrawalModal
                 open={approveModalOpen}
                 onCancel={() => setApproveModalOpen(false)}
@@ -264,7 +325,7 @@ const PayoutDetailPage: React.FC = () => {
                 confirmLoading={actionLoading}
                 tutorName={tutorInfo.name}
             />
-        </div>
+        </PageContainer>
     );
 };
 

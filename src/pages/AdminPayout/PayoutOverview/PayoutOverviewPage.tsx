@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Breadcrumb, Card, Tabs, Button } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getPayoutOverview, getWithdrawalRequests } from '../../../services/adminPayout.service';
 import type { PayoutOverview, WithdrawalRequestItem } from '../../../types/adminPayout.types';
-import { useNavigate } from 'react-router-dom';
-import { SearchOutlined, SecurityScanOutlined } from '@ant-design/icons';
+import { FilterTabs, PageContainer, SectionCard } from '../../../components/shared';
 import PayoutStatsCards from './components/PayoutStatsCards';
 import WithdrawalRequestTable from './components/WithdrawalRequestTable';
 import '../../../styles/pages/admin-payout.css';
 
-const { Title, Text } = Typography;
+const payoutTabs = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'pending', label: 'Chờ xử lý' },
+    { key: 'pending_review', label: 'Chờ xét duyệt' },
+    { key: 'delayed', label: 'Đang tạm giữ' },
+    { key: 'approved', label: 'Đã phê duyệt' },
+    { key: 'rejected', label: 'Đã từ chối' },
+    { key: 'cancelled', label: 'Đã hủy' },
+];
 
 const PayoutOverviewPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -26,7 +33,7 @@ const PayoutOverviewPage: React.FC = () => {
         try {
             const [overviewRes, reqResponse] = await Promise.all([
                 getPayoutOverview(),
-                getWithdrawalRequests(currentPage, pageSize, activeTab === 'all' ? undefined : activeTab)
+                getWithdrawalRequests(currentPage, pageSize, activeTab === 'all' ? undefined : activeTab),
             ]);
             setOverview(overviewRes);
             setRequests(reqResponse.items);
@@ -37,10 +44,11 @@ const PayoutOverviewPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, pageSize, activeTab]);
+    }, [activeTab, currentPage, pageSize]);
 
     useEffect(() => {
-        fetchData();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchData();
     }, [fetchData]);
 
     const handleTabChange = (key: string) => {
@@ -48,64 +56,48 @@ const PayoutOverviewPage: React.FC = () => {
         setCurrentPage(1);
     };
 
-    // Tabs khớp với WithdrawalStatus constants trong BE:
-    // pending, approved, delayed, rejected, cancelled + pending_review
-    const tabItems = [
-        { key: 'all', label: 'Tất cả' },
-        { key: 'pending', label: 'Chờ xử lý' },
-        { key: 'pending_review', label: 'Chờ xét duyệt' },
-        { key: 'delayed', label: 'Đang tạm giữ' },
-        { key: 'approved', label: 'Đã phê duyệt' },
-        { key: 'rejected', label: 'Đã từ chối' },
-        { key: 'cancelled', label: 'Đã hủy' },
-    ];
-
     return (
-        <div className="admin-payout-container">
-            <div style={{ marginBottom: '24px' }}>
-                <Breadcrumb
-                    items={[
-                        { title: 'Quản trị' },
-                        { title: 'Quản lý thanh toán' },
-                    ]}
-                    style={{ marginBottom: '16px' }}
-                />
-                <div className="payout-page-header">
-                    <div style={{ minWidth: 0 }}>
-                        <Title level={2} style={{ margin: 0 }}>Quản lý thanh toán</Title>
-                        <Text type="secondary">Xét duyệt và xử lý các yêu cầu rút tiền từ gia sư</Text>
-                    </div>
-                    <div className="payout-page-header-actions">
-                        <Button
-                            icon={<SearchOutlined />}
-                            onClick={() => navigate('/admin-portal/payouts/history')}
-                            block
-                        >
-                            Lịch sử
-                        </Button>
-                        <Button
-                            type="primary"
-                            ghost
-                            icon={<SecurityScanOutlined />}
-                            onClick={() => navigate('/admin-portal/payout/fraud-logs')}
-                            danger
-                            block
-                        >
-                            Fraud Logs
-                        </Button>
-                    </div>
+        <PageContainer
+            eyebrow="Thanh toán"
+            title="Quản lý thanh toán"
+            subtitle="Xét duyệt và xử lý các yêu cầu rút tiền từ gia sư."
+            maxWidth="wide"
+            headerAction={
+                <div className="admin-ui-actions">
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={() => navigate('/admin-portal/payouts/history')}
+                    >
+                        <span className="material-symbols-outlined">history</span>
+                        Lịch sử
+                    </button>
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-danger"
+                        onClick={() => navigate('/admin-portal/payout/fraud-logs')}
+                    >
+                        <span className="material-symbols-outlined">security</span>
+                        Fraud Logs
+                    </button>
                 </div>
-            </div>
-
+            }
+        >
             <PayoutStatsCards overview={overview} loading={loading} />
 
-            <Card variant="borderless" styles={{ body: { padding: '0 16px 16px' } }} className="payout-table-card">
-                <Tabs
-                    activeKey={activeTab}
-                    onChange={handleTabChange}
-                    items={tabItems}
-                    style={{ marginBottom: '16px' }}
-                />
+            <SectionCard
+                title="Yêu cầu rút tiền"
+                subtitle="Theo dõi trạng thái xử lý, rà soát rủi ro và mở chi tiết để phê duyệt hoặc từ chối."
+                footer={`Hiển thị ${requests.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
+            >
+                <div className="admin-ui-toolbar payout-filter-toolbar">
+                    <FilterTabs
+                        tabs={payoutTabs}
+                        activeKey={activeTab}
+                        onChange={handleTabChange}
+                    />
+                    <span className="admin-ui-code-chip">Tổng {total.toLocaleString('vi-VN')}</span>
+                </div>
                 <WithdrawalRequestTable
                     data={requests}
                     loading={loading}
@@ -117,8 +109,8 @@ const PayoutOverviewPage: React.FC = () => {
                         setPageSize(size);
                     }}
                 />
-            </Card>
-        </div>
+            </SectionCard>
+        </PageContainer>
     );
 };
 

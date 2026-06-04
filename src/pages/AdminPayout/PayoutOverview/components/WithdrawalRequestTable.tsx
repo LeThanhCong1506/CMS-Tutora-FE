@@ -1,12 +1,10 @@
 import React from 'react';
-import { Table, Button, Space, Typography } from 'antd';
-import { EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { DataTable } from '../../../../components/shared';
+import type { DataTableColumn } from '../../../../components/shared';
 import type { WithdrawalRequestItem } from '../../../../types/adminPayout.types';
 import { formatCurrency, formatDateTime } from '../../../../utils/formatters';
 import WithdrawalStatusBadge from '../../WithdrawalStatusBadge';
-
-const { Text } = Typography;
 
 interface Props {
     data: WithdrawalRequestItem[];
@@ -23,84 +21,109 @@ const WithdrawalRequestTable: React.FC<Props> = ({
     total,
     currentPage,
     pageSize,
-    onPageChange
+    onPageChange,
 }) => {
     const navigate = useNavigate();
 
-    const columns = [
+    const openRequest = (record: WithdrawalRequestItem) => {
+        navigate(`/admin-portal/payouts/${record.withdrawalId}`);
+    };
+
+    const columns: DataTableColumn<WithdrawalRequestItem>[] = [
         {
-            title: 'Mã yêu cầu',
-            dataIndex: 'withdrawalId',
             key: 'withdrawalId',
-            render: (id: string) => <Text strong>#{id}</Text>,
+            title: 'Mã yêu cầu',
+            render: (record) => (
+                <span className="admin-ui-code-chip">#{record.withdrawalId}</span>
+            ),
+            minWidth: 120,
         },
         {
+            key: 'tutor',
             title: 'Gia sư',
-            dataIndex: 'tutorName',
-            key: 'tutorName',
-            render: (name: string, record: WithdrawalRequestItem) => (
-                <Space orientation="vertical" size={0}>
-                    <Text strong>{name}</Text>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>{record.tutorEmail}</Text>
-                </Space>
+            render: (record) => (
+                <div className="admin-ui-entity">
+                    <span className="admin-ui-entity-primary">{record.tutorName || 'Chưa có tên'}</span>
+                    <span className="admin-ui-entity-secondary">{record.tutorEmail || record.tutorId}</span>
+                </div>
             ),
+            minWidth: 220,
         },
         {
-            title: 'Số tiền',
-            dataIndex: 'amount',
             key: 'amount',
-            render: (amount: number) => <Text strong color="blue">{formatCurrency(amount)}</Text>,
-        },
-        {
-            title: 'Ngân hàng',
-            dataIndex: 'bankName',
-            key: 'bankName',
-        },
-        {
-            title: 'Ngày yêu cầu',
-            dataIndex: 'requestedAt',
-            key: 'requestedAt',
-            render: (date: string) => formatDateTime(date),
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status: string) => <WithdrawalStatusBadge status={status} />,
-        },
-        {
-            title: 'Thao tác',
-            key: 'action',
-            render: (_: unknown, record: WithdrawalRequestItem) => (
-                <Button
-                    type="primary"
-                    ghost
-                    icon={<EyeOutlined />}
-                    onClick={() => navigate(`/admin-portal/payouts/${record.withdrawalId}`)}
-                    size="small"
-                >
-                    Xử lý
-                </Button>
+            title: 'Số tiền',
+            render: (record) => (
+                <span className="admin-ui-amount">{formatCurrency(record.amount)}</span>
             ),
+            minWidth: 140,
+        },
+        {
+            key: 'bank',
+            title: 'Ngân hàng',
+            render: (record) => (
+                <span className="admin-ui-table-meta">{record.bankName || 'Chưa cập nhật'}</span>
+            ),
+            hideOnMobile: true,
+            minWidth: 140,
+        },
+        {
+            key: 'requestedAt',
+            title: 'Ngày yêu cầu',
+            render: (record) => (
+                <span className="admin-ui-table-meta">{formatDateTime(record.requestedAt)}</span>
+            ),
+            hideOnMobile: true,
+            minWidth: 160,
+        },
+        {
+            key: 'status',
+            title: 'Trạng thái',
+            render: (record) => <WithdrawalStatusBadge status={record.status} />,
+            minWidth: 140,
+        },
+        {
+            key: 'action',
+            title: 'Thao tác',
+            align: 'right',
+            render: (record) => (
+                <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-secondary payout-action-button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        openRequest(record);
+                    }}
+                >
+                    <span className="material-symbols-outlined">visibility</span>
+                    Xử lý
+                </button>
+            ),
+            minWidth: 110,
         },
     ];
 
     return (
-        <Table
+        <DataTable<WithdrawalRequestItem>
             columns={columns}
-            dataSource={data}
+            data={data}
             rowKey="withdrawalId"
             loading={loading}
-            size="small"
-            scroll={{ x: 700 }}
+            loadingText="Đang tải yêu cầu rút tiền..."
+            emptyText="Không có yêu cầu rút tiền nào"
+            emptyIcon={
+                <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
+                    payments
+                </span>
+            }
+            onRowClick={openRequest}
             pagination={{
                 current: currentPage,
-                pageSize: pageSize,
-                total: total,
-                onChange: onPageChange,
-                showTotal: (total) => `Tổng ${total} yêu cầu`,
-                size: 'small',
+                pageSize,
+                total,
+                onChange: (page) => onPageChange(page, pageSize),
             }}
+            minWidth={1040}
+            variant="embedded"
         />
     );
 };

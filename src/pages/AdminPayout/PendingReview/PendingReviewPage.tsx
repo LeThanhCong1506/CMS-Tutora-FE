@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Breadcrumb, Card, Alert } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { getPendingReview } from '../../../services/adminPayout.service';
-import type { PendingReviewItem } from '../../../types/adminPayout.types';
+import type { PendingReviewItem, WithdrawalRequestItem } from '../../../types/adminPayout.types';
+import { PageContainer, SectionCard } from '../../../components/shared';
 import WithdrawalRequestTable from '../PayoutOverview/components/WithdrawalRequestTable';
-
-const { Title, Text } = Typography;
+import '../../../styles/pages/admin-payout.css';
 
 const PendingReviewPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -31,53 +30,59 @@ const PendingReviewPage: React.FC = () => {
     }, [currentPage, pageSize]);
 
     useEffect(() => {
-        fetchPending();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchPending();
     }, [fetchPending]);
 
-    // Convert PendingReviewItem to WithdrawalRequestItem format for the table
-    // or create a specialized table. Since the table is generic enough, let's adapt or reuse.
-    // Actually PayoutOverview table shows basic info. Pending review might need trust scores.
-
-    const mappedData = items.map(item => ({
-        withdrawalId: item.withdrawalId,
-        tutorId: item.tutorId,
-        tutorName: item.tutorName,
-        tutorEmail: '', // Not in PendingReviewItem
-        amount: item.amount,
-        bankName: '', // Not in PendingReviewItem
-        accountNumber: '', // Not in PendingReviewItem
-        requestedAt: item.requestedAt,
-        status: 'PendingReview'
-    }));
+    const mappedData = useMemo<WithdrawalRequestItem[]>(() => (
+        items.map((item) => ({
+            withdrawalId: item.withdrawalId,
+            tutorId: item.tutorId,
+            tutorName: item.tutorName,
+            tutorEmail: item.topFraudFlags.length > 0 ? item.topFraudFlags.join(', ') : 'Cần xét duyệt rủi ro',
+            amount: item.amount,
+            bankName: item.trustScore === null ? 'Chưa có trust score' : `Trust score ${item.trustScore}`,
+            accountNumber: '',
+            requestedAt: item.requestedAt,
+            status: 'pending_review',
+        }))
+    ), [items]);
 
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '24px' }}>
-                <Breadcrumb
-                    items={[
-                        { title: 'Quản trị' },
-                        { title: 'Quản lý thanh toán', onClick: () => navigate('/admin-portal/payouts'), className: 'clickable' },
-                        { title: 'Chờ xét duyệt' },
-                    ]}
-                    style={{ marginBottom: '16px' }}
-                />
-                <Title level={2}>Yêu cầu chờ xét duyệt rủi ro</Title>
-                <Text type="secondary">
-                    Danh sách các yêu cầu rút tiền bị hệ thống gắn cờ cảnh báo hoặc có điểm rủi ro cao
-                </Text>
+        <PageContainer
+            eyebrow="Thanh toán"
+            title="Yêu cầu chờ xét duyệt rủi ro"
+            subtitle="Danh sách các yêu cầu rút tiền bị hệ thống gắn cờ cảnh báo hoặc có điểm rủi ro cao."
+            maxWidth="wide"
+            headerAction={
+                <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-secondary"
+                    onClick={() => navigate('/admin-portal/payouts')}
+                >
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    Tổng quan
+                </button>
+            }
+        >
+            <div className="payout-review-callout">
+                <span className="material-symbols-outlined">info</span>
+                <div>
+                    <h3>Về quy trình xét duyệt</h3>
+                    <p>
+                        Các yêu cầu trong danh sách này tạm thời bị giữ lại do vi phạm quy tắc an toàn
+                        hoặc cần đối soát hồ sơ. Kiểm tra lịch sử giao dịch và fraud flags trước khi phê duyệt.
+                    </p>
+                </div>
             </div>
 
-            <Alert
-                message="Về quy trình xét duyệt"
-                description="Các yêu cầu trong danh sách này tạm thời bị giữ lại do vi phạm quy tắc an toàn hoặc cần đối soát hồ sơ. Vui lòng kiểm tra kỹ lịch sử giao diện và các Fraud Flags trước khi phê duyệt."
-                type="info"
-                showIcon
-                style={{ marginBottom: '24px' }}
-            />
-
-            <Card bordered={false}>
+            <SectionCard
+                title="Hàng đợi rủi ro"
+                subtitle="Mỗi dòng mở sang trang chi tiết để admin xem trust score, ví và timeline xử lý."
+                footer={`Hiển thị ${mappedData.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
+            >
                 <WithdrawalRequestTable
-                    data={mappedData as any}
+                    data={mappedData}
                     loading={loading}
                     total={total}
                     currentPage={currentPage}
@@ -87,8 +92,8 @@ const PendingReviewPage: React.FC = () => {
                         setPageSize(size);
                     }}
                 />
-            </Card>
-        </div>
+            </SectionCard>
+        </PageContainer>
     );
 };
 

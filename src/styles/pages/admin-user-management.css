@@ -95,6 +95,10 @@
     min-width: 0;
 }
 
+.user-mgmt-admin-toolbar {
+    align-items: flex-start;
+}
+
 .user-mgmt-search-wrapper {
     position: relative;
     flex: 1;
@@ -535,6 +539,11 @@
 .user-mgmt-action-btn:hover {
     background-color: #f3f4f6;
     color: var(--color-navy);
+}
+
+.user-mgmt-view-btn {
+    min-width: 74px;
+    padding-inline: 12px;
 }
 
 /* ===== PAGINATION ===== */
