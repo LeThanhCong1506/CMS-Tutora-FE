@@ -14,6 +14,8 @@ import {
     lockAccount,
 } from '../../services/admin.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
+import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
+import type { StatusVariant } from '../../components/shared';
 import { formatCurrency, formatDateTime, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 
 import '../../styles/pages/admin-dashboard.css';
@@ -25,6 +27,36 @@ type DisputeChatMessage = {
     sentAt?: string | null;
     content?: string | null;
     message?: string | null;
+};
+
+const getDisputeStatusVariant = (status?: string | null): StatusVariant => {
+    switch (status) {
+        case 'pending':
+            return 'warning';
+        case 'investigating':
+            return 'info';
+        case 'resolved':
+            return 'success';
+        case 'closed':
+            return 'neutral';
+        default:
+            return 'dark';
+    }
+};
+
+const getDisputeStatusLabel = (status?: string | null) => {
+    switch (status) {
+        case 'pending':
+            return 'Cần xử lý';
+        case 'investigating':
+            return 'Đang điều tra';
+        case 'resolved':
+            return 'Đã giải quyết';
+        case 'closed':
+            return 'Đã đóng';
+        default:
+            return status || 'N/A';
+    }
 };
 
 const AdminDisputeDetailPageExpanded = () => {
@@ -162,21 +194,31 @@ const AdminDisputeDetailPageExpanded = () => {
 
     if (loading) {
         return (
-            <main className="admin-main">
-                <div className="dispute-detail-content">
-                    <p>Đang tải chi tiết khiếu nại...</p>
-                </div>
-            </main>
+            <PageContainer
+                eyebrow="Vận hành"
+                title="Chi tiết khiếu nại"
+                subtitle="Đang tải hồ sơ tranh chấp."
+                maxWidth="wide"
+            >
+                <SectionCard padded>
+                    <div className="admin-ui-muted-state">Đang tải chi tiết khiếu nại...</div>
+                </SectionCard>
+            </PageContainer>
         );
     }
 
     if (error || !disputeDetail) {
         return (
-            <main className="admin-main">
-                <div className="dispute-detail-content">
-                    <p style={{ color: '#dc2626' }}>{error || 'Không tìm thấy khiếu nại'}</p>
-                </div>
-            </main>
+            <PageContainer
+                eyebrow="Vận hành"
+                title="Không tìm thấy khiếu nại"
+                subtitle={error || 'Không có dữ liệu hồ sơ để hiển thị.'}
+                maxWidth="wide"
+            >
+                <SectionCard padded>
+                    <div className="admin-ui-muted-state">{error || 'Không tìm thấy khiếu nại'}</div>
+                </SectionCard>
+            </PageContainer>
         );
     }
 
@@ -206,9 +248,9 @@ const AdminDisputeDetailPageExpanded = () => {
                                 <div className="dispute-detail-meta">
                                     <span>{disputeDetail.timeSinceCreation || (disputeDetail.createdAt ? `Tạo ${formatRelativeTime(disputeDetail.createdAt)}` : 'N/A')}</span>
                                     <span>•</span>
-                                    <span className="dispute-action-required">
-                                        {disputeDetail.status === 'pending' ? 'Cần xử lý' : disputeDetail.status === 'investigating' ? 'Đang điều tra' : 'Đã giải quyết'}
-                                    </span>
+                                    <StatusBadge variant={getDisputeStatusVariant(disputeDetail.status)} shape="tag">
+                                        {getDisputeStatusLabel(disputeDetail.status)}
+                                    </StatusBadge>
                                 </div>
                             </div>
                             <div className="dispute-detail-actions">
@@ -223,37 +265,41 @@ const AdminDisputeDetailPageExpanded = () => {
                         </div>
 
                         {/* Admin Action Buttons */}
-                        <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                        <div className="admin-ui-actions dispute-admin-actions">
                             {disputeDetail.status === 'pending' && (
                                 <button
-                                    className="vetting-btn vetting-btn-secondary"
+                                    type="button"
+                                    className="admin-ui-button admin-ui-button-secondary"
                                     onClick={handleInvestigate}
                                     disabled={isSubmitting}
-                                    style={{ fontSize: '13px', padding: '8px 16px' }}
                                 >
-                                    🔍 Bắt đầu điều tra
+                                    <span className="material-symbols-outlined">search</span>
+                                    Bắt đầu điều tra
                                 </button>
                             )}
                             <button
-                                className="vetting-btn vetting-btn-secondary"
+                                type="button"
+                                className="admin-ui-button admin-ui-button-secondary"
                                 onClick={() => setIsWarningModalOpen(true)}
-                                style={{ fontSize: '13px', padding: '8px 16px' }}
                             >
-                                ⚠️ Gửi cảnh báo
+                                <span className="material-symbols-outlined">warning</span>
+                                Gửi cảnh báo
                             </button>
                             <button
-                                className="vetting-btn vetting-btn-secondary"
+                                type="button"
+                                className="admin-ui-button admin-ui-button-secondary"
                                 onClick={() => setIsSuspendModalOpen(true)}
-                                style={{ fontSize: '13px', padding: '8px 16px' }}
                             >
-                                🚫 Đình chỉ hồ sơ
+                                <span className="material-symbols-outlined">block</span>
+                                Đình chỉ hồ sơ
                             </button>
                             <button
-                                className="vetting-btn vetting-btn-danger"
+                                type="button"
+                                className="admin-ui-button admin-ui-button-danger"
                                 onClick={() => setIsLockModalOpen(true)}
-                                style={{ fontSize: '13px', padding: '8px 16px' }}
                             >
-                                🔒 Khóa tài khoản
+                                <span className="material-symbols-outlined">lock</span>
+                                Khóa tài khoản
                             </button>
                         </div>
                     </div>
@@ -350,7 +396,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
-                                                <span className="vetting-badge pending">{lesson.status || 'N/A'}</span>
+                                                <StatusBadge variant="info" shape="tag">{lesson.status || 'N/A'}</StatusBadge>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>
