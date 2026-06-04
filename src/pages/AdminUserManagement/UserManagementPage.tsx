@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { getAllUsers, deactivateUser, updateUser, issueWarning, suspendTutor } from '../../services/admin.service';
-import { DataTable, StatusBadge } from '../../components/shared';
+import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import type { UserListItem } from '../../types/admin.types';
 import type { FlatUserDetail } from './mockData';
 import UserDetailModal from './components/UserDetailModal';
 import BlockUserModal from './components/BlockUserModal';
@@ -43,16 +44,7 @@ const UserManagementPage = () => {
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
 
-    // Fetch users on mount, page change, or any committed filter change.
-    // Cleanup aborts any in-flight request when deps change or component unmounts,
-    // so we never call setState on stale responses.
-    useEffect(() => {
-        fetchUsers();
-        return () => fetchAbortRef.current?.abort();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, roleFilter, statusFilter, searchQuery]);
-
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         // Abort any in-flight fetch — protects against out-of-order responses
         // when filters change quickly (e.g. user switches role then status).
         fetchAbortRef.current?.abort();
@@ -81,7 +73,7 @@ const UserManagementPage = () => {
             if (controller.signal.aborted) return;
 
             // Map UserListItem → FlatUserDetail
-            const mapped: FlatUserDetail[] = data.map((u: any) => ({
+            const mapped: FlatUserDetail[] = data.map((u: UserListItem) => ({
                 userid: u.userid,
                 fullname: u.fullname,
                 email: u.email,
@@ -89,7 +81,7 @@ const UserManagementPage = () => {
                 avatarurl: u.avatarurl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullname)}&background=random`,
                 primaryrole: u.primaryrole || 'student',
                 accountstatus: u.status === 'active' ? 'active' : u.status === 'inactive' ? 'blocked' : u.status,
-                isidentityverified: u.isidentityverified ?? false,
+                isidentityverified: false,
                 createdat: u.createdat || new Date().toISOString(),
                 lastloginat: u.lastloginat || '',
                 warningcount: u.warningsCount ?? 0,
@@ -113,7 +105,14 @@ const UserManagementPage = () => {
                 setLoading(false);
             }
         }
-    };
+    }, [limit, page, roleFilter, searchQuery, statusFilter]);
+
+    // Fetch users on mount, page change, or any committed filter change.
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchUsers();
+        return () => fetchAbortRef.current?.abort();
+    }, [fetchUsers]);
 
     // Handlers
     const handleUserClick = (user: FlatUserDetail) => {
@@ -121,7 +120,9 @@ const UserManagementPage = () => {
         setIsDetailModalOpen(true);
     };
 
-    const handleBlockUser = async (userId: string, _reason: string) => {
+    const handleBlockUser = async (userId: string, reason: string) => {
+        void reason;
+
         try {
             await deactivateUser(userId);
             toast.success('Đã vô hiệu hóa tài khoản người dùng');
@@ -253,9 +254,9 @@ const UserManagementPage = () => {
             render: (user) => (
                 <div className="user-mgmt-user-identity">
                     <img className="user-mgmt-avatar" src={user.avatarurl} alt={user.fullname} />
-                    <div className="user-mgmt-user-info">
-                        <span className="user-mgmt-user-name">{user.fullname}</span>
-                        <span className="user-mgmt-user-email">{user.email}</span>
+                    <div className="admin-ui-entity">
+                        <span className="admin-ui-entity-primary">{user.fullname}</span>
+                        <span className="admin-ui-entity-secondary">{user.email}</span>
                     </div>
                 </div>
             ),
@@ -269,13 +270,21 @@ const UserManagementPage = () => {
         {
             key: 'joinDate',
             title: 'Ngày tham gia',
-            render: (user) => new Date(user.createdat).toLocaleDateString('vi-VN'),
+            render: (user) => (
+                <span className="admin-ui-table-meta">
+                    {new Date(user.createdat).toLocaleDateString('vi-VN')}
+                </span>
+            ),
             hideOnMobile: true,
         },
         {
             key: 'lastLoginAt',
             title: 'Lần đăng nhập cuối',
-            render: (user) => user.lastloginat ? formatDateTime(user.lastloginat) : 'N/A',
+            render: (user) => (
+                <span className="admin-ui-table-meta">
+                    {user.lastloginat ? formatDateTime(user.lastloginat) : 'N/A'}
+                </span>
+            ),
             hideOnMobile: true,
         },
         {
@@ -317,54 +326,48 @@ const UserManagementPage = () => {
             align: 'center',
             render: (user) => (
                 <button
-                    className="user-mgmt-action-btn"
+                    type="button"
+                    className="admin-ui-button admin-ui-button-secondary user-mgmt-view-btn"
                     onClick={(e) => {
                         e.stopPropagation();
                         handleUserClick(user);
                     }}
                 >
                     <span className="material-symbols-outlined">visibility</span>
+                    Xem
                 </button>
             ),
-            width: 80,
+            width: 96,
         },
     ];
 
     return (
         <>
-            {/* MAIN CONTENT */}
-            <main className="user-mgmt-main">
-                {/* HEADER AREA */}
-                <header className="user-mgmt-header">
-
-                    {/* Breadcrumbs */}
-                    <div className="user-mgmt-breadcrumbs">
-                        <a href="#" className="breadcrumb-link">
-                            Trang chủ
-                        </a>
-                        <span className="breadcrumb-separator">/</span>
-                        <a href="#" className="breadcrumb-link">
-                            Quản trị
-                        </a>
-                        <span className="breadcrumb-separator">/</span>
-                        <span className="breadcrumb-current">Danh sách người dùng</span>
+            <PageContainer
+                eyebrow="Quản trị"
+                title="Danh sách người dùng"
+                subtitle={`Quản lý ${total.toLocaleString('vi-VN')} tài khoản trên toàn nền tảng.`}
+                maxWidth="wide"
+                headerAction={
+                    <div className="admin-ui-actions">
+                        <span className="admin-ui-code-chip">Tổng {total.toLocaleString('vi-VN')}</span>
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-primary"
+                            onClick={() => toast.info('Chức năng xuất CSV sẽ có trong tương lai')}
+                        >
+                            <span className="material-symbols-outlined">download</span>
+                            Xuất CSV
+                        </button>
                     </div>
-
-                    {/* Page Title */}
-                    <div className="user-mgmt-title-section">
-                        <div>
-                            <h2 className="user-mgmt-title">Danh sách người dùng</h2>
-                            <p className="user-mgmt-subtitle">
-                                Quản lý {total.toLocaleString()} tài khoản trên toàn nền tảng.
-                            </p>
-                        </div>
-                    </div>
-
-                </header>
-
-                {/* FILTER & TOOLBAR */}
-                <div className="user-mgmt-toolbar">
-                    <div className="user-mgmt-toolbar-inner">
+                }
+            >
+                <SectionCard
+                    title="Người dùng"
+                    subtitle="Tìm kiếm theo tên, email, số điện thoại và lọc theo vai trò hoặc trạng thái."
+                    footer={`Hiển thị ${users.length} / ${total.toLocaleString('vi-VN')} người dùng`}
+                >
+                    <div className="admin-ui-toolbar user-mgmt-admin-toolbar">
                         {/* Search — manual trigger via button or Enter key.
                             BE searches Fullname, Email, Phone (not userid),
                             so the placeholder reflects the actual fields. */}
@@ -433,20 +436,8 @@ const UserManagementPage = () => {
                                 </select>
                             </div>
                         </div>
-
-                        {/* Divider */}
-                        <div className="user-mgmt-divider"></div>
-
-                        {/* Export Action */}
-                        <button className="user-mgmt-export-btn" onClick={() => toast.info('Chức năng xuất CSV sẽ có trong tương lai')}>
-                            <span className="material-symbols-outlined">download</span>
-                            Xuất CSV
-                        </button>
                     </div>
-                </div>
 
-                {/* TABLE */}
-                <div className="user-mgmt-table-container">
                     <DataTable<FlatUserDetail>
                         columns={userColumns}
                         data={users}
@@ -465,9 +456,10 @@ const UserManagementPage = () => {
                             onChange: setPage,
                         }}
                         minWidth={700}
+                        variant="embedded"
                     />
-                </div>
-            </main>
+                </SectionCard>
+            </PageContainer>
 
             {/* Modals */}
             <UserDetailModal

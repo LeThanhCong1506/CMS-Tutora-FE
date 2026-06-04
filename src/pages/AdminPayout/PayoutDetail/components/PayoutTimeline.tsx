@@ -1,12 +1,7 @@
 import React from 'react';
-import { Card, Space, Typography } from 'antd';
-import {
-    HistoryOutlined
-} from '@ant-design/icons';
+import { SectionCard } from '../../../../components/shared';
 import type { TimelineEvent } from '../../../../types/adminPayout.types';
 import { formatDateTime } from '../../../../utils/formatters';
-
-const { Text } = Typography;
 
 interface Props {
     events: TimelineEvent[];
@@ -14,49 +9,33 @@ interface Props {
 }
 
 const PayoutTimeline: React.FC<Props> = ({ events, loading }) => {
-    if (events.length === 0 && !loading) {
-        return (
-            <Card title="Lịch sử xử lý">
-                <Text type="secondary">Chưa có dữ liệu lịch sử</Text>
-            </Card>
-        );
-    }
-
     return (
-        <Card
-            title={
-                <Space>
-                    <HistoryOutlined />
-                    <span>Lịch sử xử lý</span>
-                </Space>
-            }
-            loading={loading}
+        <SectionCard
+            title="Lịch sử xử lý"
+            subtitle="Timeline các bước hệ thống và admin đã thực hiện trên yêu cầu này."
+            padded
         >
-            <div className="payout-timeline">
-                {events.map((event, index) => (
-                    <div key={index} style={{ marginBottom: '20px', borderLeft: '2px solid #f0f0f0', paddingLeft: '20px', position: 'relative' }}>
-                        <div style={{
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            backgroundColor: index === 0 ? '#1890ff' : '#d9d9d9',
-                            position: 'absolute',
-                            left: '-7px',
-                            top: '5px'
-                        }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <Text strong>{event.event}</Text>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>{formatDateTime(event.timestamp)}</Text>
+            {loading ? (
+                <div className="admin-ui-muted-state">Đang tải lịch sử...</div>
+            ) : events.length === 0 ? (
+                <div className="admin-ui-muted-state">Chưa có dữ liệu lịch sử</div>
+            ) : (
+                <div className="payout-timeline">
+                    {events.map((event, index) => (
+                        <div className="payout-timeline-item" key={`${event.timestamp}-${event.event}-${index}`}>
+                            <span className={`payout-timeline-dot ${index === 0 ? 'active' : ''}`} />
+                            <div className="payout-timeline-content">
+                                <div className="payout-timeline-header">
+                                    <strong>{event.event}</strong>
+                                    <span>{formatDateTime(event.timestamp)}</span>
+                                </div>
+                                {event.details && <p>{event.details}</p>}
+                            </div>
                         </div>
-                        {event.details && (
-                            <Text type="secondary" style={{ fontSize: '13px', display: 'block' }}>
-                                {event.details}
-                            </Text>
-                        )}
-                    </div>
-                ))}
-            </div>
-        </Card>
+                    ))}
+                </div>
+            )}
+        </SectionCard>
     );
 };
 

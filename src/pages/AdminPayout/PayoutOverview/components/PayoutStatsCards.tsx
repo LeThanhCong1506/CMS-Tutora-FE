@@ -1,13 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Statistic } from 'antd';
-import {
-    FileTextOutlined,
-    ClockCircleOutlined,
-    CheckCircleOutlined,
-    AlertOutlined,
-    DollarOutlined,
-    PauseCircleOutlined,
-} from '@ant-design/icons';
+import { StatCard } from '../../../../components/shared';
 import type { PayoutOverview } from '../../../../types/adminPayout.types';
 import { formatCurrency } from '../../../../utils/formatters';
 
@@ -16,99 +8,75 @@ interface Props {
     loading: boolean;
 }
 
+const metric = (value: React.ReactNode, loading: boolean) => (loading ? '...' : value);
+
+const Icon = ({ name }: { name: string }) => (
+    <span className="material-symbols-outlined">{name}</span>
+);
+
 const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
     const todayStats = overview?.todayStats;
     const processingStats = overview?.processingStats;
     const financialStats = overview?.financialStats;
 
     return (
-        <div style={{ marginBottom: '24px' }}>
-            {/* Row 1: Thống kê hôm nay */}
-            <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Yêu cầu tháng này"
-                            value={todayStats?.totalRequests || 0}
-                            prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
-                            styles={{ content: { color: '#1890ff' } }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Tự động duyệt"
-                            value={todayStats?.autoApproved || 0}
-                            prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                            styles={{ content: { color: '#52c41a' } }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Đang tạm giữ"
-                            value={todayStats?.delayed || 0}
-                            prefix={<PauseCircleOutlined style={{ color: '#faad14' }} />}
-                            styles={{ content: { color: '#faad14' } }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Chờ xét duyệt thủ công"
-                            value={todayStats?.manualReview || 0}
-                            prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />}
-                            styles={{ content: { color: '#ff4d4f' } }}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Row 2: Tài chính & xử lý */}
-            <Row gutter={[16, 16]}>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Chờ xử lý"
-                            value={processingStats?.pendingCount || 0}
-                            prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
-                            styles={{ content: { color: '#faad14' } }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Tỷ lệ thành công"
-                            value={processingStats?.successRate?.toFixed(1) || '0'}
-                            suffix="%"
-                            prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Tổng chi tháng này"
-                            value={formatCurrency(financialStats?.totalPayoutToday || 0)}
-                            prefix={<DollarOutlined style={{ color: '#1890ff' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                    <Card loading={loading} hoverable size="small">
-                        <Statistic
-                            title="Tổng chi tháng này"
-                            value={formatCurrency(financialStats?.totalPayoutThisMonth || 0)}
-                            prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
-                            styles={{ content: { color: '#52c41a' } }}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+        <div className="admin-ui-kpi-grid payout-stats-grid">
+            <StatCard
+                icon={<Icon name="request_quote" />}
+                value={metric(todayStats?.totalRequests ?? 0, loading)}
+                label="Yêu cầu tháng này"
+                badge="Volume"
+                badgeVariant="blue"
+            />
+            <StatCard
+                icon={<Icon name="verified" />}
+                value={metric(todayStats?.autoApproved ?? 0, loading)}
+                label="Tự động duyệt"
+                badge="Auto"
+                badgeVariant="green"
+            />
+            <StatCard
+                icon={<Icon name="pause_circle" />}
+                value={metric(todayStats?.delayed ?? 0, loading)}
+                label="Đang tạm giữ"
+                badge="Hold"
+                badgeVariant="orange"
+            />
+            <StatCard
+                icon={<Icon name="policy" />}
+                value={metric(todayStats?.manualReview ?? 0, loading)}
+                label="Chờ xét duyệt thủ công"
+                badge="Review"
+                badgeVariant="red"
+            />
+            <StatCard
+                icon={<Icon name="pending_actions" />}
+                value={metric(processingStats?.pendingCount ?? 0, loading)}
+                label="Chờ xử lý"
+                subLabel="Các yêu cầu chưa có quyết định cuối"
+                badgeVariant="orange"
+            />
+            <StatCard
+                icon={<Icon name="check_circle" />}
+                value={metric(`${(processingStats?.successRate ?? 0).toFixed(1)}%`, loading)}
+                label="Tỷ lệ thành công"
+                badge="Quality"
+                badgeVariant="green"
+            />
+            <StatCard
+                icon={<Icon name="payments" />}
+                value={metric(formatCurrency(financialStats?.totalPayoutToday ?? 0), loading)}
+                label="Tổng chi hôm nay"
+                badge="Today"
+                badgeVariant="blue"
+            />
+            <StatCard
+                icon={<Icon name="account_balance_wallet" />}
+                value={metric(formatCurrency(financialStats?.totalPayoutThisMonth ?? 0), loading)}
+                label="Tổng chi tháng này"
+                badge="Month"
+                badgeVariant="dark"
+            />
         </div>
     );
 };
