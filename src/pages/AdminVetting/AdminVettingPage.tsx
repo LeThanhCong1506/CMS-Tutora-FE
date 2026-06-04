@@ -1,59 +1,112 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingTutors, updateTutorApproval } from '../../services/admin.service';
 import TutorDetailModal from './components/TutorDetailModal';
-import { DataTable, StatusBadge } from '../../components/shared';
+import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import type { PendingTutorFromAPI } from '../../types/admin.types';
-import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-vetting.css';
 
+type ApiError = {
+    response?: { status?: number };
+    code?: string;
+    message?: string;
+};
+
+const getVettingErrorMessage = (error: unknown) => {
+    const err = error as ApiError;
+
+    if (err?.response?.status === 401) {
+        return 'Bạn cần đăng nhập với quyền Admin để xem danh sách này.';
+    }
+    if (err?.response?.status === 403) {
+        return 'Bạn không có quyền truy cập trang này.';
+    }
+    if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        return 'Yêu cầu quá lâu. Vui lòng kiểm tra kết nối mạng.';
+    }
+    if (err?.code === 'ERR_NETWORK') {
+        return 'Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy.';
+    }
+    return 'Không thể tải danh sách gia sư. Vui lòng thử lại sau.';
+};
+
+const formatSubmittedAt = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return 'Vừa xong';
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+};
+
+const formatCurrency = (amount: number | null): string => {
+    if (!amount) return '—';
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+    }).format(amount);
+};
+
 const AdminVettingPage = () => {
-    // State management
     const [tutors, setTutors] = useState<PendingTutorFromAPI[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [selectedTutor, setSelectedTutor] = useState<PendingTutorFromAPI | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [rejectionNote, setRejectionNote] = useState('');
     const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
-    // Fetch pending tutors on mount
-    useEffect(() => {
-        fetchPendingTutors();
-    }, []);
-
-    const fetchPendingTutors = async () => {
+    const fetchPendingTutors = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
             const response = await getPendingTutors(1, 50);
             setTutors(response.content || []);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error fetching pending tutors:', err);
+            const apiError = err as ApiError;
 
-            // Phân biệt loại lỗi để hiển thị message rõ ràng
-            if (err?.response?.status === 401) {
-                setError('⚠️ Bạn cần đăng nhập với quyền Admin để xem danh sách này.');
-            } else if (err?.response?.status === 403) {
-                setError('🚫 Bạn không có quyền truy cập trang này.');
-            } else if (err?.response?.status === 404) {
-                // 404 = endpoint không tồn tại hoặc không có data
-                setError(null); // Không hiển thị lỗi, để empty state xử lý
+            if (apiError?.response?.status === 404) {
+                setError(null);
                 setTutors([]);
-            } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-                setError('⏱️ Yêu cầu quá lâu. Vui lòng kiểm tra kết nối mạng.');
-            } else if (err?.code === 'ERR_NETWORK') {
-                setError('📡 Không thể kết nối đến server. Vui lòng kiểm tra backend đang chạy.');
             } else {
-                setError('❌ Không thể tải danh sách gia sư. Vui lòng thử lại sau.');
+                setError(getVettingErrorMessage(err));
+                setTutors([]);
             }
-
-            setTutors([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchPendingTutors();
+    }, [fetchPendingTutors]);
+
+    const filteredTutors = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return tutors;
+
+        return tutors.filter((tutor) => {
+            const searchableText = [
+                tutor.fullname,
+                tutor.email,
+                tutor.phone,
+                tutor.sections?.basicInfo?.headline,
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return searchableText.includes(query);
+        });
+    }, [searchQuery, tutors]);
 
     const handleApprove = async (tutorId: string) => {
         try {
@@ -98,32 +151,6 @@ const AdminVettingPage = () => {
         }
     };
 
-    const formatDate = (dateString: string): string => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-        if (diffHours < 1) {
-            return 'Vừa xong';
-        } else if (diffHours < 24) {
-            return `${diffHours} giờ trước`;
-        } else if (diffDays < 7) {
-            return `${diffDays} ngày trước`;
-        } else {
-            return date.toLocaleDateString('vi-VN');
-        }
-    };
-
-    const formatCurrency = (amount: number | null): string => {
-        if (!amount) return '—';
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND',
-        }).format(amount);
-    };
-
     const vettingColumns: DataTableColumn<PendingTutorFromAPI>[] = [
         {
             key: 'tutor',
@@ -134,9 +161,9 @@ const AdminVettingPage = () => {
                         className="vetting-tutor-avatar"
                         style={{ backgroundImage: `url(${tutor.avatarurl || 'https://via.placeholder.com/40'})` }}
                     />
-                    <div className="vetting-tutor-details">
-                        <div className="vetting-tutor-name">{tutor.fullname}</div>
-                        <div className="vetting-tutor-email">{tutor.email}</div>
+                    <div className="admin-ui-entity">
+                        <span className="admin-ui-entity-primary">{tutor.fullname}</span>
+                        <span className="admin-ui-entity-secondary">{tutor.email}</span>
                     </div>
                 </div>
             ),
@@ -145,8 +172,10 @@ const AdminVettingPage = () => {
             key: 'headline',
             title: 'Tiêu đề',
             render: (tutor) => (
-                <div className="vetting-headline">
-                    {tutor.sections?.basicInfo?.headline || 'Chưa cập nhật'}
+                <div className="admin-ui-entity">
+                    <span className="admin-ui-entity-primary">
+                        {tutor.sections?.basicInfo?.headline || 'Chưa cập nhật'}
+                    </span>
                 </div>
             ),
             hideOnMobile: true,
@@ -155,7 +184,7 @@ const AdminVettingPage = () => {
             key: 'price',
             title: 'Giá/giờ',
             render: (tutor) => (
-                <span className="vetting-price-cell">
+                <span className="admin-ui-amount">
                     {formatCurrency(tutor.sections?.pricing?.hourlyRate ?? null)}
                 </span>
             ),
@@ -164,7 +193,9 @@ const AdminVettingPage = () => {
         {
             key: 'date',
             title: 'Đã nộp',
-            render: (tutor) => <span className="vetting-date">{formatDate(tutor.profileCreatedAt)}</span>,
+            render: (tutor) => (
+                <span className="admin-ui-table-meta">{formatSubmittedAt(tutor.profileCreatedAt)}</span>
+            ),
             hideOnMobile: true,
         },
         {
@@ -175,135 +206,127 @@ const AdminVettingPage = () => {
         {
             key: 'actions',
             title: 'Hành động',
+            align: 'right',
             render: (tutor) => (
-                <div className="vetting-row-actions">
+                <div className="admin-ui-actions" style={{ justifyContent: 'flex-end' }}>
                     <button
-                        className="vetting-quick-btn vetting-quick-approve"
-                        title="Phê duyệt"
+                        type="button"
+                        className="admin-ui-button admin-ui-button-success"
                         onClick={() => handleApprove(tutor.userid)}
                         disabled={actionLoading === tutor.userid}
                     >
                         <span className="material-symbols-outlined">check</span>
+                        Duyệt
                     </button>
                     <button
-                        className="vetting-quick-btn vetting-quick-reject"
-                        title="Từ chối"
+                        type="button"
+                        className="admin-ui-button admin-ui-button-danger"
                         onClick={() => handleOpenRejectModal(tutor.userid)}
                         disabled={actionLoading === tutor.userid}
                     >
-                        <span className="material-symbols-outlined">close</span>
+                        Từ chối
                     </button>
                     <button
-                        className="vetting-action-btn"
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
                         onClick={() => setSelectedTutor(tutor)}
                     >
-                        Xem chi tiết
-                        <span className="material-symbols-outlined" style={{ fontSize: 18, marginLeft: 4 }}>open_in_new</span>
+                        Chi tiết
                     </button>
                 </div>
             ),
+            minWidth: 260,
         },
     ];
 
     return (
-        <div className="admin-vetting-page">
-            {/* Main Content */}
-            <main className="admin-main">
-                {/* Header */}
-                <header className="vetting-header">
-                    <div className="vetting-breadcrumb">
-                        <nav className="vetting-breadcrumb-nav">
-                            <a href="#" className="vetting-breadcrumb-link">Trang chủ</a>
-                            <span className="material-symbols-outlined vetting-breadcrumb-icon">chevron_right</span>
-                            <span className="vetting-breadcrumb-current">Yêu cầu kiểm duyệt</span>
-                        </nav>
+        <>
+            <PageContainer
+                eyebrow="Kiểm duyệt"
+                title="Hàng đợi xác minh gia sư"
+                subtitle="Xem xét hồ sơ đăng ký, định giá, thông tin xác minh và ra quyết định duyệt/từ chối."
+                maxWidth="wide"
+                headerAction={
+                    <div className="admin-ui-actions">
+                        <span className="admin-ui-code-chip">{tutors.length} đang chờ</span>
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-secondary"
+                            onClick={() => void fetchPendingTutors()}
+                        >
+                            <span className="material-symbols-outlined">refresh</span>
+                            Làm mới
+                        </button>
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-primary"
+                            onClick={() => toast.info('Chức năng xuất CSV sẽ có trong tương lai')}
+                        >
+                            <span className="material-symbols-outlined">download</span>
+                            Xuất CSV
+                        </button>
                     </div>
-
-                    <div className="vetting-header-actions">
-                        {/* Search Bar */}
-                        <div className="vetting-search-wrapper">
-                            <span className="material-symbols-outlined vetting-search-icon">search</span>
+                }
+            >
+                <SectionCard
+                    title="Hồ sơ chờ duyệt"
+                    subtitle="Tìm theo tên, email, số điện thoại hoặc headline để xử lý nhanh từng hồ sơ."
+                    footer={`Hiển thị ${filteredTutors.length} / ${tutors.length} hồ sơ`}
+                >
+                    <div className="admin-ui-toolbar">
+                        <div className="admin-ui-search">
+                            <span className="material-symbols-outlined admin-ui-search-icon">search</span>
                             <input
-                                type="text"
-                                className="vetting-search-input"
+                                type="search"
+                                className="admin-ui-search-input"
                                 placeholder="Tìm kiếm yêu cầu..."
+                                value={searchQuery}
+                                onChange={(event) => setSearchQuery(event.target.value)}
                             />
                         </div>
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-secondary"
+                                onClick={() => setSearchQuery('')}
+                            >
+                                Xóa tìm kiếm
+                            </button>
+                        )}
                     </div>
-                </header>
 
-                {/* Scrollable Content */}
-                <div className="vetting-content">
-                    <div className="vetting-content-inner">
-                        {/* Page Header */}
-                        <div className="vetting-page-header">
-                            <div className="vetting-page-title-section">
-                                <h2 className="vetting-page-title">Hàng đợi xác minh gia sư</h2>
-                                <p className="vetting-page-subtitle">Xem xét và quản lý các đơn đăng ký gia sư.</p>
-                            </div>
-
-                            <div className="vetting-actions">
-                                <button className="vetting-btn vetting-btn-outline" onClick={fetchPendingTutors}>
-                                    <span className="material-symbols-outlined vetting-btn-icon">refresh</span>
-                                    Làm mới
-                                </button>
-                                <button className="vetting-btn vetting-btn-primary">
-                                    <span className="material-symbols-outlined vetting-btn-icon">download</span>
-                                    Xuất CSV
-                                </button>
-                            </div>
+                    {error && !loading ? (
+                        <div className="vetting-error-state">
+                            <span className="material-symbols-outlined vetting-state-icon">error</span>
+                            <p>{error}</p>
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-primary"
+                                onClick={() => void fetchPendingTutors()}
+                            >
+                                Thử lại
+                            </button>
                         </div>
+                    ) : (
+                        <DataTable<PendingTutorFromAPI>
+                            columns={vettingColumns}
+                            data={filteredTutors}
+                            rowKey="userid"
+                            loading={loading}
+                            loadingText="Đang tải danh sách gia sư..."
+                            emptyText={searchQuery ? 'Không tìm thấy hồ sơ phù hợp' : 'Không có gia sư nào đang chờ duyệt'}
+                            emptyIcon={
+                                <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
+                                    check_circle
+                                </span>
+                            }
+                            minWidth={920}
+                            variant="embedded"
+                        />
+                    )}
+                </SectionCard>
+            </PageContainer>
 
-                        {/* Tabs */}
-                        <div className="vetting-tabs">
-                            <div className="vetting-tabs-nav">
-                                <button className="vetting-tab vetting-tab-active">
-                                    Đang chờ
-                                    <span className="vetting-tab-count">{tutors.length}</span>
-                                </button>
-                                <button className="vetting-tab">
-                                    Đã duyệt
-                                </button>
-                                <button className="vetting-tab">
-                                    Đã từ chối
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Table Card */}
-                        <div className="vetting-table-card">
-                            {/* Error State */}
-                            {error && !loading && (
-                                <div className="vetting-error-state">
-                                    <span className="material-symbols-outlined vetting-state-icon">error</span>
-                                    <p>{error}</p>
-                                    <button className="vetting-btn vetting-btn-primary" onClick={fetchPendingTutors}>
-                                        Thử lại
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Data Table */}
-                            {!error && (
-                                <DataTable<PendingTutorFromAPI>
-                                    columns={vettingColumns}
-                                    data={tutors}
-                                    rowKey="userid"
-                                    loading={loading}
-                                    loadingText="Đang tải danh sách gia sư..."
-                                    emptyText="Không có gia sư nào đang chờ duyệt"
-                                    emptyIcon={
-                                        <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>check_circle</span>
-                                    }
-                                    minWidth={700}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            {/* Tutor Detail Modal */}
             <TutorDetailModal
                 tutor={selectedTutor}
                 isOpen={selectedTutor !== null}
@@ -313,7 +336,6 @@ const AdminVettingPage = () => {
                 actionLoading={actionLoading}
             />
 
-            {/* Rejection Modal */}
             {showRejectModal && (
                 <div className="vetting-modal-overlay" onClick={() => setShowRejectModal(null)}>
                     <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
@@ -359,7 +381,7 @@ const AdminVettingPage = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 };
 

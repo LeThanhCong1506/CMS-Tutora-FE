@@ -12,7 +12,6 @@ import type {
     AdminPayoutSummary,
     WithdrawalRequestListResponse
 } from '../types/adminPayout.types';
-import type { WithdrawalListResponse } from '../types/finance.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
 
@@ -104,7 +103,7 @@ export const getAllPayoutRequests = async (params: {
     search?: string;
     from?: string;
     to?: string;
-}): Promise<WithdrawalListResponse> => {
+}): Promise<WithdrawalRequestListResponse> => {
     try {
         const { data } = await api.get('/admin/payouts', { params });
         return data.content;

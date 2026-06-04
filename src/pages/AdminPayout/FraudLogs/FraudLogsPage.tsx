@@ -1,37 +1,53 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Breadcrumb, Card, Table, Tag, Space, Input, Select, DatePicker, Row, Col } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { SecurityScanOutlined, SearchOutlined } from '@ant-design/icons';
 import { getFraudLogs } from '../../../services/adminPayout.service';
 import type { FraudLogItem } from '../../../types/adminPayout.types';
+import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
+import type { DataTableColumn } from '../../../components/shared';
 import { formatDateTime } from '../../../utils/formatters';
+import '../../../styles/pages/admin-payout.css';
 
-const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
+type FraudLogFilters = {
+    page: number;
+    pageSize: number;
+    tutorId?: string;
+    ruleName?: string;
+    passed?: boolean;
+    from?: string;
+    to?: string;
+};
+
+const toIsoDateBoundary = (date: string, boundary: 'start' | 'end') => {
+    if (!date) return undefined;
+    const suffix = boundary === 'start' ? 'T00:00:00' : 'T23:59:59';
+    return new Date(`${date}${suffix}`).toISOString();
+};
 
 const FraudLogsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [logs, setLogs] = useState<FraudLogItem[]>([]);
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
-
-    // Filters
+    const [pageSize] = useState(20);
     const [tutorId, setTutorId] = useState('');
     const [ruleName, setRuleName] = useState('');
     const [passed, setPassed] = useState<boolean | undefined>(undefined);
-    const [dateRange, setDateRange] = useState<[string, string] | undefined>(undefined);
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const navigate = useNavigate();
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            const params: any = {
+            const params: FraudLogFilters = {
                 page: currentPage,
-                pageSize: pageSize,
-                ...(tutorId && { tutorId }),
+                pageSize,
+                ...(tutorId.trim() && { tutorId: tutorId.trim() }),
                 ...(ruleName && { ruleName }),
                 ...(passed !== undefined && { passed }),
-                ...(dateRange && { from: dateRange[0], to: dateRange[1] })
+                ...(fromDate && { from: toIsoDateBoundary(fromDate, 'start') }),
+                ...(toDate && { to: toIsoDateBoundary(toDate, 'end') }),
             };
             const response = await getFraudLogs(params);
             setLogs(response.items);
@@ -42,151 +58,216 @@ const FraudLogsPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, pageSize, tutorId, ruleName, passed, dateRange]);
+    }, [currentPage, fromDate, pageSize, passed, ruleName, toDate, tutorId]);
 
     useEffect(() => {
-        fetchLogs();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchLogs();
     }, [fetchLogs]);
 
-    const columns = [
+    const resetFilters = () => {
+        setTutorId('');
+        setRuleName('');
+        setPassed(undefined);
+        setFromDate('');
+        setToDate('');
+        setCurrentPage(1);
+    };
+
+    const columns: DataTableColumn<FraudLogItem>[] = [
         {
-            title: 'Thời gian',
-            dataIndex: 'checkedAt',
             key: 'checkedAt',
-            render: (date: string) => formatDateTime(date),
+            title: 'Thời gian',
+            render: (record) => (
+                <span className="admin-ui-table-meta">{formatDateTime(record.checkedAt)}</span>
+            ),
+            minWidth: 160,
         },
         {
+            key: 'tutor',
             title: 'Gia sư',
-            dataIndex: 'tutorName',
-            key: 'tutorName',
-            render: (name: string, record: FraudLogItem) => (
-                <Space direction="vertical" size={0}>
-                    <Text strong>{name}</Text>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>ID: {record.tutorId}</Text>
-                </Space>
+            render: (record) => (
+                <div className="admin-ui-entity">
+                    <span className="admin-ui-entity-primary">{record.tutorName || 'Chưa có tên'}</span>
+                    <span className="admin-ui-entity-secondary">ID: {record.tutorId}</span>
+                </div>
             ),
+            minWidth: 220,
         },
         {
-            title: 'Quy tắc an toàn',
-            dataIndex: 'ruleName',
             key: 'ruleName',
-            render: (rule: string) => <Tag color="blue">{rule}</Tag>,
+            title: 'Quy tắc an toàn',
+            render: (record) => <span className="admin-ui-code-chip">{record.ruleName}</span>,
+            minWidth: 180,
         },
         {
-            title: 'Kết quả',
-            dataIndex: 'passed',
             key: 'passed',
-            render: (passed: boolean) => (
-                passed ? <Tag color="success">Hợp lệ</Tag> : <Tag color="error">Cảnh báo</Tag>
+            title: 'Kết quả',
+            render: (record) => (
+                <StatusBadge variant={record.passed ? 'success' : 'error'} shape="tag">
+                    {record.passed ? 'Hợp lệ' : 'Cảnh báo'}
+                </StatusBadge>
             ),
+            minWidth: 120,
         },
         {
-            title: 'Thông điệp hệ thống',
-            dataIndex: 'message',
             key: 'message',
-            render: (msg: string) => (
-                <Text style={{ fontSize: '12px' }} type={msg && msg.includes('rủi ro') ? 'danger' : 'secondary'}>
-                    {msg || '---'}
-                </Text>
+            title: 'Thông điệp hệ thống',
+            render: (record) => (
+                <span className={record.message?.toLowerCase().includes('rủi ro') ? 'payout-risk-message' : 'admin-ui-table-meta'}>
+                    {record.message || '---'}
+                </span>
             ),
+            minWidth: 260,
         },
         {
-            title: 'Yêu cầu liên quan',
-            dataIndex: 'withdrawalRequestId',
             key: 'withdrawalRequestId',
-            render: (id: number) => id ? <Space><SearchOutlined /><Text>#{id}</Text></Space> : '---',
+            title: 'Yêu cầu liên quan',
+            render: (record) => (
+                record.withdrawalRequestId ? (
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary payout-action-button"
+                        onClick={() => navigate(`/admin-portal/payouts/${record.withdrawalRequestId}`)}
+                    >
+                        #{record.withdrawalRequestId}
+                    </button>
+                ) : (
+                    <span className="admin-ui-table-meta">---</span>
+                )
+            ),
+            align: 'right',
+            minWidth: 150,
         },
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '24px' }}>
-                <Breadcrumb
-                    items={[
-                        { title: 'Quản trị' },
-                        { title: 'Quản lý thanh toán', href: '/admin-portal/payouts' },
-                        { title: 'Nhật ký an toàn (Fraud Logs)' },
-                    ]}
-                    style={{ marginBottom: '16px' }}
-                />
-                <Title level={2}>
-                    <SecurityScanOutlined style={{ marginRight: '12px', color: '#ff4d4f' }} />
-                    Nhật ký an toàn & Chống rủi ro (Fraud Logs)
-                </Title>
-                <Text type="secondary">Ghi lại toàn bộ lịch sử kiểm soát rủi ro từ hệ thống chống gian lận (Anti-Fraud Engine)</Text>
-            </div>
+        <PageContainer
+            eyebrow="Thanh toán"
+            title="Nhật ký an toàn & chống rủi ro"
+            subtitle="Ghi lại toàn bộ lịch sử kiểm soát rủi ro từ hệ thống chống gian lận."
+            maxWidth="wide"
+            headerAction={
+                <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-secondary"
+                    onClick={() => navigate('/admin-portal/payouts')}
+                >
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    Tổng quan
+                </button>
+            }
+        >
+            <SectionCard
+                title="Bộ lọc nhật ký"
+                subtitle="Lọc theo gia sư, quy tắc, kết quả và khoảng thời gian kiểm tra."
+            >
+                <div className="admin-ui-toolbar payout-history-toolbar">
+                    <div className="payout-history-filter-grid payout-fraud-filter-grid">
+                        <label className="payout-filter-field">
+                            <span>Tutor ID</span>
+                            <input
+                                type="search"
+                                value={tutorId}
+                                placeholder="Nhập Tutor ID..."
+                                onChange={(event) => {
+                                    setTutorId(event.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </label>
+                        <label className="payout-filter-field">
+                            <span>Quy tắc</span>
+                            <select
+                                value={ruleName}
+                                onChange={(event) => {
+                                    setRuleName(event.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                <option value="">Tất cả quy tắc</option>
+                                <option value="WITHDRAW_SPEED">Tốc độ rút tiền</option>
+                                <option value="BANK_ACCOUNT_MATCH">Chủ tài khoản ngân hàng</option>
+                                <option value="IP_CONSISTENCY">Địa chỉ IP</option>
+                                <option value="EMAIL_VERIFIED">Email xác thực</option>
+                            </select>
+                        </label>
+                        <label className="payout-filter-field">
+                            <span>Kết quả</span>
+                            <select
+                                value={passed === undefined ? 'all' : String(passed)}
+                                onChange={(event) => {
+                                    const value = event.target.value;
+                                    setPassed(value === 'all' ? undefined : value === 'true');
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                <option value="all">Tất cả</option>
+                                <option value="true">Hợp lệ</option>
+                                <option value="false">Cảnh báo</option>
+                            </select>
+                        </label>
+                        <label className="payout-filter-field">
+                            <span>Từ ngày</span>
+                            <input
+                                type="date"
+                                value={fromDate}
+                                onChange={(event) => {
+                                    setFromDate(event.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </label>
+                        <label className="payout-filter-field">
+                            <span>Đến ngày</span>
+                            <input
+                                type="date"
+                                value={toDate}
+                                onChange={(event) => {
+                                    setToDate(event.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </label>
+                    </div>
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={resetFilters}
+                    >
+                        Xóa lọc
+                    </button>
+                </div>
+            </SectionCard>
 
-            <Card variant="borderless" style={{ marginBottom: '24px' }}>
-                <Row gutter={16}>
-                    <Col xs={24} md={6}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Tutor ID</Text>
-                        <Input
-                            placeholder="Nhập Tutor ID..."
-                            onChange={(e) => setTutorId(e.target.value)}
-                            allowClear
-                        />
-                    </Col>
-                    <Col xs={24} md={6}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Quy tắc</Text>
-                        <Select
-                            style={{ width: '100%' }}
-                            placeholder="Chọn quy tắc..."
-                            allowClear
-                            onChange={setRuleName}
-                        >
-                            <Select.Option value="WITHDRAW_SPEED">Tốc độ rút tiền</Select.Option>
-                            <Select.Option value="BANK_ACCOUNT_MATCH">Chủ tài khoản ngân hàng</Select.Option>
-                            <Select.Option value="IP_CONSISTENCY">Địa chỉ IP</Select.Option>
-                            <Select.Option value="EMAIL_VERIFIED">Email xác thực</Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={24} md={4}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Kết quả</Text>
-                        <Select
-                            style={{ width: '100%' }}
-                            placeholder="Tất cả"
-                            allowClear
-                            onChange={(val) => setPassed(val === 'true' ? true : (val === 'false' ? false : undefined))}
-                        >
-                            <Select.Option value="true">Hợp lệ</Select.Option>
-                            <Select.Option value="false">Cảnh báo</Select.Option>
-                        </Select>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>Thời gian</Text>
-                        <RangePicker
-                            style={{ width: '100%' }}
-                            onChange={(dates) => {
-                                if (dates && dates[0] && dates[1]) {
-                                    setDateRange([dates[0].toISOString(), dates[1].toISOString()]);
-                                } else {
-                                    setDateRange(undefined);
-                                }
-                            }}
-                        />
-                    </Col>
-                </Row>
-            </Card>
-
-            <Card variant="borderless">
-                <Table
+            <SectionCard
+                title="Nhật ký kiểm soát"
+                subtitle="Các rule được ghi lại theo thời gian để phục vụ đối soát và audit."
+                footer={`Hiển thị ${logs.length} / ${total.toLocaleString('vi-VN')} nhật ký`}
+            >
+                <DataTable<FraudLogItem>
                     columns={columns}
-                    dataSource={logs}
+                    data={logs}
                     rowKey="logId"
                     loading={loading}
+                    loadingText="Đang tải nhật ký an toàn..."
+                    emptyText="Không có nhật ký phù hợp"
+                    emptyIcon={
+                        <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
+                            security
+                        </span>
+                    }
                     pagination={{
                         current: currentPage,
-                        pageSize: pageSize,
-                        total: total,
-                        onChange: (page, size) => {
-                            setCurrentPage(page);
-                            setPageSize(size);
-                        },
-                        showTotal: (total) => `Tổng cộng ${total} nhật ký`,
+                        pageSize,
+                        total,
+                        onChange: setCurrentPage,
                     }}
+                    minWidth={1120}
+                    variant="embedded"
                 />
-            </Card>
-        </div>
+            </SectionCard>
+        </PageContainer>
     );
 };
 

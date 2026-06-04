@@ -13,7 +13,7 @@ import type {
     AdminDisputeStats,
     TutorPerformanceItem,
 } from '../../types/admin.types';
-import { FilterTabs, SectionCard, DataTable } from '../../components/shared';
+import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { formatCurrency, formatCompactNumber, formatNumber } from '../../utils/formatters';
 
@@ -43,42 +43,6 @@ const rangeTabs = [
 ];
 
 // ─── Sub-components ───
-
-const KpiCard = ({
-    label,
-    value,
-    icon,
-    badge,
-    badgeVariant = 'green',
-    meta,
-    loading,
-}: {
-    label: string;
-    value: string | number;
-    icon: string;
-    badge?: string;
-    badgeVariant?: 'green' | 'gold' | 'crimson';
-    meta?: string;
-    loading?: boolean;
-}) => (
-    <div className="admin-stat-card">
-        <div className="admin-stat-header">
-            <span className="admin-stat-label">{label}</span>
-            <div className="admin-stat-icon admin-stat-icon-primary">
-                <span className="material-symbols-outlined">{icon}</span>
-            </div>
-        </div>
-        <div className="admin-stat-content">
-            <p className="admin-stat-value">{loading ? '...' : value}</p>
-            <div className="admin-stat-footer">
-                {badge && (
-                    <span className={`admin-stat-badge admin-stat-badge-${badgeVariant}`}>{badge}</span>
-                )}
-                {meta && <span className="admin-stat-meta">{meta}</span>}
-            </div>
-        </div>
-    </div>
-);
 
 const ActionRow = ({
     icon,
@@ -235,23 +199,19 @@ const AdminDashboardPageEnhanced = () => {
     const pending = stats?.pendingActions;
 
     return (
-        <main className="admin-main">
-            <div className="admin-content">
-                <div className="admin-content-inner">
-                    {/* HEADER */}
-                    <div className="admin-dashboard-header">
-                        <div className="admin-greeting">
-                            <h2 className="admin-greeting-title">Chào buổi sáng, Quản trị viên</h2>
-                            <p className="admin-greeting-text">
-                                Đây là những gì đang diễn ra tại TUTORA hôm nay.
-                            </p>
-                        </div>
-                        <FilterTabs
-                            tabs={rangeTabs}
-                            activeKey={rangeKey}
-                            onChange={(key) => setRangeKey(key as RangeKey)}
-                        />
-                    </div>
+        <PageContainer
+            eyebrow="Tổng quan"
+            title="Chào buổi sáng, Quản trị viên"
+            subtitle="Đây là những gì đang diễn ra tại TUTORA hôm nay."
+            maxWidth="wide"
+            headerAction={
+                <FilterTabs
+                    tabs={rangeTabs}
+                    activeKey={rangeKey}
+                    onChange={(key) => setRangeKey(key as RangeKey)}
+                />
+            }
+        >
 
                     {error && (
                         <div
@@ -269,74 +229,69 @@ const AdminDashboardPageEnhanced = () => {
                         </div>
                     )}
 
-                    {/* KPI GRID */}
-                    <div className="admin-dashboard-kpis">
-                        <KpiCard
-                            label="Tổng số người dùng"
-                            value={formatNumber(platform?.totalUsers ?? 0)}
-                            icon="group"
-                            meta={`+${userStats?.growth.newUsersThisMonth ?? 0} trong 30 ngày`}
-                            badge={`HS ${formatNumber(platform?.totalStudents ?? 0)} · PH ${formatNumber(platform?.totalParents ?? 0)}`}
-                            badgeVariant="green"
-                            loading={loading}
-                        />
-                        <KpiCard
-                            label="Gia sư hoạt động"
-                            value={formatNumber(platform?.totalActiveTutors ?? 0)}
-                            icon="school"
-                            badge={`Chờ duyệt: ${platform?.pendingTutorApprovals ?? 0}`}
-                            badgeVariant={
-                                platform && platform.pendingTutorApprovals > 0 ? 'gold' : 'green'
-                            }
-                            meta="hồ sơ"
-                            loading={loading}
-                        />
-                        <KpiCard
-                            label="Booking đang hoạt động"
-                            value={formatNumber(booking?.activeBookings ?? 0)}
-                            icon="event"
-                            badge={`Hoàn tất: ${formatNumber(booking?.completedBookings ?? 0)}`}
-                            badgeVariant="green"
-                            meta={`Hủy: ${formatNumber(booking?.cancelledBookings ?? 0)}`}
-                            loading={loading}
-                        />
-                        <KpiCard
-                            label="Doanh thu nền tảng tháng này"
-                            value={formatCompactNumber(booking?.platformRevenueThisMonth ?? 0)}
-                            icon="payments"
-                            meta={formatCurrency(booking?.platformRevenueThisMonth ?? 0)}
-                            loading={loading}
-                        />
-                        <KpiCard
-                            label="GMV tháng này"
-                            value={formatCompactNumber(booking?.gmvThisMonth ?? 0)}
-                            icon="currency_exchange"
-                            meta={formatCurrency(booking?.gmvThisMonth ?? 0)}
-                            loading={loading}
-                        />
-                        <KpiCard
-                            label="Buổi học hôm nay"
-                            value={formatNumber(lesson?.lessonsToday ?? 0)}
-                            icon="today"
-                            badge={
-                                lesson?.completionRatePercent != null
-                                    ? `Hoàn thành ${lesson.completionRatePercent.toFixed(1)}%`
-                                    : undefined
-                            }
-                            badgeVariant="green"
-                            meta={
-                                lesson?.noShowRatePercent != null
-                                    ? `No-show ${lesson.noShowRatePercent.toFixed(1)}%`
-                                    : undefined
-                            }
-                            loading={loading}
-                        />
-                    </div>
+            {/* KPI GRID */}
+            <div className="admin-ui-kpi-grid">
+                <StatCard
+                    icon={<span className="material-symbols-outlined">group</span>}
+                    value={loading ? '...' : formatNumber(platform?.totalUsers ?? 0)}
+                    label="Tổng số người dùng"
+                    subLabel={`+${userStats?.growth.newUsersThisMonth ?? 0} trong 30 ngày`}
+                    badge={`HS ${formatNumber(platform?.totalStudents ?? 0)} · PH ${formatNumber(platform?.totalParents ?? 0)}`}
+                    badgeVariant="green"
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">school</span>}
+                    value={loading ? '...' : formatNumber(platform?.totalActiveTutors ?? 0)}
+                    label="Gia sư hoạt động"
+                    subLabel="Hồ sơ tutor"
+                    badge={`Chờ duyệt: ${platform?.pendingTutorApprovals ?? 0}`}
+                    badgeVariant={platform && platform.pendingTutorApprovals > 0 ? 'orange' : 'green'}
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">event</span>}
+                    value={loading ? '...' : formatNumber(booking?.activeBookings ?? 0)}
+                    label="Booking đang hoạt động"
+                    subLabel={`Hủy: ${formatNumber(booking?.cancelledBookings ?? 0)}`}
+                    badge={`Hoàn tất: ${formatNumber(booking?.completedBookings ?? 0)}`}
+                    badgeVariant="green"
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">payments</span>}
+                    value={loading ? '...' : formatCompactNumber(booking?.platformRevenueThisMonth ?? 0)}
+                    label="Doanh thu nền tảng tháng này"
+                    subLabel={formatCurrency(booking?.platformRevenueThisMonth ?? 0)}
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">currency_exchange</span>}
+                    value={loading ? '...' : formatCompactNumber(booking?.gmvThisMonth ?? 0)}
+                    label="GMV tháng này"
+                    subLabel={formatCurrency(booking?.gmvThisMonth ?? 0)}
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">today</span>}
+                    value={loading ? '...' : formatNumber(lesson?.lessonsToday ?? 0)}
+                    label="Buổi học hôm nay"
+                    subLabel={
+                        lesson?.noShowRatePercent != null
+                            ? `No-show ${lesson.noShowRatePercent.toFixed(1)}%`
+                            : undefined
+                    }
+                    badge={
+                        lesson?.completionRatePercent != null
+                            ? `Hoàn thành ${lesson.completionRatePercent.toFixed(1)}%`
+                            : undefined
+                    }
+                    badgeVariant="green"
+                />
+            </div>
 
                     {/* SECTIONS */}
                     <div className="admin-dashboard-sections">
                         {/* PENDING ACTIONS — full-width list */}
-                        <SectionCard title="Hành động cần xử lý">
+                        <SectionCard
+                            title="Hành động cần xử lý"
+                            subtitle="Các queue có ảnh hưởng trực tiếp tới vận hành và dòng tiền."
+                        >
                             <div className="admin-action-list">
                                 <ActionRow
                                     icon="verified_user"
@@ -374,7 +329,10 @@ const AdminDashboardPageEnhanced = () => {
                         </SectionCard>
 
                         {/* TUTOR FUNNEL — full-width */}
-                        <SectionCard title="Phễu duyệt gia sư">
+                        <SectionCard
+                            title="Phễu duyệt gia sư"
+                            subtitle="Theo dõi trạng thái hồ sơ tutor trong pipeline duyệt."
+                        >
                             {userStats ? (
                                 <>
                                     <div
@@ -435,6 +393,7 @@ const AdminDashboardPageEnhanced = () => {
                         {/* TUTOR PERFORMANCE — two tables */}
                         <SectionCard
                             title="Hiệu suất gia sư"
+                            subtitle="So sánh tutor theo đánh giá, số buổi và doanh thu trong khoảng thời gian đã chọn."
                             headerAction={
                                 tutorPerformance?.platformAverageRating != null ? (
                                     <span style={{ fontSize: 13, color: '#475569' }}>
@@ -455,6 +414,7 @@ const AdminDashboardPageEnhanced = () => {
                                         rowKey="tutorId"
                                         emptyText={loading ? 'Đang tải...' : 'Chưa có dữ liệu'}
                                         minWidth={400}
+                                        variant="embedded"
                                     />
                                 </div>
                                 <div>
@@ -465,13 +425,17 @@ const AdminDashboardPageEnhanced = () => {
                                         rowKey="tutorId"
                                         emptyText={loading ? 'Đang tải...' : 'Chưa có dữ liệu'}
                                         minWidth={400}
+                                        variant="embedded"
                                     />
                                 </div>
                             </div>
                         </SectionCard>
 
                         {/* DISPUTES */}
-                        <SectionCard title="Tổng quan khiếu nại">
+                        <SectionCard
+                            title="Tổng quan khiếu nại"
+                            subtitle="Tình trạng dispute, tốc độ xử lý và tổng hoàn tiền trong kỳ."
+                        >
                             {disputeStats ? (
                                 <div
                                     style={{
@@ -561,9 +525,7 @@ const AdminDashboardPageEnhanced = () => {
                             )}
                         </SectionCard>
                     </div>
-                </div>
-            </div>
-        </main>
+        </PageContainer>
     );
 };
 

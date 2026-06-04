@@ -63,10 +63,9 @@
     display: flex;
     align-items: flex-end;
     gap: 12px;
-    padding: 16px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    padding: 16px 20px;
+    background: rgba(250, 249, 246, 0.45);
+    border-bottom: 1.2px solid rgba(62, 47, 40, 0.08);
     flex-wrap: wrap;
 }
 
