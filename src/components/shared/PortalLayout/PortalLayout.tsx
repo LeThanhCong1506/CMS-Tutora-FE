@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Popconfirm } from 'antd';
 import { toast } from 'react-toastify';
 import styles from './PortalLayout.module.css';
 
@@ -134,6 +133,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
     // ── Sidebar state ──
     const [sidebarOpenInternal, setSidebarOpenInternal] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const sidebarOpen = sidebarOpenExternal ?? sidebarOpenInternal;
 
     const setSidebarOpen = (open: boolean) => {
@@ -153,6 +153,19 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
         document.body.style.overflow = sidebarOpen ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
     }, [sidebarOpen]);
+
+    useEffect(() => {
+        if (!showLogoutConfirm) return undefined;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowLogoutConfirm(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showLogoutConfirm]);
 
     // ── User data ──
     const [viewingAvatar, setViewingAvatar] = useState(false);
@@ -247,6 +260,13 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
     const checkActive = (path: string) => {
         if (isActiveProp) return isActiveProp(path, location.pathname);
         return location.pathname.startsWith(path);
+    };
+
+    const handleConfirmLogout = () => {
+        clearUserFromStorage();
+        setShowLogoutConfirm(false);
+        toast.success('Đăng xuất thành công!');
+        navigate('/login');
     };
 
     // ── Render ──
@@ -443,22 +463,14 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                             </div>
 
                             {/* Logout */}
-                            <Popconfirm
+                            <button
+                                className={styles.logoutBtn}
                                 title="Đăng xuất"
-                                description="Bạn có chắc muốn đăng xuất không?"
-                                onConfirm={() => {
-                                    clearUserFromStorage();
-                                    toast.success('Đăng xuất thành công!');
-                                    navigate('/login');
-                                }}
-                                okText="Đăng xuất"
-                                cancelText="Hủy"
-                                okButtonProps={{ danger: true }}
+                                aria-haspopup="dialog"
+                                onClick={() => setShowLogoutConfirm(true)}
                             >
-                                <button className={styles.logoutBtn} title="Đăng xuất">
-                                    <LogoutIcon />
-                                </button>
-                            </Popconfirm>
+                                <LogoutIcon />
+                            </button>
                         </div>
                     </div>
                 </header>}
@@ -471,6 +483,48 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
             {/* Portal-specific extras (tour modals, etc.) */}
             {extras}
+
+            {showLogoutConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="presentation"
+                    onClick={() => setShowLogoutConfirm(false)}
+                >
+                    <div
+                        className={styles.confirmDialog}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="logout-confirm-title"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className={styles.confirmIcon}>
+                            <LogoutIcon />
+                        </div>
+                        <h2 id="logout-confirm-title" className={styles.confirmTitle}>
+                            Đăng xuất
+                        </h2>
+                        <p className={styles.confirmMessage}>
+                            Bạn có chắc muốn kết thúc phiên làm việc hiện tại không?
+                        </p>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowLogoutConfirm(false)}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmDangerBtn}
+                                onClick={handleConfirmLogout}
+                            >
+                                Đăng xuất
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Bottom Tab Navigation — chỉ hiển thị trong Zalo Mini App */}
             {inMiniApp && (
