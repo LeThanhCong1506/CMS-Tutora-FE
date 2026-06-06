@@ -1,89 +1,179 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { NotificationDTO } from '../../services/notification.service';
-import { getMyNotifications, markAsRead, markAllAsRead } from '../../services/notification.service';
-import { getNotificationTargetPath } from '../../utils/notificationNavigation';
+import { toast } from 'react-toastify';
+import { FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import NotificationItem from '../../components/NotificationItem/NotificationItem';
+import type { NotificationDTO } from '../../services/notification.service';
+import { getMyNotifications, markAllAsRead, markAsRead } from '../../services/notification.service';
+import { getNotificationTargetPath } from '../../utils/notificationNavigation';
 import styles from './styles.module.css';
+
+type NotificationFilter = 'all' | 'unread' | 'read';
 
 const NotificationsPage: React.FC = () => {
     const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchNotifications();
-    }, []);
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getMyNotifications();
             setNotifications(data);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
+            toast.error('Không thể tải thông báo');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            void fetchNotifications();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [fetchNotifications]);
+
+    const unreadCount = useMemo(
+        () => notifications.filter((notification) => !notification.isread).length,
+        [notifications],
+    );
+    const readCount = notifications.length - unreadCount;
+
+    const filteredNotifications = useMemo(() => {
+        if (activeFilter === 'unread') {
+            return notifications.filter((notification) => !notification.isread);
+        }
+        if (activeFilter === 'read') {
+            return notifications.filter((notification) => notification.isread);
+        }
+        return notifications;
+    }, [activeFilter, notifications]);
 
     const handleNotificationClick = async (notification: NotificationDTO) => {
         try {
             if (!notification.isread) {
                 await markAsRead(notification.notificationid);
-                setNotifications(prev =>
-                    prev.map(n =>
-                        n.notificationid === notification.notificationid ? { ...n, isread: true } : n
-                    )
+                setNotifications((previous) =>
+                    previous.map((item) =>
+                        item.notificationid === notification.notificationid ? { ...item, isread: true } : item,
+                    ),
                 );
             }
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
+            toast.error('Không thể cập nhật trạng thái thông báo');
         }
+
         navigate(getNotificationTargetPath(notification));
     };
 
     const handleMarkAllAsRead = async () => {
+        if (unreadCount === 0) return;
+
         try {
             await markAllAsRead();
-            setNotifications(prev => prev.map(n => ({ ...n, isread: true })));
+            setNotifications((previous) => previous.map((notification) => ({ ...notification, isread: true })));
+            toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
         } catch (error) {
             console.error('Failed to mark all as read:', error);
+            toast.error('Không thể đánh dấu tất cả thông báo');
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.isread).length;
-
     return (
-        <div className={styles.page}>
-            <div className={styles.container}>
-                <div className={styles.header}>
-                    <div className={styles.headerLeft}>
-                        <h1 className={styles.title}>Thông báo</h1>
-                        {unreadCount > 0 && (
-                            <span className={styles.badge}>{unreadCount} chưa đọc</span>
-                        )}
-                    </div>
+        <PageContainer
+            title="Thông báo"
+            subtitle="Theo dõi các sự kiện hệ thống, giao dịch và tác vụ cần admin xử lý."
+            headerAction={
+                <div className="admin-ui-actions">
+                    <button
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={() => void fetchNotifications()}
+                        type="button"
+                    >
+                        <span className="material-symbols-outlined">refresh</span>
+                        Làm mới
+                    </button>
                     {unreadCount > 0 && (
-                        <button className={styles.markAllBtn} onClick={handleMarkAllAsRead}>
+                        <button
+                            className="admin-ui-button admin-ui-button-primary"
+                            onClick={() => void handleMarkAllAsRead()}
+                            type="button"
+                        >
+                            <span className="material-symbols-outlined">done_all</span>
                             Đánh dấu tất cả đã đọc
                         </button>
                     )}
                 </div>
+            }
+        >
+            <div className="admin-ui-kpi-grid">
+                <StatCard
+                    icon={<span className="material-symbols-outlined">notifications</span>}
+                    value={notifications.length}
+                    label="Tổng thông báo"
+                    subLabel="Trong hộp thông báo của admin"
+                    badge="All"
+                    badgeVariant="dark"
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">mark_email_unread</span>}
+                    value={unreadCount}
+                    label="Chưa đọc"
+                    subLabel="Cần admin xem hoặc xử lý"
+                    badge={unreadCount > 0 ? 'Cần xem' : 'Ổn định'}
+                    badgeVariant={unreadCount > 0 ? 'orange' : 'green'}
+                />
+                <StatCard
+                    icon={<span className="material-symbols-outlined">mark_email_read</span>}
+                    value={readCount}
+                    label="Đã đọc"
+                    subLabel="Đã được admin mở qua"
+                    badge="Read"
+                    badgeVariant="blue"
+                />
+            </div>
+
+            <SectionCard
+                title="Hộp thông báo"
+                subtitle="Click vào từng thông báo để mở đúng màn hình liên quan."
+                headerAction={
+                    unreadCount > 0 ? (
+                        <StatusBadge variant="warning">{unreadCount} chưa đọc</StatusBadge>
+                    ) : (
+                        <StatusBadge variant="success">Đã xử lý</StatusBadge>
+                    )
+                }
+            >
+                <div className="admin-ui-toolbar">
+                    <FilterTabs
+                        tabs={[
+                            { key: 'all', label: `Tất cả (${notifications.length})` },
+                            { key: 'unread', label: `Chưa đọc (${unreadCount})` },
+                            { key: 'read', label: `Đã đọc (${readCount})` },
+                        ]}
+                        activeKey={activeFilter}
+                        onChange={(key) => setActiveFilter(key as NotificationFilter)}
+                    />
+                </div>
 
                 {loading ? (
-                    <div className={styles.loading}>
-                        <div className={styles.spinner}></div>
-                        <p>Đang tải thông báo...</p>
-                    </div>
-                ) : notifications.length === 0 ? (
-                    <div className={styles.empty}>
-                        <span className="material-symbols-outlined">notifications_off</span>
-                        <p>Bạn chưa có thông báo nào</p>
+                    <div className="admin-ui-muted-state">Đang tải thông báo...</div>
+                ) : filteredNotifications.length === 0 ? (
+                    <div className="admin-ui-muted-state">
+                        {activeFilter === 'unread'
+                            ? 'Không còn thông báo chưa đọc.'
+                            : activeFilter === 'read'
+                            ? 'Chưa có thông báo đã đọc.'
+                            : 'Bạn chưa có thông báo nào.'}
                     </div>
                 ) : (
                     <div className={styles.list}>
-                        {notifications.map(notification => (
+                        {filteredNotifications.map((notification) => (
                             <NotificationItem
                                 key={notification.notificationid}
                                 notification={notification}
@@ -92,8 +182,8 @@ const NotificationsPage: React.FC = () => {
                         ))}
                     </div>
                 )}
-            </div>
-        </div>
+            </SectionCard>
+        </PageContainer>
     );
 };
 
