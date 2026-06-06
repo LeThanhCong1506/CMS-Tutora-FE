@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import type { FormEvent } from 'react';
 import type { WithdrawalRequest } from '../../../types/admin.types';
 import { formatCurrency } from '../../../utils/formatters';
+
+const commonRejectReasons = [
+    'Thông tin ngân hàng không khớp',
+    'Số dư không đủ',
+    'Tài khoản đang bị đình chỉ',
+    'Cần xác minh danh tính bổ sung',
+];
 
 interface RejectWithdrawalModalProps {
     isOpen: boolean;
@@ -15,11 +23,19 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    const handleReject = async () => {
+    const handleClose = () => {
+        if (isSubmitting) return;
+        setReason('');
+        setError('');
+        onClose();
+    };
+
+    const handleReject = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         if (!withdrawal) return;
 
-        // Validation
-        if (reason.trim().length < 10) {
+        const trimmedReason = reason.trim();
+        if (trimmedReason.length < 10) {
             setError('Lý do từ chối phải có ít nhất 10 ký tự');
             return;
         }
@@ -27,11 +43,10 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
         try {
             setIsSubmitting(true);
             setError('');
-            await onReject(withdrawal.withdrawalid, reason);
+            await onReject(withdrawal.withdrawalid, trimmedReason);
             toast.success(`Đã từ chối yêu cầu rút tiền ${withdrawal.withdrawalid}`);
-            onClose();
-            // Reset form
             setReason('');
+            onClose();
         } catch (err) {
             console.error('Error rejecting withdrawal:', err);
             toast.error('Không thể từ chối yêu cầu. Vui lòng thử lại.');
@@ -40,172 +55,144 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
         }
     };
 
-    // Reset form when modal closes
-    const handleClose = () => {
-        setReason('');
-        setError('');
-        onClose();
-    };
-
     if (!isOpen || !withdrawal) return null;
 
     return (
-        <div className="vetting-modal-overlay" onClick={handleClose}>
-            <div
-                className="vetting-rejection-modal"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '550px' }}
+        <div className="financial-modal-overlay" onClick={handleClose} role="presentation">
+            <form
+                className="financial-modal-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="financial-reject-title"
+                aria-describedby="financial-reject-description"
+                onClick={(event) => event.stopPropagation()}
+                onSubmit={handleReject}
             >
-                <h3 style={{ color: '#991b1b' }}>✗ Từ chối yêu cầu rút tiền</h3>
-                <p style={{ marginBottom: '20px', color: '#475569' }}>
-                    Vui lòng cung cấp lý do rõ ràng cho việc từ chối yêu cầu rút tiền. Gia sư sẽ nhận được thông báo này.
-                </p>
-
-                {/* Withdrawal Summary */}
-                <div
-                    style={{
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        marginBottom: '20px',
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                        <div
-                            style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                backgroundImage: `url('${withdrawal.tutoravatar}')`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                            }}
-                        ></div>
+                <header className="financial-modal-header">
+                    <div className="financial-modal-title-group">
+                        <span className="financial-modal-icon danger material-symbols-outlined" aria-hidden="true">
+                            cancel
+                        </span>
                         <div>
-                            <p style={{ margin: '0 0 2px', fontWeight: 700, color: 'var(--color-navy)' }}>
-                                {withdrawal.tutorname}
-                            </p>
-                            <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-                                {withdrawal.tutorsubject}
+                            <h2 id="financial-reject-title">Từ chối yêu cầu rút tiền</h2>
+                            <p id="financial-reject-description">
+                                Tutor sẽ nhận được lý do này trong thông báo xử lý yêu cầu.
                             </p>
                         </div>
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                        <div>
-                            <p style={{ margin: '0 0 4px', color: '#64748b', fontWeight: 600 }}>Số tiền</p>
-                            <p style={{ margin: 0, fontWeight: 700, color: '#991b1b' }}>
-                                {formatCurrency(withdrawal.amount)}
-                            </p>
-                        </div>
-                        <div>
-                            <p style={{ margin: '0 0 4px', color: '#64748b', fontWeight: 600 }}>Mã yêu cầu</p>
-                            <p style={{ margin: 0, fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-navy)' }}>
-                                {withdrawal.withdrawalid}
-                            </p>
-                        </div>
-                        <div>
-                            <p style={{ margin: '0 0 4px', color: '#64748b', fontWeight: 600 }}>Ngân hàng</p>
-                            <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-navy)' }}>
-                                {withdrawal.bankname}
-                            </p>
-                        </div>
-                        <div>
-                            <p style={{ margin: '0 0 4px', color: '#64748b', fontWeight: 600 }}>Ngày yêu cầu</p>
-                            <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-navy)' }}>
-                                {new Date(withdrawal.requestedat).toLocaleDateString('vi-VN')}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Reason Input */}
-                <div>
-                    <label
-                        style={{
-                            display: 'block',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: '#64748b',
-                            marginBottom: '8px',
-                        }}
-                    >
-                        Lý do từ chối (tối thiểu 10 ký tự)
-                    </label>
-                    <textarea
-                        className="vetting-rejection-textarea"
-                        rows={5}
-                        value={reason}
-                        onChange={(e) => {
-                            setReason(e.target.value);
-                            setError('');
-                        }}
-                        placeholder="Ví dụ: Thông tin ngân hàng không khớp với hồ sơ đã đăng ký. Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu."
-                        style={{ borderColor: error ? '#dc2626' : '#e2e8f0' }}
-                    />
-                    {error && <p className="vetting-error-message">{error}</p>}
-                </div>
-
-                {/* Common Reasons (Quick Select) */}
-                <div style={{ marginTop: '16px', marginBottom: '20px' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
-                        Lý do phổ biến:
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {[
-                            'Thông tin ngân hàng không khớp',
-                            'Số dư không đủ',
-                            'Tài khoản đang bị đình chỉ',
-                            'Cần xác minh danh tính bổ sung',
-                        ].map((commonReason) => (
-                            <button
-                                key={commonReason}
-                                onClick={() => setReason(commonReason)}
-                                style={{
-                                    padding: '6px 12px',
-                                    fontSize: '12px',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    background: '#ffffff',
-                                    color: '#475569',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#f8fafc';
-                                    e.currentTarget.style.borderColor = '#cbd5e1';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = '#ffffff';
-                                    e.currentTarget.style.borderColor = '#e2e8f0';
-                                }}
-                            >
-                                {commonReason}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="vetting-rejection-footer">
                     <button
-                        className="vetting-btn vetting-btn-secondary"
+                        type="button"
+                        className="financial-modal-close"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                        aria-label="Đóng modal"
+                    >
+                        <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </header>
+
+                <div className="financial-modal-body">
+                    <div className="financial-withdrawal-card danger">
+                        <div className="financial-withdrawal-tutor">
+                            <img
+                                className="financial-avatar"
+                                src={withdrawal.tutoravatar}
+                                alt=""
+                                loading="lazy"
+                            />
+                            <div className="financial-entity">
+                                <strong>{withdrawal.tutorname}</strong>
+                                <span>{withdrawal.tutorsubject}</span>
+                            </div>
+                        </div>
+
+                        <div className="financial-detail-grid compact">
+                            <div className="financial-detail-item highlight-danger">
+                                <span>Số tiền</span>
+                                <strong>{formatCurrency(withdrawal.amount)}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Mã yêu cầu</span>
+                                <strong className="financial-code">{withdrawal.withdrawalid}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Ngân hàng</span>
+                                <strong>{withdrawal.bankname}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Ngày yêu cầu</span>
+                                <strong>{new Date(withdrawal.requestedat).toLocaleDateString('vi-VN')}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label className="financial-form-field" htmlFor="financial-reject-reason">
+                        <span>Lý do từ chối</span>
+                        <textarea
+                            id="financial-reject-reason"
+                            className={`financial-textarea ${error ? 'has-error' : ''}`}
+                            rows={5}
+                            value={reason}
+                            onChange={(event) => {
+                                setReason(event.target.value);
+                                setError('');
+                            }}
+                            placeholder="Ví dụ: Thông tin ngân hàng không khớp với hồ sơ đã đăng ký. Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu."
+                            disabled={isSubmitting}
+                            aria-invalid={Boolean(error)}
+                            aria-describedby={error ? 'financial-reject-error' : undefined}
+                        />
+                        {error ? (
+                            <small id="financial-reject-error" className="financial-form-error">
+                                {error}
+                            </small>
+                        ) : (
+                            <small>Tối thiểu 10 ký tự để tutor có đủ ngữ cảnh xử lý.</small>
+                        )}
+                    </label>
+
+                    <div className="financial-quick-reasons">
+                        <span>Lý do phổ biến</span>
+                        <div>
+                            {commonRejectReasons.map((commonReason) => (
+                                <button
+                                    key={commonReason}
+                                    type="button"
+                                    className="financial-reason-chip"
+                                    onClick={() => {
+                                        setReason(commonReason);
+                                        setError('');
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    {commonReason}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <footer className="financial-modal-footer">
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
                         onClick={handleClose}
                         disabled={isSubmitting}
                     >
                         Hủy
                     </button>
                     <button
-                        className="vetting-btn vetting-btn-danger"
-                        onClick={handleReject}
+                        type="submit"
+                        className="admin-ui-button admin-ui-button-danger"
                         disabled={isSubmitting || reason.trim().length < 10}
-                        style={{ opacity: reason.trim().length < 10 ? 0.5 : 1 }}
                     >
-                        {isSubmitting ? 'Đang xử lý...' : '✗ Xác nhận từ chối'}
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                            {isSubmitting ? 'progress_activity' : 'cancel'}
+                        </span>
+                        {isSubmitting ? 'Đang xử lý...' : 'Xác nhận từ chối'}
                     </button>
-                </div>
-            </div>
+                </footer>
+            </form>
         </div>
     );
 };
