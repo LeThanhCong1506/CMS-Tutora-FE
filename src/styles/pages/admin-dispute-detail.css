@@ -66,6 +66,10 @@
     gap: 16px;
 }
 
+.dispute-admin-actions {
+    margin-top: 16px;
+}
+
 .dispute-live-status {
     background-color: var(--color-white);
     border: 1px solid #e3e1dd;

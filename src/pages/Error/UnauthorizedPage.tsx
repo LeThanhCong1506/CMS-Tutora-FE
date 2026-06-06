@@ -1,38 +1,15 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React from 'react';
+import ErrorStatePage from './ErrorStatePage';
 
 const UnauthorizedPage: React.FC = () => {
     return (
-        <div className="error-page">
-            <div className="error-container">
-                <div className="error-logo">
-                    <span className="logo-text">TUTORA</span>
-                </div>
-
-                <h1 className="error-code">401</h1>
-
-                <div className="error-divider"></div>
-
-                <h2 className="error-title">Chưa xác thực</h2>
-
-                <p className="error-message">
-                    Bạn cần đăng nhập để truy cập trang này. Vui lòng đăng nhập với tài khoản của bạn.
-                </p>
-
-                <div className="error-actions">
-                    <Link to="/login" className="error-btn-primary">
-                        Đăng nhập ngay
-                    </Link>
-                    <Link to="/register" className="error-btn-secondary">
-                        Tạo tài khoản
-                    </Link>
-                </div>
-
-                <div className="error-footer">
-                    Cần hỗ trợ? <a href="mailto:support@TUTORA.edu.vn" className="error-link">Liên hệ chúng tôi</a>
-                </div>
-            </div>
-        </div>
+        <ErrorStatePage
+            code="401"
+            icon="lock"
+            title="Chưa xác thực"
+            message="Bạn cần đăng nhập để truy cập trang này. Vui lòng dùng tài khoản có quyền phù hợp trước khi tiếp tục."
+            primaryAction={{ label: 'Đăng nhập ngay', to: '/login' }}
+        />
     );
 };
 

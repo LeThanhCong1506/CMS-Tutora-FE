@@ -1,0 +1,56 @@
+/* ===== ADMIN WARNINGS PAGE ===== */
+
+.warnings-tabs-toolbar {
+    justify-content: flex-start;
+    padding: 14px 18px;
+}
+
+.warnings-lookup-toolbar {
+    align-items: center;
+}
+
+.warnings-lookup-search {
+    max-width: 520px;
+}
+
+.warnings-reason-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--color-navy-60);
+    font-size: 13px;
+    line-height: 1.5;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.warnings-good-text,
+.warnings-danger-text {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+}
+
+.warnings-good-text {
+    color: #166534;
+}
+
+.warnings-danger-text {
+    color: #dc2626;
+}
+
+.warnings-action-button {
+    min-width: 64px;
+    padding-inline: 12px;
+}
+
+@media (max-width: 768px) {
+    .warnings-tabs-toolbar,
+    .warnings-lookup-toolbar {
+        align-items: stretch;
+    }
+
+    .warnings-lookup-search {
+        max-width: none;
+    }
+}
