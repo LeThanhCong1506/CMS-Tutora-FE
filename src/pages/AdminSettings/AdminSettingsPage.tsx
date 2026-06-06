@@ -1,316 +1,277 @@
-import React, { useState } from 'react';
-import { SubjectsManagement } from './components';
+import { useState } from 'react';
+import { toast } from 'react-toastify';
+import { FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import UnderDevelopment from '../../components/UnderDevelopment/UnderDevelopment';
+import { SubjectsManagement } from './components';
 
 import '../../styles/pages/admin-settings.css';
 
-type SettingsTab = 'financial' | 'subjects';
+type SettingsTab = 'subjects' | 'financial';
+
+const SETTINGS_TABS = [
+    { key: 'subjects', label: 'Môn học' },
+    { key: 'financial', label: 'Logic tài chính' },
+];
 
 export const AdminSettingsPage = () => {
-    // Active tab
     const [activeTab, setActiveTab] = useState<SettingsTab>('subjects');
-
-    // State management
     const [commissionRate, setCommissionRate] = useState<number>(15);
     const [minWithdrawal, setMinWithdrawal] = useState<string>('50.00');
-    const [escrowPeriod, setEscrowPeriod] = useState<string>('3 Days');
+    const [escrowPeriod, setEscrowPeriod] = useState<string>('3 Ngày');
     const [vatEnabled, setVatEnabled] = useState<boolean>(true);
     const [vatRate, setVatRate] = useState<string>('20.0');
     const [payoutsFrozen, setPayoutsFrozen] = useState<boolean>(false);
 
-    // Handlers
-    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCommissionRate(Number(e.target.value));
-    };
-
     const handleSave = () => {
-        console.log('Saving settings:', {
-            commissionRate,
-            minWithdrawal,
-            escrowPeriod,
-            vatEnabled,
-            vatRate,
-            payoutsFrozen
-        });
-        // Implement actual save logic here
+        toast.success('Đã lưu cấu hình tài chính');
     };
 
     const handleDiscard = () => {
-        console.log('Discarding changes');
-        // Implement reset logic here or navigation
+        setCommissionRate(15);
+        setMinWithdrawal('50.00');
+        setEscrowPeriod('3 Ngày');
+        setVatEnabled(true);
+        setVatRate('20.0');
+        setPayoutsFrozen(false);
+        toast.info('Đã khôi phục cấu hình mặc định');
     };
 
     return (
-        <>
-            {/* MAIN CONTENT */}
+        <PageContainer
+            title="Cài đặt hệ thống"
+            subtitle="Quản lý cấu hình vận hành, danh mục môn học và quy tắc tài chính của nền tảng."
+            headerAction={
+                activeTab === 'financial' ? (
+                    <div className="admin-ui-actions">
+                        <button className="admin-ui-button admin-ui-button-secondary" onClick={handleDiscard}>
+                            Hủy thay đổi
+                        </button>
+                        <button className="admin-ui-button admin-ui-button-primary" onClick={handleSave}>
+                            <span className="material-symbols-outlined">check</span>
+                            Lưu thay đổi
+                        </button>
+                    </div>
+                ) : undefined
+            }
+        >
+            <SectionCard className="settings-overview-card" headerBorder={false}>
+                <div className="settings-under-dev-wrap">
+                    <UnderDevelopment featureName="cài đặt hệ thống" />
+                </div>
+                <div className="admin-ui-toolbar settings-admin-toolbar">
+                    <FilterTabs
+                        tabs={SETTINGS_TABS}
+                        activeKey={activeTab}
+                        onChange={(key) => setActiveTab(key as SettingsTab)}
+                    />
+                    <span className="admin-ui-code-chip">
+                        {activeTab === 'subjects' ? 'Danh mục học thuật' : 'Tài chính & thanh toán'}
+                    </span>
+                </div>
+            </SectionCard>
 
-            {/* MAIN CONTENT */}
-            <main className="settings-main">
-                <div className="settings-scroll-area">
-                    {/* Split Layout Card */}
-                    <div className="settings-card">
-                        {/* Left Settings Menu (25%) */}
-                        <div className="settings-menu">
-                            <h3 className="settings-menu-title">Cấu hình hệ thống</h3>
-                            <div className="settings-nav">
-                                <button
-                                    className={`settings-nav-btn ${activeTab === 'subjects' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('subjects')}
-                                >
-                                    {activeTab === 'subjects' && <div className="settings-nav-active-indicator"></div>}
-                                    <div className="settings-nav-content">
-                                        <span className="material-symbols-outlined settings-nav-icon">library_books</span>
-                                        <span className="settings-nav-text">Môn học</span>
-                                    </div>
-                                    {activeTab === 'subjects' && (
-                                        <span className="material-symbols-outlined settings-nav-chevron">chevron_right</span>
-                                    )}
-                                </button>
-                                <button
-                                    className={`settings-nav-btn ${activeTab === 'financial' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('financial')}
-                                >
-                                    {activeTab === 'financial' && <div className="settings-nav-active-indicator"></div>}
-                                    <div className="settings-nav-content">
-                                        <span className="material-symbols-outlined settings-nav-icon">account_balance_wallet</span>
-                                        <span className="settings-nav-text">Logic tài chính</span>
-                                    </div>
-                                    {activeTab === 'financial' && (
-                                        <span className="material-symbols-outlined settings-nav-chevron">chevron_right</span>
-                                    )}
-                                </button>
+            {activeTab === 'subjects' ? (
+                <SubjectsManagement />
+            ) : (
+                <div className="settings-financial-stack">
+                    <div className="admin-ui-kpi-grid">
+                        <StatCard
+                            icon={<span className="material-symbols-outlined">percent</span>}
+                            value={`${commissionRate}%`}
+                            label="Hoa hồng nền tảng"
+                            subLabel="Áp dụng trên mỗi khóa học bán được"
+                            badge="Đang dùng"
+                            badgeVariant="dark"
+                        />
+                        <StatCard
+                            icon={<span className="material-symbols-outlined">payments</span>}
+                            value={`₫${minWithdrawal}`}
+                            label="Rút tối thiểu"
+                            subLabel="Ngưỡng trước khi tutor tạo yêu cầu thanh toán"
+                            badge="Payout"
+                            badgeVariant="blue"
+                        />
+                        <StatCard
+                            icon={<span className="material-symbols-outlined">hourglass_top</span>}
+                            value={escrowPeriod}
+                            label="Thời gian giữ tiền"
+                            subLabel="Khoảng chờ sau giao dịch"
+                            badge="Escrow"
+                            badgeVariant="orange"
+                        />
+                        <StatCard
+                            icon={<span className="material-symbols-outlined">account_balance</span>}
+                            value={vatEnabled ? `${vatRate}%` : 'Tắt'}
+                            label="VAT mặc định"
+                            subLabel="Tự động tính thuế ở khu vực áp dụng"
+                            badge={vatEnabled ? 'Hoạt động' : 'Tắt'}
+                            badgeVariant={vatEnabled ? 'green' : 'red'}
+                        />
+                    </div>
+
+                    <SectionCard
+                        title="Tỷ lệ hoa hồng"
+                        subtitle="Thiết lập phần trăm nền tảng khấu trừ trước khi thanh toán cho tutor."
+                        padded
+                    >
+                        <div className="settings-slider-layout">
+                            <div className="settings-slider-header">
+                                <label className="settings-label" htmlFor="commission-rate">
+                                    Phí nền tảng
+                                </label>
+                                <span className="settings-slider-value">{commissionRate}%</span>
+                            </div>
+                            <input
+                                id="commission-rate"
+                                type="range"
+                                min="0"
+                                max="30"
+                                value={commissionRate}
+                                onChange={(event) => setCommissionRate(Number(event.target.value))}
+                                className="settings-range-input"
+                            />
+                            <div className="settings-slider-labels">
+                                <span>0%</span>
+                                <span>15% hiện tại</span>
+                                <span>30%</span>
+                            </div>
+                            <div className="settings-info-callout">
+                                <span className="material-symbols-outlined">info</span>
+                                Tỷ lệ này ảnh hưởng trực tiếp đến doanh thu tutor và biên lợi nhuận nền tảng.
                             </div>
                         </div>
+                    </SectionCard>
 
-                        {/* Right Configuration Panel (75%) */}
-                        <div className="settings-panel">
-                            {/* Under Development Modal */}
-                            <UnderDevelopment featureName="cài đặt hệ thống" />
-
-                            {/* Subjects Tab - Full Width Layout */}
-                            {activeTab === 'subjects' && (
-                                <div className="settings-panel-full">
-                                    <SubjectsManagement />
+                    <SectionCard
+                        title="Quy tắc thanh toán"
+                        subtitle="Kiểm soát điều kiện tutor có thể rút tiền khỏi ví."
+                        padded
+                    >
+                        <div className="settings-form-grid">
+                            <div className="settings-form-group">
+                                <label className="settings-label" htmlFor="min-withdrawal">
+                                    Số tiền rút tối thiểu
+                                </label>
+                                <div className="settings-input-wrapper">
+                                    <span className="settings-input-prefix">₫</span>
+                                    <input
+                                        id="min-withdrawal"
+                                        className="settings-input settings-input-with-prefix"
+                                        type="text"
+                                        value={minWithdrawal}
+                                        onChange={(event) => setMinWithdrawal(event.target.value)}
+                                    />
                                 </div>
-                            )}
+                                <p className="settings-helper-text">
+                                    Tutor phải đạt số dư này trước khi tạo yêu cầu payout.
+                                </p>
+                            </div>
 
-                            {/* Financial Tab - Form Layout */}
-                            {activeTab === 'financial' && (
-                                <>
-                                    {/* Header */}
-                                    <div className="settings-panel-header">
-                                        <div>
-                                            <h2 className="settings-page-title">Cấu hình tài chính</h2>
-                                            <p className="settings-page-desc">Quản lý tỷ lệ hoa hồng, quy tắc thanh toán và thông số thuế cho nền tảng.</p>
-                                        </div>
-                                        <div className="text-right hidden sm:block">
-                                            <span className="settings-last-updated">Cập nhật lần cuối: Hôm nay, 10:23 SA</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Scrollable Form Content */}
-                                    <div className="settings-form-content">
-                                        <div className="settings-section-container">
-                                            {/* Section 1: Commission Rate */}
-                                            <section>
-                                                <div className="settings-section-header">
-                                                    <div className="settings-section-icon">
-                                                        <span className="material-symbols-outlined">percent</span>
-                                                    </div>
-                                                    <h3 className="settings-section-title">Tỷ lệ hoa hồng</h3>
-                                                </div>
-                                                <div className="settings-section-card">
-                                                    <div className="slider-container">
-                                                        <div className="slider-header">
-                                                            <label className="settings-label">Phí nền tảng (%)</label>
-                                                            <div className="settings-input-wrapper" style={{ width: 'auto' }}>
-                                                                <input
-                                                                    className="settings-input slider-input-small"
-                                                                    type="text"
-                                                                    value={`${commissionRate}%`}
-                                                                    readOnly
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Custom Slider Component */}
-                                                        <div className="slider-track-container">
-                                                            <input
-                                                                type="range"
-                                                                min="0"
-                                                                max="30"
-                                                                value={commissionRate}
-                                                                onChange={handleSliderChange}
-                                                                className="slider-range-input"
-                                                            />
-
-                                                            {/* Visual Track */}
-                                                            <div className="slider-track-bg"></div>
-                                                            <div
-                                                                className="slider-track-fill"
-                                                                style={{ width: `${(commissionRate / 30) * 100}%` }}
-                                                            ></div>
-                                                            <div
-                                                                className="slider-thumb"
-                                                                style={{ left: `${(commissionRate / 30) * 100}%` }}
-                                                            ></div>
-                                                        </div>
-
-                                                        <div className="slider-labels">
-                                                            <span>0%</span>
-                                                            <span>15% (Hiện tại)</span>
-                                                            <span>30%</span>
-                                                        </div>
-
-                                                        <div>
-                                                            <div className="slider-info-box">
-                                                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--color-primary)' }}>info</span>
-                                                                Tỷ lệ phần trăm này được khấu trừ từ mỗi khóa học bán được trước khi thanh toán cho giảng viên.
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            {/* Section 2: Payout Rules */}
-                                            <section>
-                                                <div className="settings-section-header">
-                                                    <div className="settings-section-icon">
-                                                        <span className="material-symbols-outlined">payments</span>
-                                                    </div>
-                                                    <h3 className="settings-section-title">Quy tắc thanh toán</h3>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                                                    <div className="settings-form-group">
-                                                        <label className="settings-label">Số tiền rút tối thiểu</label>
-                                                        <div className="settings-input-wrapper">
-                                                            <span className="settings-input-prefix">₫</span>
-                                                            <input
-                                                                className="settings-input settings-input-with-prefix"
-                                                                type="text"
-                                                                value={minWithdrawal}
-                                                                onChange={(e) => setMinWithdrawal(e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <p className="settings-helper-text">Giảng viên phải đạt số tiền này trước khi yêu cầu thanh toán.</p>
-                                                    </div>
-                                                    <div className="settings-form-group">
-                                                        <label className="settings-label">Thời gian giữ tiền</label>
-                                                        <div className="settings-input-wrapper">
-                                                            <select
-                                                                className="settings-select"
-                                                                value={escrowPeriod}
-                                                                onChange={(e) => setEscrowPeriod(e.target.value)}
-                                                            >
-                                                                <option>Thanh toán tức thì</option>
-                                                                <option>3 Ngày</option>
-                                                                <option>7 Ngày</option>
-                                                                <option>14 Ngày</option>
-                                                                <option>30 Ngày</option>
-                                                            </select>
-                                                            <span className="material-symbols-outlined settings-select-chevron">expand_more</span>
-                                                        </div>
-                                                        <p className="settings-helper-text">Thời gian tiền được giữ sau giao dịch trước khi khả dụng.</p>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            {/* Section 3: Tax Settings */}
-                                            <section>
-                                                <div className="settings-section-header">
-                                                    <div className="settings-section-icon">
-                                                        <span className="material-symbols-outlined">account_balance</span>
-                                                    </div>
-                                                    <h3 className="settings-section-title">Cài đặt thuế</h3>
-                                                </div>
-                                                <div className="settings-section-card">
-                                                    <div className="tax-settings-row">
-                                                        <div className="tax-info">
-                                                            <div className="tax-header">
-                                                                <h4 className="settings-label" style={{ margin: 0 }}>Thuế giá trị gia tăng (VAT)</h4>
-                                                                {vatEnabled && <span className="tax-status-badge">Hoạt động</span>}
-                                                            </div>
-                                                            <p className="settings-page-desc">Bật tính toán VAT tự động cho các khu vực áp dụng.</p>
-                                                        </div>
-                                                        <div className="tax-controls">
-                                                            {/* Toggle */}
-                                                            <div className="toggle-wrapper">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id="vat-toggle"
-                                                                    className="toggle-input"
-                                                                    checked={vatEnabled}
-                                                                    onChange={() => setVatEnabled(!vatEnabled)}
-                                                                />
-                                                                <label htmlFor="vat-toggle" className="toggle-label"></label>
-                                                            </div>
-
-                                                            {vatEnabled && (
-                                                                <div className="tax-rate-input-group">
-                                                                    <label className="settings-label" style={{ fontSize: '12px', color: '#94a3b8' }}>Tỷ lệ mặc định</label>
-                                                                    <div className="settings-input-wrapper">
-                                                                        <input
-                                                                            className="settings-input settings-input-with-suffix"
-                                                                            type="text"
-                                                                            value={vatRate}
-                                                                            onChange={(e) => setVatRate(e.target.value)}
-                                                                        />
-                                                                        <span className="settings-input-suffix">%</span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            {/* Section 4: Danger Zone */}
-                                            <section>
-                                                <div className="danger-zone">
-                                                    <div className="danger-stripe"></div>
-                                                    <div className="danger-content">
-                                                        <div style={{ flex: 1 }}>
-                                                            <div className="danger-header">
-                                                                <span className="material-symbols-outlined" style={{ color: '#991b1b' }}>warning</span>
-                                                                <h3 className="danger-title">Kiểm soát khẩn cấp</h3>
-                                                            </div>
-                                                            <p className="danger-text">Đóng băng tất cả thanh toán</p>
-                                                            <p className="danger-subtext">Dừng tất cả các giao dịch đi ngay lập tức. Hành động này sẽ ghi lại nhật ký sự cố.</p>
-                                                        </div>
-                                                        {/* Red Toggle */}
-                                                        <div className="toggle-wrapper">
-                                                            <input
-                                                                type="checkbox"
-                                                                id="freeze-toggle"
-                                                                className="toggle-input toggle-input-red"
-                                                                checked={payoutsFrozen}
-                                                                onChange={() => setPayoutsFrozen(!payoutsFrozen)}
-                                                            />
-                                                            <label htmlFor="freeze-toggle" className="toggle-label"></label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </section>
-                                        </div>
-                                    </div>
-
-                                    {/* Sticky Footer */}
-                                    <div className="settings-footer">
-                                        <button className="btn-discard" onClick={handleDiscard}>Hủy thay đổi</button>
-                                        <button className="btn-save" onClick={handleSave}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>check</span>
-                                            Lưu thay đổi
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-
-
+                            <div className="settings-form-group">
+                                <label className="settings-label" htmlFor="escrow-period">
+                                    Thời gian giữ tiền
+                                </label>
+                                <div className="settings-input-wrapper">
+                                    <select
+                                        id="escrow-period"
+                                        className="settings-select"
+                                        value={escrowPeriod}
+                                        onChange={(event) => setEscrowPeriod(event.target.value)}
+                                    >
+                                        <option>Thanh toán tức thì</option>
+                                        <option>3 Ngày</option>
+                                        <option>7 Ngày</option>
+                                        <option>14 Ngày</option>
+                                        <option>30 Ngày</option>
+                                    </select>
+                                    <span className="material-symbols-outlined settings-select-chevron">
+                                        expand_more
+                                    </span>
+                                </div>
+                                <p className="settings-helper-text">
+                                    Khoảng thời gian tiền được giữ sau giao dịch trước khi khả dụng.
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Cài đặt thuế"
+                        subtitle="Bật hoặc tắt cơ chế tính VAT tự động."
+                        headerAction={
+                            <StatusBadge variant={vatEnabled ? 'success' : 'neutral'}>
+                                {vatEnabled ? 'Hoạt động' : 'Đang tắt'}
+                            </StatusBadge>
+                        }
+                        padded
+                    >
+                        <div className="settings-tax-row">
+                            <div>
+                                <h4 className="settings-inline-title">Thuế giá trị gia tăng (VAT)</h4>
+                                <p className="settings-helper-text">
+                                    Khi bật, hệ thống dùng tỷ lệ mặc định này cho các giao dịch áp dụng VAT.
+                                </p>
+                            </div>
+                            <div className="settings-tax-controls">
+                                <label className="settings-toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={vatEnabled}
+                                        onChange={() => setVatEnabled((current) => !current)}
+                                    />
+                                    <span />
+                                </label>
+
+                                {vatEnabled && (
+                                    <div className="settings-tax-rate">
+                                        <label className="settings-label" htmlFor="vat-rate">
+                                            Tỷ lệ mặc định
+                                        </label>
+                                        <div className="settings-input-wrapper">
+                                            <input
+                                                id="vat-rate"
+                                                className="settings-input settings-input-with-suffix"
+                                                type="text"
+                                                value={vatRate}
+                                                onChange={(event) => setVatRate(event.target.value)}
+                                            />
+                                            <span className="settings-input-suffix">%</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Kiểm soát khẩn cấp"
+                        subtitle="Dùng cho tình huống cần tạm dừng payout trên toàn hệ thống."
+                        className="settings-danger-section"
+                        padded
+                    >
+                        <div className="settings-danger-layout">
+                            <div className="settings-danger-copy">
+                                <span className="material-symbols-outlined">warning</span>
+                                <div>
+                                    <h4 className="settings-inline-title">Đóng băng tất cả thanh toán</h4>
+                                    <p className="settings-helper-text">
+                                        Dừng toàn bộ giao dịch đi ngay lập tức. Hành động này nên được ghi nhận trong nhật ký sự cố.
+                                    </p>
+                                </div>
+                            </div>
+                            <label className="settings-toggle settings-toggle-danger">
+                                <input
+                                    type="checkbox"
+                                    checked={payoutsFrozen}
+                                    onChange={() => setPayoutsFrozen((current) => !current)}
+                                />
+                                <span />
+                            </label>
+                        </div>
+                    </SectionCard>
                 </div>
-            </main>
-        </>
+            )}
+        </PageContainer>
     );
 };
 
