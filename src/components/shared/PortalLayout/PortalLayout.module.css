@@ -343,7 +343,7 @@
     flex-shrink: 0;
 }
 
-/* Force Ant Design Popconfirm wrapper (span) to align properly */
+/* Keep every header action aligned on the same baseline. */
 .headerRight > * {
     display: flex !important;
     align-items: center !important;
@@ -509,6 +509,97 @@
     background-color: rgba(99, 27, 27, 0.08);
     border-color: rgba(99, 27, 27, 0.3);
     color: #631b1b;
+}
+
+/* Logout confirmation dialog */
+.confirmOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(26, 34, 56, 0.42);
+    backdrop-filter: blur(8px);
+}
+
+.confirmDialog {
+    width: min(100%, 380px);
+    padding: 24px;
+    border: 1px solid rgba(62, 47, 40, 0.1);
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(26, 34, 56, 0.22);
+    text-align: center;
+}
+
+.confirmIcon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    border-radius: 16px;
+    background: rgba(99, 27, 27, 0.08);
+    color: #631b1b;
+}
+
+.confirmTitle {
+    margin: 0 0 8px;
+    color: #1a2238;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.confirmMessage {
+    margin: 0;
+    color: rgba(26, 34, 56, 0.62);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.confirmActions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.confirmCancelBtn,
+.confirmDangerBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.confirmCancelBtn {
+    background: #ffffff;
+    border-color: rgba(62, 47, 40, 0.12);
+    color: #1a2238;
+}
+
+.confirmCancelBtn:hover {
+    background: #f2f0e4;
+}
+
+.confirmDangerBtn {
+    background: #631b1b;
+    color: #ffffff;
+}
+
+.confirmDangerBtn:hover {
+    background: #7f1d1d;
 }
 
 /* ===== CONTENT AREA ===== */
