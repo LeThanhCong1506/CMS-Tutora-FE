@@ -13,11 +13,9 @@
 @import "./styles/pages/admin-dispute-detail.css";
 @import "./styles/pages/admin-financial.css";
 @import "./styles/pages/admin-payout.css";
-@import "./styles/pages/admin-settings.css";
 @import "./styles/pages/admin-user-management.css";
 @import "./styles/pages/admin-vetting-modal.css";
 
 /* ===== Auth + Error pages ===== */
 /* login.css của repo gốc dùng grid 2-col (hero+form) cho marketing — admin redesign inline trong LoginPage.tsx */
-@import "./styles/pages/error.css";
 @import "./styles/pages/error-pages.css";

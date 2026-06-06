@@ -309,22 +309,26 @@ const PayoutDetailPage: React.FC = () => {
                 </aside>
             </div>
 
-            <ApproveWithdrawalModal
-                open={approveModalOpen}
-                onCancel={() => setApproveModalOpen(false)}
-                onConfirm={handleApprove}
-                confirmLoading={actionLoading}
-                amount={requestInfo.amount}
-                tutorName={tutorInfo.name}
-            />
+            {approveModalOpen && (
+                <ApproveWithdrawalModal
+                    open={approveModalOpen}
+                    onCancel={() => setApproveModalOpen(false)}
+                    onConfirm={handleApprove}
+                    confirmLoading={actionLoading}
+                    amount={requestInfo.amount}
+                    tutorName={tutorInfo.name}
+                />
+            )}
 
-            <RejectWithdrawalModal
-                open={rejectModalOpen}
-                onCancel={() => setRejectModalOpen(false)}
-                onConfirm={handleReject}
-                confirmLoading={actionLoading}
-                tutorName={tutorInfo.name}
-            />
+            {rejectModalOpen && (
+                <RejectWithdrawalModal
+                    open={rejectModalOpen}
+                    onCancel={() => setRejectModalOpen(false)}
+                    onConfirm={handleReject}
+                    confirmLoading={actionLoading}
+                    tutorName={tutorInfo.name}
+                />
+            )}
         </PageContainer>
     );
 };
