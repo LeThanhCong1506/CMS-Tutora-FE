@@ -13,6 +13,11 @@ interface ApproveWithdrawalModalProps {
 const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: ApproveWithdrawalModalProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const handleClose = () => {
+        if (isSubmitting) return;
+        onClose();
+    };
+
     const handleApprove = async () => {
         if (!withdrawal) return;
 
@@ -32,162 +37,108 @@ const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: Appr
     if (!isOpen || !withdrawal) return null;
 
     return (
-        <div className="vetting-modal-overlay" onClick={onClose}>
-            <div
-                className="vetting-rejection-modal"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '550px' }}
+        <div className="financial-modal-overlay" onClick={handleClose} role="presentation">
+            <section
+                className="financial-modal-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="financial-approve-title"
+                aria-describedby="financial-approve-description"
+                onClick={(event) => event.stopPropagation()}
             >
-                <h3 style={{ color: '#166534' }}>✓ Xác nhận phê duyệt rút tiền</h3>
-                <p style={{ marginBottom: '20px', color: '#475569' }}>
-                    Bạn đang phê duyệt yêu cầu rút tiền. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận.
-                </p>
-
-                {/* Withdrawal Details */}
-                <div
-                    style={{
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '20px',
-                    }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {/* Tutor Info */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div
-                                style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '50%',
-                                    backgroundImage: `url('${withdrawal.tutoravatar}')`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
-                                }}
-                            ></div>
-                            <div>
-                                <p style={{ margin: '0 0 4px', fontWeight: 700, color: 'var(--color-navy)' }}>
-                                    {withdrawal.tutorname}
-                                </p>
-                                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-                                    {withdrawal.tutorsubject}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Amount */}
+                <header className="financial-modal-header">
+                    <div className="financial-modal-title-group">
+                        <span className="financial-modal-icon success material-symbols-outlined" aria-hidden="true">
+                            check_circle
+                        </span>
                         <div>
-                            <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
-                                Số tiền rút
-                            </p>
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: '24px',
-                                    fontWeight: 700,
-                                    color: 'var(--color-gold)',
-                                }}
-                            >
-                                {formatCurrency(withdrawal.amount)}
-                            </p>
-                        </div>
-
-                        {/* Bank Details */}
-                        <div>
-                            <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
-                                Thông tin ngân hàng
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span className="material-symbols-outlined" style={{ color: 'var(--color-navy)' }}>
-                                    account_balance
-                                </span>
-                                <div>
-                                    <p style={{ margin: '0 0 2px', fontWeight: 600, color: 'var(--color-navy)' }}>
-                                        {withdrawal.bankname}
-                                    </p>
-                                    <p
-                                        style={{
-                                            margin: 0,
-                                            fontSize: '13px',
-                                            color: '#64748b',
-                                            fontFamily: 'monospace',
-                                        }}
-                                    >
-                                        {withdrawal.bankaccountfull}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Request Date */}
-                        <div>
-                            <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
-                                Ngày yêu cầu
-                            </p>
-                            <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-navy)' }}>
-                                {formatDateTime(withdrawal.requestedat)}
-                            </p>
-                        </div>
-
-                        {/* Withdrawal ID */}
-                        <div>
-                            <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
-                                Mã yêu cầu
-                            </p>
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: '14px',
-                                    fontFamily: 'monospace',
-                                    fontWeight: 600,
-                                    color: 'var(--color-navy)',
-                                }}
-                            >
-                                {withdrawal.withdrawalid}
+                            <h2 id="financial-approve-title">Xác nhận phê duyệt rút tiền</h2>
+                            <p id="financial-approve-description">
+                                Kiểm tra thông tin tutor, ngân hàng và số tiền trước khi xử lý.
                             </p>
                         </div>
                     </div>
-                </div>
-
-                {/* Warning Message */}
-                <div
-                    style={{
-                        background: '#dcfce7',
-                        border: '1px solid #bbf7d0',
-                        borderRadius: '8px',
-                        padding: '12px',
-                        marginBottom: '20px',
-                    }}
-                >
-                    <p style={{ margin: 0, fontSize: '13px', color: '#166534', lineHeight: 1.5 }}>
-                        <strong>Lưu ý:</strong> Sau khi phê duyệt, tiền sẽ được chuyển đến tài khoản ngân hàng của gia
-                        sư trong vòng 1-3 ngày làm việc. Hành động này không thể hoàn tác.
-                    </p>
-                </div>
-
-                {/* Actions */}
-                <div className="vetting-rejection-footer">
                     <button
-                        className="vetting-btn vetting-btn-secondary"
-                        onClick={onClose}
+                        type="button"
+                        className="financial-modal-close"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                        aria-label="Đóng modal"
+                    >
+                        <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </header>
+
+                <div className="financial-modal-body">
+                    <div className="financial-withdrawal-card">
+                        <div className="financial-withdrawal-tutor">
+                            <img
+                                className="financial-avatar financial-avatar-lg"
+                                src={withdrawal.tutoravatar}
+                                alt=""
+                                loading="lazy"
+                            />
+                            <div className="financial-entity">
+                                <strong>{withdrawal.tutorname}</strong>
+                                <span>{withdrawal.tutorsubject}</span>
+                            </div>
+                        </div>
+
+                        <div className="financial-detail-grid">
+                            <div className="financial-detail-item highlight">
+                                <span>Số tiền rút</span>
+                                <strong>{formatCurrency(withdrawal.amount)}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Mã yêu cầu</span>
+                                <strong className="financial-code">{withdrawal.withdrawalid}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Ngân hàng</span>
+                                <strong>{withdrawal.bankname}</strong>
+                            </div>
+                            <div className="financial-detail-item">
+                                <span>Số tài khoản</span>
+                                <strong className="financial-code">{withdrawal.bankaccountfull}</strong>
+                            </div>
+                            <div className="financial-detail-item wide">
+                                <span>Ngày yêu cầu</span>
+                                <strong>{formatDateTime(withdrawal.requestedat)}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="financial-modal-alert success" role="note">
+                        <span className="material-symbols-outlined" aria-hidden="true">verified</span>
+                        <p>
+                            Sau khi phê duyệt, yêu cầu sẽ được đánh dấu đã xử lý. Hãy đảm bảo thông tin ngân hàng
+                            khớp với hồ sơ trước khi xác nhận.
+                        </p>
+                    </div>
+                </div>
+
+                <footer className="financial-modal-footer">
+                    <button
+                        type="button"
+                        className="admin-ui-button admin-ui-button-secondary"
+                        onClick={handleClose}
                         disabled={isSubmitting}
                     >
                         Hủy
                     </button>
                     <button
-                        className="vetting-btn"
+                        type="button"
+                        className="admin-ui-button admin-ui-button-success"
                         onClick={handleApprove}
                         disabled={isSubmitting}
-                        style={{
-                            background: '#166534',
-                            color: '#ffffff',
-                        }}
                     >
-                        {isSubmitting ? 'Đang xử lý...' : '✓ Xác nhận phê duyệt'}
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                            {isSubmitting ? 'progress_activity' : 'check_circle'}
+                        </span>
+                        {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
                     </button>
-                </div>
-            </div>
+                </footer>
+            </section>
         </div>
     );
 };
