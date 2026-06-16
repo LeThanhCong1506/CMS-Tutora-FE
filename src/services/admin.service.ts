@@ -131,8 +131,8 @@ export const updateTutorApproval = async (
       isApproved,
       reason: reason || '',
     };
-    // AdminController has [Route("api/admin")], so endpoint is /api/admin/tutors/{id}/approve
-    const { data } = await api.put(`/admin/tutors/${tutorId}/approve`, requestBody);
+    // AdminController has [Route("api/admin")], so endpoint is /api/admin/tutors/{id}/approval
+    const { data } = await api.put(`/admin/tutors/${tutorId}/approval`, requestBody);
     return data;
   } catch (error) {
     console.error('updateTutorApproval error:', error);
