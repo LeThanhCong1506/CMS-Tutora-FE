@@ -58,6 +58,9 @@ export interface NavItem {
     badge?: number;
     /** data-tour attribute value */
     dataTour?: string;
+    /** Optional sub-items. When present, clicking the item toggles an
+     *  expandable group instead of navigating. */
+    children?: NavItem[];
 }
 
 export interface PortalLayoutProps {
@@ -134,6 +137,8 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
     // ── Sidebar state ──
     const [sidebarOpenInternal, setSidebarOpenInternal] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    // Expand/collapse state for nav groups (items with children), keyed by path.
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
     const sidebarOpen = sidebarOpenExternal ?? sidebarOpenInternal;
 
     const setSidebarOpen = (open: boolean) => {
@@ -194,9 +199,9 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
             avatar: generateAvatarUrl(displayName),
         });
 
-        // Fetch real avatar from profile API
+        // Fetch real avatar from profile API (token-based; no id needed)
         if (showAvatarImage && user.userId) {
-            getUserProfile(user.userId).then((profile) => {
+            getUserProfile().then((profile) => {
                 const avatar = profile?.content?.avatarUrl || profile?.content?.avatarurl;
                 if (avatar) {
                     setUserData(prev => ({ ...prev, avatar }));
@@ -269,6 +274,30 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
         navigate('/login');
     };
 
+    // Icon + label + badge — shared by flat items, group toggles and sub-items.
+    const renderNavContent = (item: NavItem) => (
+        <>
+            {item.icon ? (
+                <item.icon />
+            ) : item.materialIcon ? (
+                <span className={`material-symbols-outlined ${styles.materialIcon}`}>
+                    {item.materialIcon}
+                </span>
+            ) : null}
+            <span className={styles.navText}>{item.label}</span>
+            {item.badge != null && item.badge > 0 && (
+                <>
+                    {/* Floating dot — hiển thị khi sidebar collapsed */}
+                    <span className={styles.navBadgeDot}>
+                        {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                    {/* Inline badge — hiển thị khi sidebar expanded */}
+                    <span className={styles.navBadge}>{item.badge}</span>
+                </>
+            )}
+        </>
+    );
+
     // ── Render ──
     return (
         <div className={styles.layout}>
@@ -302,6 +331,62 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                 {/* Navigation */}
                 <nav className={styles.sidebarNav}>
                     {navItems.map((item) => {
+                        // ── Group item with sub-items: toggles expansion ──
+                        if (item.children && item.children.length > 0) {
+                            const anyChildActive = item.children.some((c) => checkActive(c.path));
+                            const expanded = expandedGroups[item.path] ?? anyChildActive;
+
+                            return (
+                                <div key={item.path} className={styles.navGroup}>
+                                    <button
+                                        type="button"
+                                        className={`${styles.navItem} ${anyChildActive ? styles.navItemActive : ''}`}
+                                        title={item.label}
+                                        aria-expanded={expanded}
+                                        {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
+                                        onClick={() =>
+                                            setExpandedGroups((prev) => ({
+                                                ...prev,
+                                                [item.path]: !(prev[item.path] ?? anyChildActive),
+                                            }))
+                                        }
+                                    >
+                                        {renderNavContent(item)}
+                                        <span
+                                            className={`material-symbols-outlined ${styles.navChevron} ${expanded ? styles.navChevronOpen : ''}`}
+                                        >
+                                            expand_more
+                                        </span>
+                                    </button>
+
+                                    {expanded && (
+                                        <div className={styles.navSubmenu}>
+                                            {item.children.map((child) => {
+                                                const childActive = checkActive(child.path);
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        key={child.path}
+                                                        className={`${styles.navSubItem} ${childActive ? styles.navSubItemActive : ''}`}
+                                                        title={child.label}
+                                                        aria-current={childActive ? 'page' : undefined}
+                                                        {...(child.dataTour ? { 'data-tour': child.dataTour } : {})}
+                                                        onClick={() => {
+                                                            navigate(child.path);
+                                                            setSidebarOpen(false);
+                                                        }}
+                                                    >
+                                                        {renderNavContent(child)}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        // ── Flat item: navigates ──
                         const active = checkActive(item.path);
 
                         return (
@@ -317,25 +402,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                                 setSidebarOpen(false);
                             }}
                         >
-                            {/* Render SVG component icon or Material Symbol */}
-                            {item.icon ? (
-                                <item.icon />
-                            ) : item.materialIcon ? (
-                                <span className={`material-symbols-outlined ${styles.materialIcon}`}>
-                                    {item.materialIcon}
-                                </span>
-                            ) : null}
-                            <span className={styles.navText}>{item.label}</span>
-                            {item.badge != null && item.badge > 0 && (
-                                <>
-                                    {/* Floating dot — hiển thị khi sidebar collapsed */}
-                                    <span className={styles.navBadgeDot}>
-                                        {item.badge > 99 ? '99+' : item.badge}
-                                    </span>
-                                    {/* Inline badge — hiển thị khi sidebar expanded (hover) */}
-                                    <span className={styles.navBadge}>{item.badge}</span>
-                                </>
-                            )}
+                            {renderNavContent(item)}
                             </button>
                         );
                     })}
