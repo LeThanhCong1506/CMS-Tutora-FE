@@ -29,6 +29,7 @@ const ForbiddenPage = lazy(() => import('./pages/Error/ForbiddenPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboard/AdminDashboardPageEnhanced'));
 const UserManagementPage = lazy(() => import('./pages/AdminUserManagement/UserManagementPage'));
 const AdminVettingPage = lazy(() => import('./pages/AdminVetting/AdminVettingPage'));
+const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/AdminCertificateVettingPage'));
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
 const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBookingDetailPage'));
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
@@ -122,7 +123,9 @@ function App() {
               <Route index element={<Navigate to="/admin-portal/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="users" element={<UserManagementPage />} />
-              <Route path="vetting" element={<AdminVettingPage />} />
+              <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
+              <Route path="vetting/profiles" element={<AdminVettingPage />} />
+              <Route path="vetting/certificates" element={<AdminCertificateVettingPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
               <Route path="financials" element={<AdminFinancialsPage />} />
