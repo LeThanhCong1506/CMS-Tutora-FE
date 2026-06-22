@@ -6,14 +6,19 @@ import type { StatusVariant } from '../../components/shared';
  */
 export const BOOKING_STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
     pending_tutor: { label: 'Chờ gia sư xác nhận', variant: 'warning' },
-    pending_payment: { label: 'Chờ thanh toán', variant: 'warning' },
-    pending_remaining_payment: { label: 'Chờ thanh toán còn lại', variant: 'warning' },
     accepted: { label: 'Đã chấp nhận', variant: 'info' },
-    confirmed: { label: 'Đã xác nhận', variant: 'info' },
+    pending_payment: { label: 'Chờ thanh toán', variant: 'warning' },
+    deposit_paid: { label: 'Đã thanh toán cọc', variant: 'info' },
+    pending_remaining_payment: { label: 'Chờ thanh toán còn lại', variant: 'warning' },
+    paid: { label: 'Đã thanh toán', variant: 'success' },
+    ongoing: { label: 'Đang học', variant: 'success' },
     active: { label: 'Đang học', variant: 'success' },
+    confirmed: { label: 'Đã xác nhận', variant: 'info' },
     completed: { label: 'Đã hoàn thành', variant: 'success' },
     cancelled: { label: 'Đã hủy', variant: 'error' },
+    cancelled_noshow: { label: 'Đã hủy do vắng mặt', variant: 'error' },
     declined: { label: 'Đã từ chối', variant: 'error' },
+    payment_timeout: { label: 'Quá hạn thanh toán', variant: 'error' },
 };
 
 export function getBookingStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
@@ -63,10 +68,16 @@ export function getTeachingModeLabel(mode?: string): string {
 export const BOOKING_STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
     { value: '', label: 'Tất cả trạng thái' },
     { value: 'pending_tutor', label: 'Chờ gia sư xác nhận' },
-    { value: 'confirmed', label: 'Đã xác nhận' },
-    { value: 'active', label: 'Đang học' },
+    { value: 'accepted', label: 'Đã chấp nhận' },
+    { value: 'pending_payment', label: 'Chờ thanh toán' },
+    { value: 'deposit_paid', label: 'Đã thanh toán cọc' },
+    { value: 'pending_remaining_payment', label: 'Chờ thanh toán còn lại' },
+    { value: 'paid', label: 'Đã thanh toán' },
+    { value: 'ongoing', label: 'Đang học' },
     { value: 'completed', label: 'Đã hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
+    { value: 'cancelled_noshow', label: 'Đã hủy do vắng mặt' },
+    { value: 'payment_timeout', label: 'Quá hạn thanh toán' },
 ];
 
 /** Format VND currency. */

@@ -39,7 +39,7 @@ export default function AdminBookingDetailPage() {
 
     useEffect(() => {
         if (Number.isNaN(bookingId)) {
-            setErrorMsg('ID booking không hợp lệ.');
+            setErrorMsg('Mã đặt lịch không hợp lệ.');
             setLoading(false);
             return;
         }
@@ -56,10 +56,10 @@ export default function AdminBookingDetailPage() {
                 if (cancelled) return;
                 const status = (err as { response?: { status?: number } })?.response?.status;
                 if (status === 404) {
-                    setErrorMsg('Không tìm thấy booking này.');
+                    setErrorMsg('Không tìm thấy lịch đặt này.');
                 } else {
-                    setErrorMsg('Không thể tải chi tiết booking. Vui lòng thử lại.');
-                    toast.error('Không thể tải chi tiết booking.', {
+                    setErrorMsg('Không thể tải chi tiết đặt lịch. Vui lòng thử lại.');
+                    toast.error('Không thể tải chi tiết đặt lịch.', {
                         toastId: 'admin-booking-detail-error',
                     });
                 }
@@ -125,7 +125,7 @@ export default function AdminBookingDetailPage() {
             <section className={styles.detailHeader}>
                 <div>
                     <h1 className={styles.detailHeaderTitle}>
-                        Booking #{data.bookingId}
+                        Đặt lịch #{data.bookingId}
                         {data.paymentCode && (
                             <span
                                 style={{

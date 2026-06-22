@@ -8,6 +8,13 @@ interface Props {
     events: BookingTimelineEvent[];
 }
 
+const TIMELINE_LABELS: Record<string, string> = {
+    'Booking created': 'Đã tạo lịch đặt',
+    'Deposit paid': 'Đã thanh toán tiền cọc',
+    'Full payment received': 'Đã thanh toán toàn bộ',
+    'Booking cancelled': 'Đã hủy lịch đặt',
+};
+
 /**
  * Vertical timeline cho booking events.
  * Dot — line — content layout. Sort theo `occurredAt` ASC (cũ → mới).
@@ -45,7 +52,9 @@ export default function BookingTimelineCard({ events }: Props) {
                             </div>
                             <div className={styles.timelineContent}>
                                 <div className={styles.timelineHeader}>
-                                    <span className={styles.timelineLabel}>{event.label}</span>
+                                    <span className={styles.timelineLabel}>
+                                        {TIMELINE_LABELS[event.label] ?? event.label}
+                                    </span>
                                     {statusDisplay && (
                                         <StatusBadge variant={statusDisplay.variant} shape="tag">
                                             {statusDisplay.label}
