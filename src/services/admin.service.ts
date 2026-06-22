@@ -1,20 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-useless-catch */
 import axios from 'axios';
 import { getCurrentUser } from './auth.service';
 import { setupAuthInterceptor } from './apiClient';
 import type {
   // Vetting
-  // TutorForReview,
-  TutorDetailForReview,
-  ApproveTutorResponse,
-  RejectTutorRequest,
-  RejectTutorResponse,
-  VerifyIdentityResponse,
-  VerifyCredentialResponse,
   PendingTutorFromAPI,
   PendingTutorsAPIResponse,
   TutorApprovalRequest,
+  AdminVerifyCertificateResponse,
+  PendingCertificate,
+  PendingCertificatesResponse,
   // Disputes (backend-compatible)
   DisputeForAdmin,
   DisputeDetail,
@@ -62,7 +57,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - Handle 401 (token expired)
@@ -80,17 +75,44 @@ setupAuthInterceptor(api);
 
 /**
  * Get list of pending tutors for review
- * API: GET /api/tutors/pending
+ * API: GET /api/admin/tutors/pending
+ *
+ * The response body only carries the current page slice (`content`); the true
+ * total across all pages comes from the `X-Pagination` header (BE caps PageSize
+ * at 50). We surface `total` so the UI can paginate and show an accurate count.
  */
 export const getPendingTutors = async (
   pageNumber: number = 1,
-  pageSize: number = 10
-): Promise<PendingTutorsAPIResponse> => {
+  pageSize: number = 10,
+  options?: { searchTerm?: string; orderBy?: string },
+): Promise<{ content: PendingTutorFromAPI[]; total: number }> => {
   try {
-    const { data } = await api.get<PendingTutorsAPIResponse>('/tutors/pending', {
-      params: { PageNumber: pageNumber, PageSize: pageSize },
+    // BE searches Fullname/Email/Phone/Username server-side; OrderBy accepts
+    // "createdat_asc" (oldest first — FIFO review queue) or defaults to newest.
+    const params: Record<string, string | number> = {
+      PageNumber: pageNumber,
+      PageSize: pageSize,
+    };
+    if (options?.searchTerm) params.SearchTerm = options.searchTerm;
+    if (options?.orderBy) params.OrderBy = options.orderBy;
+
+    const response = await api.get<PendingTutorsAPIResponse>('/admin/tutors/pending', {
+      params,
     });
-    return data;
+    const content = response.data.content || [];
+
+    let total = content.length;
+    const paginationHeader = response.headers['x-pagination'];
+    if (paginationHeader) {
+      try {
+        const pagination = JSON.parse(paginationHeader);
+        total = pagination.TotalCount ?? total;
+      } catch {
+        /* malformed header — fall back to page length */
+      }
+    }
+
+    return { content, total };
   } catch (error) {
     console.error('getPendingTutors error:', error);
     throw error;
@@ -101,9 +123,7 @@ export const getPendingTutors = async (
  * Get single pending tutor (từ danh sách pending đã fetch)
  * Không cần API riêng vì data đã đầy đủ từ /api/tutors/pending
  */
-export const getPendingTutorById = async (
-  tutorId: string
-): Promise<PendingTutorFromAPI | null> => {
+export const getPendingTutorById = async (tutorId: string): Promise<PendingTutorFromAPI | null> => {
   try {
     const response = await getPendingTutors(1, 100);
     const tutor = response.content.find((t) => t.userid === tutorId);
@@ -121,11 +141,7 @@ export const getPendingTutorById = async (
  * @param isApproved - true = approve, false = reject
  * @param reason - Lý do (bắt buộc khi reject)
  */
-export const updateTutorApproval = async (
-  tutorId: string,
-  isApproved: boolean,
-  reason?: string
-): Promise<any> => {
+export const updateTutorApproval = async (tutorId: string, isApproved: boolean, reason?: string): Promise<any> => {
   try {
     const requestBody: TutorApprovalRequest = {
       isApproved,
@@ -141,87 +157,106 @@ export const updateTutorApproval = async (
 };
 
 /**
- * Get detailed tutor information for review
- * Includes: user info, profile, subjects, availability, credentials
+ * Approve or reject a certificate after manual admin review.
+ * API: PUT /api/admin/tutors/{tutorId}/certificates/{certId}/verify
+ * @param isApproved - true = verified, false = rejected
+ * @param note - Admin note; required by BE when rejecting
+ * Returns the updated certificate; `isProfileActivated` is true when approving
+ * this certificate made the whole tutor profile eligible and it went Active.
  */
-export const getTutorDetailForReview = async (
-  tutorId: string
-): Promise<TutorDetailForReview> => {
-  try {
-    const { data } = await api.get(`/admin/vetting/${tutorId}`);
-    return data;
-  } catch (error) {
-    console.error('getTutorDetailForReview error:', error);
-    throw error;
-  }
-};
-
-/**
- * Approve tutor profile
- * Updates: profilestatus = 'approved', ispublic = true, verifiedat, verifiedby
- */
-export const approveTutor = async (
-  tutorId: string
-): Promise<ApproveTutorResponse> => {
-  try {
-    const { data } = await api.post(`/admin/vetting/${tutorId}/approve`);
-    return data;
-  } catch (error) {
-    console.error('approveTutor error:', error);
-    throw error;
-  }
-};
-
-/**
- * Reject tutor profile with reason
- * @param tutorId - Tutor ID
- * @param rejectionNote - Rejection reason (min 20 chars)
- */
-export const rejectTutor = async (
+export const adminVerifyCertificate = async (
   tutorId: string,
-  request: RejectTutorRequest
-): Promise<RejectTutorResponse> => {
+  certId: string,
+  isApproved: boolean,
+  note?: string,
+): Promise<AdminVerifyCertificateResponse> => {
   try {
-    const { data } = await api.post(`/admin/vetting/${tutorId}/reject`, request);
-    return data;
+    const { data } = await api.put(`/admin/tutors/${tutorId}/certificates/${certId}/verify`, {
+      isApproved,
+      note: note || '',
+    });
+    return data.content;
   } catch (error) {
-    console.error('rejectTutor error:', error);
+    console.error('adminVerifyCertificate error:', error);
     throw error;
   }
 };
 
-/**
- * Verify tutor identity (CCCD)
- * Updates: users.isidentityverified = true
- */
-export const verifyTutorIdentity = async (
-  tutorId: string
-): Promise<VerifyIdentityResponse> => {
-  try {
-    const { data } = await api.post(`/admin/vetting/${tutorId}/verify-identity`);
-    return data;
-  } catch (error) {
-    console.error('verifyTutorIdentity error:', error);
-    throw error;
-  }
-};
+// Raw item shape returned by GET /api/admin/certificates/pending (BE camelCase).
+interface RawPendingCertificate {
+  certificateId: string;
+  certificateName: string;
+  certificateType: string | null;
+  issuingOrganization: string;
+  yearIssued: number | null;
+  credentialId: string | null;
+  credentialUrl: string | null;
+  verificationStatus: string | null;
+  certificateFileUrl: string | null;
+  createdAt: string | null;
+  tutorId: string;
+  tutorFullName: string | null;
+  tutorEmail: string | null;
+  tutorAvatarUrl: string | null;
+}
 
 /**
- * Verify individual credential (certificate)
- * @param tutorId - Tutor ID
- * @param credentialIndex - Index of credential in JSONB array
+ * List certificates for admin review (cert-centric, server-paginated).
+ * API: GET /api/admin/certificates/pending
+ *
+ * Covers all certs in the chosen status — including those of already-Active
+ * tutors. Search / sort / pagination are handled server-side; `total` comes from
+ * the X-Pagination header.
+ *
+ * @param options.status  - "pending_review" (default) | "verified" | "rejected" | "all"
+ * @param options.orderBy - "createdat_desc" (default) | "createdat_asc" | "tutorname_asc" | "tutorname_desc"
  */
-export const verifyCredential = async (
-  tutorId: string,
-  credentialIndex: number
-): Promise<VerifyCredentialResponse> => {
+export const getPendingCertificates = async (
+  pageNumber: number = 1,
+  pageSize: number = 15,
+  options?: { searchTerm?: string; orderBy?: string; status?: string },
+): Promise<PendingCertificatesResponse> => {
   try {
-    const { data } = await api.post(
-      `/admin/vetting/${tutorId}/credentials/${credentialIndex}/verify`
-    );
-    return data;
+    const params: Record<string, string | number> = {
+      PageNumber: pageNumber,
+      PageSize: pageSize,
+    };
+    if (options?.searchTerm) params.SearchTerm = options.searchTerm;
+    if (options?.orderBy) params.OrderBy = options.orderBy;
+    if (options?.status) params.Status = options.status;
+
+    const response = await api.get('/admin/certificates/pending', { params });
+
+    const raw: RawPendingCertificate[] = response.data.content ?? [];
+    const content: PendingCertificate[] = raw.map((r) => ({
+      certificateId: r.certificateId,
+      certificateName: r.certificateName,
+      certificateType: r.certificateType?.trim() || null,
+      issuingOrganization: r.issuingOrganization,
+      yearIssued: r.yearIssued ?? null,
+      credentialId: r.credentialId ?? null,
+      credentialUrl: r.credentialUrl ?? null,
+      verificationStatus: r.verificationStatus ?? 'pending_review',
+      certificateFileUrl: r.certificateFileUrl ?? null,
+      createdAt: r.createdAt ?? null,
+      tutorId: r.tutorId,
+      tutorName: r.tutorFullName ?? '',
+      tutorEmail: r.tutorEmail ?? '',
+      tutorAvatarUrl: r.tutorAvatarUrl ?? null,
+    }));
+
+    let total = content.length;
+    const header = response.headers['x-pagination'];
+    if (header) {
+      try {
+        total = JSON.parse(header).TotalCount ?? total;
+      } catch {
+        /* ignore */
+      }
+    }
+    return { content, total };
   } catch (error) {
-    console.error('verifyCredential error:', error);
+    console.error('getPendingCertificates error:', error);
     throw error;
   }
 };
@@ -235,9 +270,7 @@ export const verifyCredential = async (
  * Backend: GET /api/admin/disputes?status=&page=&pageSize=
  * Returns APIResponse<PagedList<DisputeListDto>>
  */
-export const getDisputes = async (
-  params?: DisputeQueryParams
-): Promise<DisputeForAdmin[]> => {
+export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeForAdmin[]> => {
   try {
     const { data } = await api.get('/admin/disputes', { params });
     // Backend returns APIResponse<PagedList<T>> where PagedList serializes as array with pagination metadata
@@ -251,9 +284,7 @@ export const getDisputes = async (
 /**
  * Get list of disputes (legacy wrapper using old types)
  */
-export const getDisputesLegacy = async (
-  filters?: FilterParams
-): Promise<DisputeListItem[]> => {
+export const getDisputesLegacy = async (filters?: FilterParams): Promise<DisputeListItem[]> => {
   try {
     const { data } = await api.get('/admin/disputes', { params: filters });
     return data.content || [];
@@ -268,9 +299,7 @@ export const getDisputesLegacy = async (
  * Backend: GET /api/admin/disputes/{disputeId}
  * Returns APIResponse<DisputeDetailDto>
  */
-export const getDisputeDetail = async (
-  disputeId: string | number
-): Promise<DisputeDetail> => {
+export const getDisputeDetail = async (disputeId: string | number): Promise<DisputeDetail> => {
   try {
     const { data } = await api.get(`/admin/disputes/${disputeId}`);
     return data.content;
@@ -287,7 +316,7 @@ export const getDisputeDetail = async (
  */
 export const resolveDispute = async (
   disputeId: string | number,
-  request: ResolveDisputeRequest
+  request: ResolveDisputeRequest,
 ): Promise<DisputeDetail> => {
   try {
     const { data } = await api.put(`/admin/disputes/${disputeId}/resolve`, request);
@@ -310,9 +339,7 @@ export const resolveDispute = async (
  * historical reasons; we remap to camelCase here and parse the optional
  * booking id from string to int (BE rejects strings).
  */
-export const issueWarning = async (
-  request: IssueWarningRequest
-): Promise<ApiResponse<any>> => {
+export const issueWarning = async (request: IssueWarningRequest): Promise<ApiResponse<any>> => {
   try {
     const { userid, warninglevel, reason, relatedbookingid } = request;
 
@@ -348,9 +375,7 @@ export const issueWarning = async (
  * Kept the name `suspendTutor` for backward compatibility with the
  * AdminDisputes page; the underlying BE endpoint is generic across roles.
  */
-export const suspendTutor = async (
-  request: SuspendUserRequest
-): Promise<ApiResponse<any>> => {
+export const suspendTutor = async (request: SuspendUserRequest): Promise<ApiResponse<any>> => {
   try {
     const { userid, suspensiontype, reason, durationDays } = request;
     const body = {
@@ -370,10 +395,7 @@ export const suspendTutor = async (
  * Lock user account
  * Updates users.status = 'locked'
  */
-export const lockAccount = async (
-  userId: string,
-  reason: string
-): Promise<ApiResponse<any>> => {
+export const lockAccount = async (userId: string, reason: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.post(`/admin/users/${userId}/lock`, { reason });
     return data;
@@ -405,9 +427,7 @@ export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
  * Get list of withdrawal requests
  * @param status - Filter by status (pending, approved, rejected, completed)
  */
-export const getWithdrawalRequests = async (
-  status?: string
-): Promise<WithdrawalRequest[]> => {
+export const getWithdrawalRequests = async (status?: string): Promise<WithdrawalRequest[]> => {
   try {
     const { data } = await api.get('/admin/financials/withdrawals', {
       params: status ? { status } : {},
@@ -423,13 +443,9 @@ export const getWithdrawalRequests = async (
  * Approve withdrawal request
  * Creates transaction, updates withdrawal status
  */
-export const approveWithdrawal = async (
-  withdrawalId: string
-): Promise<ApiResponse<any>> => {
+export const approveWithdrawal = async (withdrawalId: string): Promise<ApiResponse<any>> => {
   try {
-    const { data } = await api.post(
-      `/admin/financials/withdrawals/${withdrawalId}/approve`
-    );
+    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/approve`);
     return data;
   } catch (error) {
     console.error('approveWithdrawal error:', error);
@@ -442,15 +458,9 @@ export const approveWithdrawal = async (
  * @param withdrawalId - Withdrawal ID
  * @param reason - Rejection reason
  */
-export const rejectWithdrawal = async (
-  withdrawalId: string,
-  reason: string
-): Promise<ApiResponse<any>> => {
+export const rejectWithdrawal = async (withdrawalId: string, reason: string): Promise<ApiResponse<any>> => {
   try {
-    const { data } = await api.post(
-      `/admin/financials/withdrawals/${withdrawalId}/reject`,
-      { reason }
-    );
+    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/reject`, { reason });
     return data;
   } catch (error) {
     console.error('rejectWithdrawal error:', error);
@@ -462,7 +472,7 @@ export const rejectWithdrawal = async (
  * Get transaction history with pagination and filters
  */
 export const getTransactions = async (
-  params?: PaginationParams & FilterParams
+  params?: PaginationParams & FilterParams,
 ): Promise<{ transactions: Transaction[]; total: number }> => {
   try {
     const { data } = await api.get('/admin/financials/transactions', { params });
@@ -490,7 +500,7 @@ export const getAllUsers = async (
     pageNumber?: number;
     pageSize?: number;
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<{ users: UserListItem[]; total: number }> => {
   try {
     const response = await api.get('/admin/users', { params, signal });
@@ -502,7 +512,9 @@ export const getAllUsers = async (
       try {
         const pagination = JSON.parse(paginationHeader);
         total = pagination.TotalCount ?? total;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     const users: UserListItem[] = (data.content || []).map((u: any) => ({
       userid: u.userid,
@@ -530,7 +542,16 @@ export const getAllUsers = async (
  */
 export const updateUser = async (
   userId: string,
-  request: { fullname?: string; email?: string; phone?: string; primaryrole?: string; status?: number; address?: string; gender?: string; avatarurl?: string }
+  request: {
+    fullname?: string;
+    email?: string;
+    phone?: string;
+    primaryrole?: string;
+    status?: number;
+    address?: string;
+    gender?: string;
+    avatarurl?: string;
+  },
 ): Promise<void> => {
   try {
     await api.put(`/admin/users/${userId}`, request);
@@ -554,6 +575,21 @@ export const deactivateUser = async (userId: string): Promise<void> => {
 };
 
 /**
+ * Reactivate user (set status = 1).
+ * Backend: PUT /api/admin/users/{id}/reactivate
+ * Unlike a plain status update, this also restores Ispublic = true for a tutor
+ * whose profile is Active, so the profile reappears on the marketplace.
+ */
+export const reactivateUser = async (userId: string): Promise<void> => {
+  try {
+    await api.put(`/admin/users/${userId}/reactivate`);
+  } catch (error) {
+    console.error('reactivateUser error:', error);
+    throw error;
+  }
+};
+
+/**
  * Get detailed user information
  * Includes: user info, wallet, warnings, suspensions, stats
  */
@@ -571,10 +607,7 @@ export const getUserDetail = async (userId: string): Promise<UserDetail> => {
  * Block user account
  * Updates users.status = 'blocked'
  */
-export const blockUser = async (
-  userId: string,
-  reason: string
-): Promise<ApiResponse<any>> => {
+export const blockUser = async (userId: string, reason: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.post(`/admin/users/${userId}/block`, { reason });
     return data;
@@ -602,9 +635,7 @@ export const unblockUser = async (userId: string): Promise<ApiResponse<any>> => 
  * Reset user password
  * Sends reset email to user
  */
-export const resetUserPassword = async (
-  userId: string
-): Promise<ApiResponse<any>> => {
+export const resetUserPassword = async (userId: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.post(`/admin/users/${userId}/reset-password`);
     return data;
@@ -634,9 +665,7 @@ export const getSubjects = async (): Promise<Subject[]> => {
 /**
  * Create new subject
  */
-export const createSubject = async (
-  subject: Partial<Subject>
-): Promise<ApiResponse<Subject>> => {
+export const createSubject = async (subject: Partial<Subject>): Promise<ApiResponse<Subject>> => {
   try {
     const { data } = await api.post('/admin/settings/subjects', subject);
     return data;
@@ -649,10 +678,7 @@ export const createSubject = async (
 /**
  * Update existing subject
  */
-export const updateSubject = async (
-  subjectId: string,
-  subject: Partial<Subject>
-): Promise<ApiResponse<Subject>> => {
+export const updateSubject = async (subjectId: string, subject: Partial<Subject>): Promise<ApiResponse<Subject>> => {
   try {
     const { data } = await api.put(`/admin/settings/subjects/${subjectId}`, subject);
     return data;
@@ -666,9 +692,7 @@ export const updateSubject = async (
  * Delete subject (soft delete)
  * Updates isactive = false
  */
-export const deleteSubject = async (
-  subjectId: string
-): Promise<ApiResponse<any>> => {
+export const deleteSubject = async (subjectId: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.delete(`/admin/settings/subjects/${subjectId}`);
     return data;
@@ -694,9 +718,7 @@ export const getPlatformConfig = async (): Promise<PlatformConfig> => {
 /**
  * Update platform configuration
  */
-export const updatePlatformConfig = async (
-  config: Partial<PlatformConfig>
-): Promise<ApiResponse<PlatformConfig>> => {
+export const updatePlatformConfig = async (config: Partial<PlatformConfig>): Promise<ApiResponse<PlatformConfig>> => {
   try {
     const { data } = await api.put('/admin/settings/platform-config', config);
     return data;
@@ -714,10 +736,7 @@ export const updatePlatformConfig = async (
  * Export data to CSV
  * Generic function for exporting any data
  */
-export const exportToCSV = async (
-  endpoint: string,
-  filename: string
-): Promise<void> => {
+export const exportToCSV = async (endpoint: string, filename: string): Promise<void> => {
   try {
     const { data } = await api.get(endpoint, {
       responseType: 'blob',
@@ -742,9 +761,7 @@ export const exportToCSV = async (
  * Backend: GET /api/admin/disputes/{disputeId}/chat
  * Returns APIResponse<List<ChatMessageResponseDTO>>
  */
-export const getDisputeChatHistory = async (
-  disputeId: string | number
-): Promise<any[]> => {
+export const getDisputeChatHistory = async (disputeId: string | number): Promise<any[]> => {
   try {
     const { data } = await api.get(`/admin/disputes/${disputeId}/chat`);
     return data.content || [];
@@ -759,23 +776,16 @@ export const getDisputeChatHistory = async (
  * @param disputeId - Dispute ID
  * @param file - File to upload
  */
-export const uploadDisputeEvidence = async (
-  disputeId: string,
-  file: File
-): Promise<ApiResponse<string>> => {
+export const uploadDisputeEvidence = async (disputeId: string, file: File): Promise<ApiResponse<string>> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
 
-    const { data } = await api.post(
-      `/admin/disputes/${disputeId}/evidence`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
+    const { data } = await api.post(`/admin/disputes/${disputeId}/evidence`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return data;
   } catch (error) {
     console.error('uploadDisputeEvidence error:', error);
@@ -792,9 +802,7 @@ export const uploadDisputeEvidence = async (
  * Backend: PUT /api/admin/disputes/{disputeId}/investigate
  * Returns APIResponse<DisputeDetailDto>
  */
-export const investigateDispute = async (
-  disputeId: string | number
-): Promise<DisputeDetail> => {
+export const investigateDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
   try {
     const { data } = await api.put(`/admin/disputes/${disputeId}/investigate`);
     return data.content;
@@ -822,9 +830,7 @@ export const getDisputeStats = async (): Promise<DisputeStatsDto> => {
 /**
  * Get user warning summary
  */
-export const getUserWarnings = async (
-  userId: string
-): Promise<ApiResponse<any>> => {
+export const getUserWarnings = async (userId: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.get(`/admin/warnings/users/${userId}`);
     return data;
@@ -837,9 +843,7 @@ export const getUserWarnings = async (
 /**
  * Unsuspend a user
  */
-export const unsuspendUser = async (
-  userId: string
-): Promise<ApiResponse<any>> => {
+export const unsuspendUser = async (userId: string): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.put(`/admin/warnings/users/${userId}/unsuspend`);
     return data;
@@ -852,10 +856,7 @@ export const unsuspendUser = async (
 /**
  * Get all active suspensions
  */
-export const getActiveSuspensions = async (
-  page: number = 1,
-  pageSize: number = 10
-): Promise<ApiResponse<any>> => {
+export const getActiveSuspensions = async (page: number = 1, pageSize: number = 10): Promise<ApiResponse<any>> => {
   try {
     const { data } = await api.get('/admin/warnings/suspensions', {
       params: { page, pageSize },
