@@ -263,6 +263,18 @@ const AdminVettingPage = () => {
         <PageContainer title="Kiểm duyệt gia sư" maxWidth="wide">
           <SectionCard
             title="Hồ sơ chờ duyệt"
+            headerAction={
+              <button
+                type="button"
+                className="vetting-refresh-button"
+                onClick={() => void fetchPendingTutors()}
+                disabled={loading}
+                aria-label="Làm mới danh sách hồ sơ chờ duyệt"
+              >
+                <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+                Làm mới
+              </button>
+            }
             footer={
               <div className="certificate-table-footer">
                 <span>
