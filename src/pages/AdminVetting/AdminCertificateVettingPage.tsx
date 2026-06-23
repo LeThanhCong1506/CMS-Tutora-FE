@@ -314,6 +314,18 @@ const AdminCertificateVettingPage = () => {
       <PageContainer title="Kiểm duyệt chứng chỉ" maxWidth="wide">
         <SectionCard
           title="Chứng chỉ chờ duyệt"
+          headerAction={
+            <button
+              type="button"
+              className="vetting-refresh-button"
+              onClick={() => void fetchCertificates()}
+              disabled={loading}
+              aria-label="Làm mới danh sách chứng chỉ chờ duyệt"
+            >
+              <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+              Làm mới
+            </button>
+          }
           footer={
             <div className="certificate-table-footer">
               <span>
