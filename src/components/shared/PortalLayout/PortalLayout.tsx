@@ -340,7 +340,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                                 <div key={item.path} className={styles.navGroup}>
                                     <button
                                         type="button"
-                                        className={`${styles.navItem} ${anyChildActive ? styles.navItemActive : ''}`}
+                                        className={`${styles.navItem} ${anyChildActive ? styles.navItemGroupActive : ''}`}
                                         title={item.label}
                                         aria-expanded={expanded}
                                         {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}

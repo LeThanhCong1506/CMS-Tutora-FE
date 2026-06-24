@@ -1,6 +1,6 @@
 /* ===== SHARED PORTAL LAYOUT ===== */
 /* Dark Navy Sidebar on LEFT, Cream/White Main Content on RIGHT */
-/* Desktop sidebar is persistent; tablet/mobile uses an overlay drawer. */
+/* Collapsible sidebar: 68px collapsed, 288px on hover. Tablet/mobile uses an overlay drawer. */
 
 /* Main Layout */
 .layout {
@@ -14,12 +14,12 @@
     background-color: #f2f0e4;
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== SIDEBAR (Collapsible) ===== */
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    width: 264px;
+    width: 68px;
     height: 100vh;
     background-color: #1a2238;
     display: flex;
@@ -27,11 +27,11 @@
     z-index: 100;
     box-sizing: border-box;
     overflow: hidden;
-    transition: transform 0.3s ease;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar:hover {
-    width: 264px;
+    width: 288px;
 }
 
 /* Sidebar Logo */
@@ -59,7 +59,7 @@
     line-height: 28px;
     letter-spacing: -0.52px;
     color: #f2f0e4;
-    opacity: 1;
+    opacity: 0;
     white-space: nowrap;
     transition: opacity 0.2s ease 0.05s;
 }
@@ -98,6 +98,24 @@
     min-height: 40px;
     box-sizing: border-box;
     appearance: none;
+    overflow: hidden;
+}
+
+.navItem::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background-color: #f2f0e4;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.navItem > * {
+    position: relative;
+    z-index: 1;
 }
 
 .navItem:hover {
@@ -115,8 +133,13 @@
     font-size: 18px;
     margin-left: auto;
     flex-shrink: 0;
+    opacity: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease 0.05s;
+}
+
+/* Chevron only meaningful once labels are visible (sidebar expanded). */
+.sidebar:hover .navChevron {
     opacity: 0.7;
-    transition: transform 0.2s ease;
 }
 
 .navChevronOpen {
@@ -129,6 +152,14 @@
     gap: 2px;
     margin: 2px 0;
     padding-left: 22px;
+}
+
+/* Desktop: while collapsed (not hovered) the sidebar is too narrow for the
+   indented sub-items, so hide an expanded submenu until the sidebar reveals. */
+@media (min-width: 1025px) {
+    .sidebar:not(:hover) .navSubmenu {
+        display: none;
+    }
 }
 
 .navSubItem {
@@ -152,6 +183,39 @@
     min-height: 34px;
     box-sizing: border-box;
     appearance: none;
+    overflow: hidden;
+}
+
+.navSubItem::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background-color: #f2f0e4;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.navSubItem::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 5px;
+    z-index: 1;
+    width: 3px;
+    border-radius: 999px;
+    background-color: #d4b483;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.navSubItem > * {
+    position: relative;
+    z-index: 2;
 }
 
 .navSubItem:hover {
@@ -161,8 +225,22 @@
 
 .navSubItemActive,
 .navSubItemActive:hover {
-    background-color: rgba(242, 240, 228, 0.16);
-    color: #f2f0e4;
+    background-color: transparent;
+    color: #1a2238;
+    font-weight: 700;
+}
+
+.navSubItemActive::before {
+    opacity: 1;
+}
+
+.navSubItemActive::after {
+    opacity: 1;
+}
+
+.navSubItemActive .navBadge {
+    background-color: #ef4444;
+    color: #fff;
 }
 
 .navSubItem .materialIcon {
@@ -171,9 +249,31 @@
     height: 16px;
 }
 
-.navItemActive {
-    background-color: #f2f0e4;
+.navItemActive,
+.navItemActive:hover {
+    background-color: transparent;
     color: #1a2238;
+}
+
+.navItemActive::before {
+    opacity: 1;
+}
+
+.navItemGroupActive,
+.navItemGroupActive:hover {
+    background-color: transparent;
+    color: #f2f0e4;
+    font-weight: 700;
+}
+
+.navItemGroupActive::before {
+    background-color: rgba(242, 240, 228, 0.12);
+    opacity: 1;
+}
+
+.navItemGroupActive .navChevron {
+    color: #f2f0e4;
+    opacity: 0.9;
 }
 
 .navItem svg {
@@ -200,7 +300,7 @@
 
 .navText {
     flex: 1;
-    opacity: 1;
+    opacity: 0;
     white-space: nowrap;
     transition: opacity 0.2s ease 0.05s;
     overflow: hidden;
@@ -224,7 +324,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    opacity: 1;
+    opacity: 0;
     transition: opacity 0.2s ease 0.05s;
 }
 
@@ -252,8 +352,7 @@
     justify-content: center;
     border: 1.5px solid #1a2238;
     box-sizing: border-box;
-    display: none;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.2s ease;
     pointer-events: none;
     z-index: 2;
@@ -278,9 +377,16 @@
     display: flex;
     align-items: center;
     gap: 10.5px;
-    padding: 10.5px;
+    padding: 10.5px 8.5px;
     border-radius: 10.5px;
     background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Widen the card padding once the sidebar is expanded (hover / mobile drawer). */
+.sidebar:hover .userCard,
+.sidebarOpen .userCard {
+    padding-right: 10.5px;
+    padding-left: 10.5px;
 }
 
 .userAvatar {
@@ -319,7 +425,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    opacity: 1;
+    opacity: 0;
     white-space: nowrap;
     transition: opacity 0.2s ease 0.05s;
     overflow: hidden;
@@ -349,7 +455,7 @@
 
 /* ===== MAIN CONTENT AREA (Right Side) ===== */
 .main {
-    margin-left: 264px;
+    margin-left: 68px;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -362,7 +468,7 @@
 
 /* Push content when sidebar is hovered */
 .sidebar:hover ~ .main {
-    margin-left: 264px;
+    margin-left: 288px;
 }
 
 /* ===== HEADER ===== */
@@ -837,6 +943,11 @@
     .sidebar .userInfo,
     .sidebar .navBadge {
         opacity: 1;
+    }
+
+    /* Chevron is hover-gated on desktop; the drawer has no hover, so reveal it. */
+    .sidebar .navChevron {
+        opacity: 0.7;
     }
 
     /* Mobile sidebar luôn full-width khi mở → ẩn dot floating, dùng inline badge */

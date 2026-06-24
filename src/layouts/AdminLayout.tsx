@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
-import { getPendingTutors } from '../services/admin.service';
+import { getPendingTutors, getPendingCertificates } from '../services/admin.service';
+
+// BE caps PageSize at 50 and the CORS policy doesn't expose the X-Pagination
+// header, so `total` falls back to the returned slice length. Request the full
+// cap in one page so the badge counts reflect the real pending totals.
+const BADGE_FETCH_SIZE = 50;
 
 const AdminLayout: React.FC = () => {
-    const [pendingCount, setPendingCount] = useState(0);
+    const [pendingTutors, setPendingTutors] = useState(0);
+    const [pendingCertificates, setPendingCertificates] = useState(0);
 
-    // Fetch pending tutors count for vetting badge
+    // Fetch pending profile + certificate counts for the vetting badges.
     useEffect(() => {
-        getPendingTutors(1, 1).then((res) => {
-            setPendingCount(res?.total || 0);
+        getPendingTutors(1, BADGE_FETCH_SIZE).then((res) => {
+            setPendingTutors(res?.total || 0);
+        }).catch(() => { /* ignore */ });
+
+        getPendingCertificates(1, BADGE_FETCH_SIZE).then((res) => {
+            setPendingCertificates(res?.total || 0);
         }).catch(() => { /* ignore */ });
     }, []);
 
@@ -21,10 +31,10 @@ const AdminLayout: React.FC = () => {
             path: '/admin-portal/vetting',
             label: 'Kiểm duyệt',
             materialIcon: 'description',
-            badge: pendingCount,
+            badge: pendingTutors + pendingCertificates,
             children: [
-                { path: '/admin-portal/vetting/profiles', label: 'Hồ sơ gia sư', materialIcon: 'badge' },
-                { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium' },
+                { path: '/admin-portal/vetting/profiles', label: 'Hồ sơ gia sư', materialIcon: 'badge', badge: pendingTutors },
+                { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates },
             ],
         },
         { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel' },

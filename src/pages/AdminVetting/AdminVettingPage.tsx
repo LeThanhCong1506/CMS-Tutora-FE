@@ -263,6 +263,18 @@ const AdminVettingPage = () => {
         <PageContainer title="Kiểm duyệt gia sư" maxWidth="wide">
           <SectionCard
             title="Hồ sơ chờ duyệt"
+            headerAction={
+              <button
+                type="button"
+                className="vetting-refresh-button"
+                onClick={() => void fetchPendingTutors()}
+                disabled={loading}
+                aria-label="Làm mới danh sách hồ sơ chờ duyệt"
+              >
+                <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+                Làm mới
+              </button>
+            }
             footer={
               <div className="certificate-table-footer">
                 <span>
@@ -346,6 +358,8 @@ const AdminVettingPage = () => {
                 >
                   <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
                   <option value="createdat_desc">Mới nhất trước</option>
+                  <option value="tutorname_asc">Tên gia sư A→Z</option>
+                  <option value="tutorname_desc">Tên gia sư Z→A</option>
                 </select>
               </label>
             </div>
