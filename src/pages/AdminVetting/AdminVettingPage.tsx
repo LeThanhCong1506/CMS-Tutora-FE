@@ -358,6 +358,8 @@ const AdminVettingPage = () => {
                 >
                   <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
                   <option value="createdat_desc">Mới nhất trước</option>
+                  <option value="tutorname_asc">Tên gia sư A→Z</option>
+                  <option value="tutorname_desc">Tên gia sư Z→A</option>
                 </select>
               </label>
             </div>
