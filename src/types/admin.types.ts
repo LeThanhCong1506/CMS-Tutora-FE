@@ -162,6 +162,66 @@ export interface AdminDisputeStats {
   filterTo: string | null;
 }
 
+// --- GET /api/admin/dashboard/summary ---
+// Một KPI số kèm % thay đổi so với kỳ trước cùng độ dài (null khi kỳ trước = 0).
+export interface MetricWithChange {
+  value: number;
+  changePercent: number | null;
+}
+
+export interface SummaryBookings {
+  active: number;
+  newInPeriod: number;
+  completedInPeriod: number;
+}
+
+export interface SummaryPendingActions {
+  total: number;
+  tutorApprovals: number;
+  withdrawalReviews: number;
+  openDisputes: number;
+  unresolvedAlerts: number;
+  overdueCount: number;
+}
+
+export interface AdminDashboardSummary {
+  gmv: MetricWithChange;
+  platformRevenue: MetricWithChange;
+  bookings: SummaryBookings;
+  pendingActions: SummaryPendingActions;
+  filterFrom: string;
+  filterTo: string;
+}
+
+// --- GET /api/admin/dashboard/trends ---
+export interface FinancialTrendPoint {
+  label: string;
+  gmv: number;
+  platformRevenue: number;
+}
+
+export interface LessonTrendPoint {
+  label: string;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+}
+
+export interface LessonRates {
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+}
+
+export interface DashboardTrend {
+  from: string;
+  to: string;
+  bucket: string;
+  financialTrend: FinancialTrendPoint[];
+  lessonTrend: LessonTrendPoint[];
+  lessonRates: LessonRates;
+}
+
 // ============================================
 // VETTING TYPES (ADM-02)
 // ============================================

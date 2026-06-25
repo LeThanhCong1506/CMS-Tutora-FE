@@ -5,17 +5,35 @@ import {
     getAdminUserStats,
     getAdminTutorPerformance,
     getAdminDisputeStats,
+    getAdminDashboardSummary,
+    getAdminDashboardTrends,
 } from '../../services/adminDashboard.service';
 import type {
     AdminDashboardStats,
     AdminUserStats,
     AdminTutorPerformance,
     AdminDisputeStats,
-    TutorPerformanceItem,
+    AdminDashboardSummary,
+    DashboardTrend,
 } from '../../types/admin.types';
-import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
-import type { DataTableColumn } from '../../components/shared';
-import { formatCurrency, formatCompactNumber, formatNumber } from '../../utils/formatters';
+import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
+import {
+    FinancialTrendChart,
+    LessonActivityChart,
+    CategoryDonut,
+    HorizontalBars,
+    ChartEmpty,
+    USER_ROLE_COLORS,
+    DISPUTE_STATUS_COLORS,
+    FUNNEL_COLORS,
+    CHART,
+} from './components';
+import {
+    formatCurrency,
+    formatCompactNumber,
+    formatNumber,
+    formatDisputeType,
+} from '../../utils/formatters';
 
 import '../../styles/pages/admin-dashboard.css';
 
@@ -42,7 +60,21 @@ const rangeTabs = [
     { key: '30d', label: '30 ngày' },
 ];
 
-// ─── Sub-components ───
+// ─── KPI change badge ───
+
+const changeBadge = (
+    pct: number | null | undefined
+): { text: string; variant: 'green' | 'red' | 'dark' } | undefined => {
+    if (pct == null) return undefined;
+    if (pct === 0) return { text: '0%', variant: 'dark' };
+    const up = pct > 0;
+    return {
+        text: `${up ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%`,
+        variant: up ? 'green' : 'red',
+    };
+};
+
+// ─── Pending action row ───
 
 const ActionRow = ({
     icon,
@@ -54,94 +86,33 @@ const ActionRow = ({
     icon: string;
     label: string;
     meta?: string;
-    value: number | string;
+    value: number;
     onClick: () => void;
-}) => {
-    const isZero = typeof value === 'number' ? value === 0 : value === '0';
-    return (
-        <button type="button" className="admin-action-row" onClick={onClick}>
-            <span className="admin-action-row-icon">
-                <span className="material-symbols-outlined">{icon}</span>
-            </span>
-            <span className="admin-action-row-body">
-                <span className="admin-action-row-label">{label}</span>
-                {meta && <span className="admin-action-row-meta">{meta}</span>}
-            </span>
-            <span
-                className={`admin-action-row-value ${isZero ? 'admin-action-row-value-zero' : ''}`}
-            >
-                {value}
-            </span>
-            <span className="admin-action-row-chevron material-symbols-outlined">chevron_right</span>
-        </button>
-    );
-};
-
-const MiniStat = ({
-    value,
-    label,
-    color,
-}: {
-    value: number | string;
-    label: string;
-    color?: string;
 }) => (
-    <div className="admin-mini-stat">
-        <div className="admin-mini-stat-value" style={color ? { color } : undefined}>
+    <button type="button" className="admin-action-row" onClick={onClick}>
+        <span className="admin-action-row-icon">
+            <span className="material-symbols-outlined">{icon}</span>
+        </span>
+        <span className="admin-action-row-body">
+            <span className="admin-action-row-label">{label}</span>
+            {meta && <span className="admin-action-row-meta">{meta}</span>}
+        </span>
+        <span className={`admin-action-row-value ${value === 0 ? 'admin-action-row-value-zero' : ''}`}>
             {value}
-        </div>
-        <div className="admin-mini-stat-label">{label}</div>
-    </div>
+        </span>
+        <span className="admin-action-row-chevron material-symbols-outlined">chevron_right</span>
+    </button>
 );
 
-const tutorColumns = (revenueColumn: boolean): DataTableColumn<TutorPerformanceItem>[] => [
-    {
-        key: 'tutor',
-        title: 'Gia sư',
-        render: (row) => (
-            <div className="admin-table-user">
-                {row.avatarUrl ? (
-                    <div className="admin-user-thumbnail" style={{ backgroundImage: `url('${row.avatarUrl}')` }} />
-                ) : (
-                    <div className="admin-user-thumbnail admin-user-thumbnail-initials">
-                        {row.fullName.charAt(0).toUpperCase()}
-                    </div>
-                )}
-                <div className="admin-user-details">
-                    <p className="admin-user-name-text">{row.fullName}</p>
-                    <p className="admin-user-subtitle">{row.subscriptionType || '—'}</p>
-                </div>
-            </div>
-        ),
-    },
-    {
-        key: 'rating',
-        title: 'Đánh giá',
-        render: (row) =>
-            row.averageRating != null ? `${row.averageRating.toFixed(1)} ★ (${row.totalFeedbacks})` : '—',
-        hideOnMobile: true,
-    },
-    {
-        key: 'lessons',
-        title: 'Buổi',
-        dataIndex: 'lessonsCompleted',
-        hideOnMobile: true,
-    },
-    revenueColumn
-        ? {
-              key: 'revenue',
-              title: 'Doanh thu',
-              align: 'right' as const,
-              render: (row) => formatCurrency(row.totalRevenue),
-          }
-        : {
-              key: 'completion',
-              title: 'Hoàn thành',
-              align: 'right' as const,
-              render: (row) =>
-                  row.completionRatePercent != null ? `${row.completionRatePercent.toFixed(1)}%` : '—',
-          },
-];
+// ─── Lesson rate chip ───
+
+const RateChip = ({ label, value, color }: { label: string; value: number | null | undefined; color: string }) => (
+    <div className="admin-rate-chip">
+        <span className="admin-rate-chip-dot" style={{ background: color }} />
+        <span className="admin-rate-chip-label">{label}</span>
+        <strong className="admin-rate-chip-value">{value != null ? `${value.toFixed(1)}%` : '—'}</strong>
+    </div>
+);
 
 // ─── Component ───
 
@@ -150,10 +121,12 @@ const AdminDashboardPageEnhanced = () => {
 
     const [rangeKey, setRangeKey] = useState<RangeKey>('30d');
 
+    const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
     const [stats, setStats] = useState<AdminDashboardStats | null>(null);
     const [userStats, setUserStats] = useState<AdminUserStats | null>(null);
     const [tutorPerformance, setTutorPerformance] = useState<AdminTutorPerformance | null>(null);
     const [disputeStats, setDisputeStats] = useState<AdminDisputeStats | null>(null);
+    const [trends, setTrends] = useState<DashboardTrend | null>(null);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -166,25 +139,31 @@ const AdminDashboardPageEnhanced = () => {
         const fetchAll = async () => {
             setLoading(true);
             setError(null);
-            try {
-                const [statsRes, userRes, tutorRes, disputeRes] = await Promise.all([
-                    getAdminDashboardStats(),
-                    getAdminUserStats(range.from, range.to),
-                    getAdminTutorPerformance(10, range.from, range.to),
-                    getAdminDisputeStats(range.from, range.to),
-                ]);
-                if (cancelled) return;
-                setStats(statsRes);
-                setUserStats(userRes);
-                setTutorPerformance(tutorRes);
-                setDisputeStats(disputeRes);
-            } catch (err: unknown) {
-                if (cancelled) return;
-                console.error('Dashboard fetch error:', err);
+            const [summaryR, statsR, userR, tutorR, disputeR, trendsR] = await Promise.allSettled([
+                getAdminDashboardSummary(range.from, range.to),
+                getAdminDashboardStats(),
+                getAdminUserStats(range.from, range.to),
+                getAdminTutorPerformance(10, range.from, range.to),
+                getAdminDisputeStats(range.from, range.to),
+                getAdminDashboardTrends(range.from, range.to, 'auto'),
+            ]);
+            if (cancelled) return;
+
+            setSummary(summaryR.status === 'fulfilled' ? summaryR.value : null);
+            setStats(statsR.status === 'fulfilled' ? statsR.value : null);
+            setUserStats(userR.status === 'fulfilled' ? userR.value : null);
+            setTutorPerformance(tutorR.status === 'fulfilled' ? tutorR.value : null);
+            setDisputeStats(disputeR.status === 'fulfilled' ? disputeR.value : null);
+            setTrends(trendsR.status === 'fulfilled' ? trendsR.value : null);
+
+            const everyFailed = [summaryR, statsR, userR, tutorR, disputeR, trendsR].every(
+                (r) => r.status === 'rejected'
+            );
+            if (everyFailed) {
+                console.error('Dashboard fetch error: all endpoints failed');
                 setError('Không tải được dữ liệu bảng điều khiển. Vui lòng thử lại.');
-            } finally {
-                if (!cancelled) setLoading(false);
             }
+            setLoading(false);
         };
 
         fetchAll();
@@ -195,14 +174,83 @@ const AdminDashboardPageEnhanced = () => {
 
     const platform = stats?.platformOverview;
     const booking = stats?.bookingSummary;
-    const lesson = stats?.lessonSummary;
     const pending = stats?.pendingActions;
+
+    // ── KPI (ưu tiên summary, fallback sang stats) ──
+    const gmvValue = summary?.gmv.value ?? booking?.gmvThisMonth ?? 0;
+    const revValue = summary?.platformRevenue.value ?? booking?.platformRevenueThisMonth ?? 0;
+    const activeBookings = summary?.bookings.active ?? booking?.activeBookings ?? 0;
+    const newInPeriod = summary?.bookings.newInPeriod;
+    const completedInPeriod = summary?.bookings.completedInPeriod ?? booking?.completedBookings ?? 0;
+    const pendingTotal =
+        summary?.pendingActions.total ??
+        (platform?.pendingTutorApprovals ?? 0) +
+            (pending?.pendingWithdrawals ?? 0) +
+            (pending?.openDisputes ?? 0) +
+            (pending?.pendingWarnings ?? 0);
+    const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals ?? 0;
+    const withdrawalReviews = summary?.pendingActions.withdrawalReviews ?? pending?.pendingWithdrawals ?? 0;
+    const openDisputes = summary?.pendingActions.openDisputes ?? pending?.openDisputes ?? 0;
+    const overdueCount = summary?.pendingActions.overdueCount ?? 0;
+
+    const gmvBadge = changeBadge(summary?.gmv.changePercent);
+    const revBadge = changeBadge(summary?.platformRevenue.changePercent);
+
+    // ── Chart data ──
+    const userRoleData = useMemo(() => {
+        if (!userStats) return [];
+        const r = userStats.byRole;
+        return [
+            { name: 'Học sinh', value: r.totalStudents },
+            { name: 'Phụ huynh', value: r.totalParents },
+            { name: 'Gia sư', value: r.totalTutors },
+            { name: 'Nhân viên', value: r.totalStaff },
+        ].filter((d) => d.value > 0);
+    }, [userStats]);
+
+    const funnelData = useMemo(() => {
+        if (!userStats) return [];
+        const f = userStats.tutorFunnel;
+        return [
+            { name: 'Nháp', value: f.draft },
+            { name: 'Chờ duyệt', value: f.pendingApproval },
+            { name: 'Hoạt động', value: f.active },
+            { name: 'Từ chối', value: f.rejected },
+            { name: 'Public', value: f.publicTutors },
+        ];
+    }, [userStats]);
+
+    const disputeStatusData = useMemo(() => {
+        if (!disputeStats) return [];
+        const o = disputeStats.overview;
+        return [
+            { name: 'Chờ xử lý', value: o.pending },
+            { name: 'Đang điều tra', value: o.investigating },
+            { name: 'Đã giải quyết', value: o.resolved },
+            { name: 'Đã đóng', value: o.closed },
+        ].filter((d) => d.value > 0);
+    }, [disputeStats]);
+
+    const disputeTypeData = useMemo(() => {
+        if (!disputeStats) return [];
+        return disputeStats.byType.map((t) => ({ name: formatDisputeType(t.type), value: t.count }));
+    }, [disputeStats]);
+
+    const topTutorData = useMemo(() => {
+        if (!tutorPerformance) return [];
+        return tutorPerformance.topByRevenue
+            .slice(0, 6)
+            .filter((t) => t.totalRevenue > 0)
+            .map((t) => ({ name: t.fullName, value: t.totalRevenue }));
+    }, [tutorPerformance]);
+
+    const rates = trends?.lessonRates;
 
     return (
         <PageContainer
             eyebrow="Tổng quan"
-            title="Chào buổi sáng, Quản trị viên"
-            subtitle="Đây là những gì đang diễn ra tại TUTORA hôm nay."
+            title="Bảng điều khiển Quản trị"
+            subtitle="Toàn cảnh hoạt động của TUTORA trong khoảng thời gian đã chọn."
             maxWidth="wide"
             headerAction={
                 <FilterTabs
@@ -212,319 +260,211 @@ const AdminDashboardPageEnhanced = () => {
                 />
             }
         >
+            {error && <div className="admin-dash-error">{error}</div>}
 
-                    {error && (
-                        <div
-                            style={{
-                                background: '#fee2e2',
-                                border: '1px solid #fca5a5',
-                                borderRadius: 12,
-                                padding: '12px 16px',
-                                marginBottom: 24,
-                                color: '#991b1b',
-                                fontWeight: 500,
-                            }}
-                        >
-                            {error}
-                        </div>
-                    )}
-
-            {/* KPI GRID */}
-            <div className="admin-ui-kpi-grid">
+            {/* ── KPI ROW ── */}
+            <div className="admin-dash-kpis">
                 <StatCard
-                    icon={<span className="material-symbols-outlined">group</span>}
-                    value={loading ? '...' : formatNumber(platform?.totalUsers ?? 0)}
-                    label="Tổng số người dùng"
-                    subLabel={`+${userStats?.growth.newUsersThisMonth ?? 0} trong 30 ngày`}
-                    badge={`HS ${formatNumber(platform?.totalStudents ?? 0)} · PH ${formatNumber(platform?.totalParents ?? 0)}`}
-                    badgeVariant="green"
-                />
-                <StatCard
-                    icon={<span className="material-symbols-outlined">school</span>}
-                    value={loading ? '...' : formatNumber(platform?.totalActiveTutors ?? 0)}
-                    label="Gia sư hoạt động"
-                    subLabel="Hồ sơ tutor"
-                    badge={`Chờ duyệt: ${platform?.pendingTutorApprovals ?? 0}`}
-                    badgeVariant={platform && platform.pendingTutorApprovals > 0 ? 'orange' : 'green'}
-                />
-                <StatCard
-                    icon={<span className="material-symbols-outlined">event</span>}
-                    value={loading ? '...' : formatNumber(booking?.activeBookings ?? 0)}
-                    label="Booking đang hoạt động"
-                    subLabel={`Hủy: ${formatNumber(booking?.cancelledBookings ?? 0)}`}
-                    badge={`Hoàn tất: ${formatNumber(booking?.completedBookings ?? 0)}`}
-                    badgeVariant="green"
+                    icon={<span className="material-symbols-outlined">currency_exchange</span>}
+                    value={loading ? '…' : formatCompactNumber(gmvValue)}
+                    label="GMV (kỳ này)"
+                    subLabel={formatCurrency(gmvValue)}
+                    badge={gmvBadge?.text}
+                    badgeVariant={gmvBadge?.variant}
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
-                    value={loading ? '...' : formatCompactNumber(booking?.platformRevenueThisMonth ?? 0)}
-                    label="Doanh thu nền tảng tháng này"
-                    subLabel={formatCurrency(booking?.platformRevenueThisMonth ?? 0)}
+                    value={loading ? '…' : formatCompactNumber(revValue)}
+                    label="Doanh thu nền tảng"
+                    subLabel={formatCurrency(revValue)}
+                    badge={revBadge?.text}
+                    badgeVariant={revBadge?.variant}
                 />
                 <StatCard
-                    icon={<span className="material-symbols-outlined">currency_exchange</span>}
-                    value={loading ? '...' : formatCompactNumber(booking?.gmvThisMonth ?? 0)}
-                    label="GMV tháng này"
-                    subLabel={formatCurrency(booking?.gmvThisMonth ?? 0)}
-                />
-                <StatCard
-                    icon={<span className="material-symbols-outlined">today</span>}
-                    value={loading ? '...' : formatNumber(lesson?.lessonsToday ?? 0)}
-                    label="Buổi học hôm nay"
+                    icon={<span className="material-symbols-outlined">event_available</span>}
+                    value={loading ? '…' : formatNumber(activeBookings)}
+                    label="Booking đang hoạt động"
                     subLabel={
-                        lesson?.noShowRatePercent != null
-                            ? `No-show ${lesson.noShowRatePercent.toFixed(1)}%`
-                            : undefined
+                        newInPeriod != null
+                            ? `+${newInPeriod} mới · ${completedInPeriod} hoàn tất`
+                            : `${completedInPeriod} hoàn tất`
                     }
-                    badge={
-                        lesson?.completionRatePercent != null
-                            ? `Hoàn thành ${lesson.completionRatePercent.toFixed(1)}%`
-                            : undefined
-                    }
-                    badgeVariant="green"
+                />
+                <StatCard
+                    className="admin-kpi-alert"
+                    icon={<span className="material-symbols-outlined">pending_actions</span>}
+                    value={loading ? '…' : formatNumber(pendingTotal)}
+                    label="Việc cần xử lý"
+                    subLabel={`${tutorApprovals} duyệt · ${withdrawalReviews} rút tiền · ${openDisputes} khiếu nại`}
+                    badge={overdueCount > 0 ? `${overdueCount} quá hạn` : undefined}
+                    badgeVariant="red"
                 />
             </div>
 
-                    {/* SECTIONS */}
-                    <div className="admin-dashboard-sections">
-                        {/* PENDING ACTIONS — full-width list */}
-                        <SectionCard
-                            title="Hành động cần xử lý"
-                            subtitle="Các queue có ảnh hưởng trực tiếp tới vận hành và dòng tiền."
-                        >
-                            <div className="admin-action-list">
-                                <ActionRow
-                                    icon="verified_user"
-                                    label="Hồ sơ gia sư chờ duyệt"
-                                    meta="Cấp quyền cho tutor mới"
-                                    value={platform?.pendingTutorApprovals ?? 0}
-                                    onClick={() => navigate('/admin-portal/vetting')}
-                                />
-                                <ActionRow
-                                    icon="account_balance_wallet"
-                                    label="Yêu cầu rút tiền chờ duyệt"
-                                    meta={
-                                        pending?.pendingWithdrawalAmount
-                                            ? `Tổng ${formatCompactNumber(pending.pendingWithdrawalAmount)}`
-                                            : undefined
-                                    }
-                                    value={pending?.pendingWithdrawals ?? 0}
-                                    onClick={() => navigate('/admin-portal/financials')}
-                                />
-                                <ActionRow
-                                    icon="gavel"
-                                    label="Khiếu nại mở"
-                                    meta="Cần phân loại / điều tra"
-                                    value={pending?.openDisputes ?? 0}
-                                    onClick={() => navigate('/admin-portal/disputes')}
-                                />
-                                <ActionRow
-                                    icon="warning"
-                                    label="Cảnh báo chờ xử lý"
-                                    meta="Cần ra quyết định cảnh báo / khóa tài khoản"
-                                    value={pending?.pendingWarnings ?? 0}
-                                    onClick={() => navigate('/admin-portal/warnings')}
-                                />
-                            </div>
-                        </SectionCard>
-
-                        {/* TUTOR FUNNEL — full-width */}
-                        <SectionCard
-                            title="Phễu duyệt gia sư"
-                            subtitle="Theo dõi trạng thái hồ sơ tutor trong pipeline duyệt."
-                        >
-                            {userStats ? (
-                                <>
-                                    <div
-                                        className="admin-mini-grid"
-                                        style={{
-                                            gridTemplateColumns: 'repeat(5, 1fr)',
-                                            padding: 20,
-                                        }}
-                                    >
-                                        <MiniStat
-                                            value={userStats.tutorFunnel.draft}
-                                            label="Draft"
-                                            color="#94a3b8"
-                                        />
-                                        <MiniStat
-                                            value={userStats.tutorFunnel.pendingApproval}
-                                            label="Chờ duyệt"
-                                            color="#f59e0b"
-                                        />
-                                        <MiniStat
-                                            value={userStats.tutorFunnel.active}
-                                            label="Đang hoạt động"
-                                            color="#10b981"
-                                        />
-                                        <MiniStat
-                                            value={userStats.tutorFunnel.rejected}
-                                            label="Bị từ chối"
-                                            color="#ef4444"
-                                        />
-                                        <MiniStat
-                                            value={userStats.tutorFunnel.publicTutors}
-                                            label="Public"
-                                            color="#2563eb"
-                                        />
-                                    </div>
-                                    <div className="admin-inline-summary">
-                                        <span>
-                                            <strong>{userStats.growth.newUsersThisWeek}</strong> user mới
-                                            trong tuần
-                                        </span>
-                                        <span>
-                                            <strong>{userStats.growth.newUsersThisMonth}</strong> user
-                                            mới trong tháng
-                                        </span>
-                                        <span>
-                                            <strong>{userStats.moderation.activeSuspensions}</strong> đang
-                                            bị tạm khóa
-                                        </span>
-                                    </div>
-                                </>
-                            ) : (
-                                <p style={{ padding: 20, color: '#94a3b8' }}>
-                                    {loading ? 'Đang tải...' : 'Không có dữ liệu'}
-                                </p>
-                            )}
-                        </SectionCard>
-
-                        {/* TUTOR PERFORMANCE — two tables */}
-                        <SectionCard
-                            title="Hiệu suất gia sư"
-                            subtitle="So sánh tutor theo đánh giá, số buổi và doanh thu trong khoảng thời gian đã chọn."
-                            headerAction={
-                                tutorPerformance?.platformAverageRating != null ? (
-                                    <span style={{ fontSize: 13, color: '#475569' }}>
-                                        TB nền tảng:{' '}
-                                        <strong style={{ color: 'var(--color-gold)' }}>
-                                            {tutorPerformance.platformAverageRating.toFixed(2)} ★
-                                        </strong>
-                                    </span>
-                                ) : null
-                            }
-                        >
-                            <div className="admin-two-col" style={{ padding: 20 }}>
-                                <div>
-                                    <h4 className="admin-two-col-title">Top theo đánh giá</h4>
-                                    <DataTable
-                                        columns={tutorColumns(false)}
-                                        data={tutorPerformance?.topByRating ?? []}
-                                        rowKey="tutorId"
-                                        emptyText={loading ? 'Đang tải...' : 'Chưa có dữ liệu'}
-                                        minWidth={400}
-                                        variant="embedded"
-                                    />
-                                </div>
-                                <div>
-                                    <h4 className="admin-two-col-title">Top theo doanh thu</h4>
-                                    <DataTable
-                                        columns={tutorColumns(true)}
-                                        data={tutorPerformance?.topByRevenue ?? []}
-                                        rowKey="tutorId"
-                                        emptyText={loading ? 'Đang tải...' : 'Chưa có dữ liệu'}
-                                        minWidth={400}
-                                        variant="embedded"
-                                    />
-                                </div>
-                            </div>
-                        </SectionCard>
-
-                        {/* DISPUTES */}
-                        <SectionCard
-                            title="Tổng quan khiếu nại"
-                            subtitle="Tình trạng dispute, tốc độ xử lý và tổng hoàn tiền trong kỳ."
-                        >
-                            {disputeStats ? (
-                                <div
-                                    style={{
-                                        padding: 20,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: 20,
-                                    }}
-                                >
-                                    <div
-                                        className="admin-mini-grid"
-                                        style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}
-                                    >
-                                        <MiniStat
-                                            value={disputeStats.overview.totalDisputes}
-                                            label="Tổng"
-                                            color="#1e293b"
-                                        />
-                                        <MiniStat
-                                            value={disputeStats.overview.pending}
-                                            label="Chờ xử lý"
-                                            color="#f59e0b"
-                                        />
-                                        <MiniStat
-                                            value={disputeStats.overview.investigating}
-                                            label="Đang điều tra"
-                                            color="#2563eb"
-                                        />
-                                        <MiniStat
-                                            value={disputeStats.overview.resolved}
-                                            label="Đã giải quyết"
-                                            color="#10b981"
-                                        />
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            gap: 24,
-                                            fontSize: 13,
-                                            color: '#475569',
-                                            flexWrap: 'wrap',
-                                        }}
-                                    >
-                                        {disputeStats.overview.resolutionRatePercent != null && (
-                                            <span>
-                                                Tỉ lệ giải quyết:{' '}
-                                                <strong style={{ color: '#10b981' }}>
-                                                    {disputeStats.overview.resolutionRatePercent.toFixed(1)}%
-                                                </strong>
-                                            </span>
-                                        )}
-                                        {disputeStats.overview.avgResolutionDays != null && (
-                                            <span>
-                                                TB thời gian xử lý:{' '}
-                                                <strong>
-                                                    {disputeStats.overview.avgResolutionDays.toFixed(1)} ngày
-                                                </strong>
-                                            </span>
-                                        )}
-                                        <span>
-                                            Hoàn tiền kỳ này:{' '}
-                                            <strong>
-                                                {formatCurrency(
-                                                    disputeStats.financial.refundAmountThisPeriod
-                                                )}{' '}
-                                                ({disputeStats.financial.refundsThisPeriod} lệnh)
-                                            </strong>
-                                        </span>
-                                    </div>
-                                    {disputeStats.byType.length > 0 && (
-                                        <div>
-                                            <h4 className="admin-two-col-title">Phân loại</h4>
-                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                                {disputeStats.byType.map((t) => (
-                                                    <span key={t.type} className="admin-chip">
-                                                        {t.type}: <strong>{t.count}</strong>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p style={{ padding: 20, color: '#94a3b8' }}>
-                                    {loading ? 'Đang tải...' : 'Không có dữ liệu'}
-                                </p>
-                            )}
-                        </SectionCard>
+            <div className="admin-dashboard-sections">
+                {/* ── FINANCIAL TREND (hero) ── */}
+                <SectionCard
+                    title="Xu hướng tài chính"
+                    subtitle="GMV và doanh thu nền tảng theo thời gian."
+                    headerAction={
+                        trends?.bucket ? (
+                            <span className="admin-dash-bucket">
+                                Nhóm theo{' '}
+                                {trends.bucket === 'day' ? 'ngày' : trends.bucket === 'week' ? 'tuần' : 'tháng'}
+                            </span>
+                        ) : null
+                    }
+                >
+                    <div className="admin-chart-body">
+                        {loading ? <ChartEmpty loading /> : <FinancialTrendChart data={trends?.financialTrend ?? []} />}
                     </div>
+                </SectionCard>
+
+                {/* ── LESSON ACTIVITY + PENDING ── */}
+                <div className="admin-dash-grid-2-wide">
+                    <SectionCard
+                        title="Hoạt động buổi học"
+                        subtitle="Buổi hoàn thành, hủy và vắng mặt theo thời gian."
+                    >
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : (
+                                <LessonActivityChart data={trends?.lessonTrend ?? []} />
+                            )}
+                            {rates && (
+                                <div className="admin-rate-chips">
+                                    <RateChip label="Hoàn thành" value={rates.completionRate} color={CHART.green} />
+                                    <RateChip label="Hủy" value={rates.cancellationRate} color={CHART.gold} />
+                                    <RateChip label="Vắng mặt" value={rates.noShowRate} color={CHART.burgundy} />
+                                </div>
+                            )}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Hành động cần xử lý"
+                        subtitle="Queue ảnh hưởng trực tiếp tới vận hành & dòng tiền."
+                    >
+                        <div className="admin-action-list">
+                            <ActionRow
+                                icon="verified_user"
+                                label="Hồ sơ gia sư chờ duyệt"
+                                meta="Cấp quyền cho tutor mới"
+                                value={tutorApprovals}
+                                onClick={() => navigate('/admin-portal/vetting')}
+                            />
+                            <ActionRow
+                                icon="account_balance_wallet"
+                                label="Yêu cầu rút tiền chờ duyệt"
+                                meta={
+                                    pending?.pendingWithdrawalAmount
+                                        ? `Tổng ${formatCompactNumber(pending.pendingWithdrawalAmount)}`
+                                        : undefined
+                                }
+                                value={withdrawalReviews}
+                                onClick={() => navigate('/admin-portal/financials')}
+                            />
+                            <ActionRow
+                                icon="gavel"
+                                label="Khiếu nại đang mở"
+                                meta="Cần phân loại / điều tra"
+                                value={openDisputes}
+                                onClick={() => navigate('/admin-portal/disputes')}
+                            />
+                            <ActionRow
+                                icon="warning"
+                                label="Cảnh báo chờ xử lý"
+                                meta="Cần ra quyết định cảnh báo / khóa tài khoản"
+                                value={pending?.pendingWarnings ?? 0}
+                                onClick={() => navigate('/admin-portal/warnings')}
+                            />
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── DISTRIBUTIONS: users / funnel / disputes ── */}
+                <div className="admin-dash-grid-3">
+                    <SectionCard title="Phân bổ người dùng" subtitle="Theo vai trò trên nền tảng.">
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : (
+                                <CategoryDonut data={userRoleData} colors={USER_ROLE_COLORS} centerLabel="Người dùng" />
+                            )}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard title="Phễu duyệt gia sư" subtitle="Trạng thái hồ sơ trong pipeline.">
+                        <div className="admin-chart-body">
+                            {loading ? <ChartEmpty loading /> : <HorizontalBars data={funnelData} colors={FUNNEL_COLORS} />}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard title="Trạng thái khiếu nại" subtitle="Phân bổ dispute trong kỳ.">
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : (
+                                <CategoryDonut
+                                    data={disputeStatusData}
+                                    colors={DISPUTE_STATUS_COLORS}
+                                    centerLabel="Khiếu nại"
+                                />
+                            )}
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── TOP TUTORS + DISPUTE TYPES ── */}
+                <div className="admin-dash-grid-2">
+                    <SectionCard
+                        title="Top gia sư theo doanh thu"
+                        subtitle="Gia sư đóng góp doanh thu cao nhất trong kỳ."
+                        headerAction={
+                            tutorPerformance?.platformAverageRating != null ? (
+                                <span className="admin-dash-bucket">
+                                    TB nền tảng{' '}
+                                    <strong style={{ color: 'var(--color-gold)' }}>
+                                        {tutorPerformance.platformAverageRating.toFixed(2)} ★
+                                    </strong>
+                                </span>
+                            ) : null
+                        }
+                    >
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : (
+                                <HorizontalBars data={topTutorData} color={CHART.gold} money />
+                            )}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Khiếu nại theo loại"
+                        subtitle="Phân loại nguyên nhân tranh chấp."
+                        headerAction={
+                            disputeStats?.overview.resolutionRatePercent != null ? (
+                                <span className="admin-dash-bucket">
+                                    Tỉ lệ giải quyết{' '}
+                                    <strong style={{ color: CHART.emerald }}>
+                                        {disputeStats.overview.resolutionRatePercent.toFixed(1)}%
+                                    </strong>
+                                </span>
+                            ) : null
+                        }
+                    >
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : (
+                                <HorizontalBars data={disputeTypeData} color={CHART.burgundy} />
+                            )}
+                        </div>
+                    </SectionCard>
+                </div>
+            </div>
         </PageContainer>
     );
 };
