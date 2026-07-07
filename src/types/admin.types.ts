@@ -290,6 +290,45 @@ export interface TutorApprovalRequest {
   reason?: string;
 }
 
+// Bản chỉnh sửa hồ sơ (của tutor đã Active) đang chờ Admin duyệt.
+// GET /api/admin/tutor-profile-update-requests
+export interface ProfileUpdateRequestFromAPI {
+  tutorId: string;
+  tutorFullName: string | null;
+  tutorEmail: string | null;
+  tutorAvatarUrl: string | null;
+  submittedAt: string;
+
+  currentHeadline: string | null;
+  proposedHeadline: string | null;
+  currentTeachingAreaCity: string | null;
+  proposedTeachingAreaCity: string | null;
+  currentTeachingAreaDistrict: string | null;
+  proposedTeachingAreaDistrict: string | null;
+  currentBio: string | null;
+  proposedBio: string | null;
+  currentEducation: string | null;
+  proposedEducation: string | null;
+  currentExperience: string | null;
+  proposedExperience: string | null;
+  currentVideoIntroUrl: string | null;
+  proposedVideoIntroUrl: string | null;
+  hasProposedSubjectGradePrices: boolean;
+}
+
+export interface ProfileUpdateRequestsAPIResponse {
+  content: ProfileUpdateRequestFromAPI[];
+  statusCode: number;
+  message: string;
+  error: string | null;
+}
+
+// PUT /api/admin/tutor-profile-update-requests/{tutorId}/review
+export interface ReviewProfileUpdateRequestBody {
+  isApproved: boolean;
+  note?: string;
+}
+
 export interface EKYCContent {
   id: string; // CCCD number
   name: string; // Full name from CCCD

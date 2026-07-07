@@ -15,6 +15,9 @@ import type {
   PendingTutorFromAPI,
   PendingTutorsAPIResponse,
   TutorApprovalRequest,
+  ProfileUpdateRequestsAPIResponse,
+  ProfileUpdateRequestFromAPI,
+  ReviewProfileUpdateRequestBody,
   // Disputes (backend-compatible)
   DisputeForAdmin,
   DisputeDetail,
@@ -136,6 +139,64 @@ export const updateTutorApproval = async (
     return data;
   } catch (error) {
     console.error('updateTutorApproval error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get list of profile update requests pending admin review — submitted by tutors who are
+ * already Active. Tutorprofile itself is untouched until reviewed, so marketplace still
+ * shows the old data; this list is the ONLY place the proposed changes are visible.
+ * API: GET /api/admin/tutor-profile-update-requests
+ */
+export const getPendingProfileUpdateRequests = async (): Promise<ProfileUpdateRequestsAPIResponse> => {
+  try {
+    const { data } = await api.get<ProfileUpdateRequestsAPIResponse>('/admin/tutor-profile-update-requests');
+    return data;
+  } catch (error) {
+    console.error('getPendingProfileUpdateRequests error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get the LATEST version of a single tutor's pending profile update request. Call this right
+ * before submitting Approve/Reject to check whether the tutor submitted something newer while
+ * the admin was viewing the (non-real-time) list/modal — the screen does not auto-refresh.
+ * API: GET /api/admin/tutor-profile-update-requests/{tutorId}
+ * Returns content: null (via 404) if the request no longer exists (already resolved).
+ */
+export const getProfileUpdateRequestDetail = async (
+  tutorId: string
+): Promise<ProfileUpdateRequestFromAPI | null> => {
+  try {
+    const { data } = await api.get<{ content: ProfileUpdateRequestFromAPI }>(
+      `/admin/tutor-profile-update-requests/${tutorId}`
+    );
+    return data.content;
+  } catch (error) {
+    const apiError = error as { response?: { status?: number } };
+    if (apiError?.response?.status === 404) return null;
+    console.error('getProfileUpdateRequestDetail error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Approve or reject a tutor's pending profile update request.
+ * API: PUT /api/admin/tutor-profile-update-requests/{tutorId}/review
+ */
+export const reviewProfileUpdateRequest = async (
+  tutorId: string,
+  isApproved: boolean,
+  note?: string
+): Promise<any> => {
+  try {
+    const requestBody: ReviewProfileUpdateRequestBody = { isApproved, note };
+    const { data } = await api.put(`/admin/tutor-profile-update-requests/${tutorId}/review`, requestBody);
+    return data;
+  } catch (error) {
+    console.error('reviewProfileUpdateRequest error:', error);
     throw error;
   }
 };
