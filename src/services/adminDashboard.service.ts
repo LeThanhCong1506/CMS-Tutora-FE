@@ -6,6 +6,8 @@ import type {
   AdminUserStats,
   AdminTutorPerformance,
   AdminDisputeStats,
+  AdminDashboardSummary,
+  DashboardTrend,
 } from '../types/admin.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
@@ -22,6 +24,14 @@ const toQueryParams = (from?: Date | null, to?: Date | null, extra?: Record<stri
   if (from) params.from = from.toISOString();
   if (to) params.to = to.toISOString();
   return params;
+};
+
+/** Định dạng Date về yyyy-MM-dd (local) cho endpoint trends. */
+const toDateOnly = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 };
 
 /**
@@ -86,6 +96,45 @@ export const getAdminDisputeStats = async (
     const { data } = await api.get('/admin/dashboard/disputes', {
       params: toQueryParams(from, to),
     });
+    return data.content;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * GET /api/admin/dashboard/summary?from&to
+ * Thẻ KPI tóm tắt (GMV, doanh thu nền tảng kèm % thay đổi, booking, việc cần xử lý).
+ */
+export const getAdminDashboardSummary = async (
+  from?: Date | null,
+  to?: Date | null
+): Promise<AdminDashboardSummary> => {
+  try {
+    const { data } = await api.get('/admin/dashboard/summary', {
+      params: toQueryParams(from, to),
+    });
+    return data.content;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * GET /api/admin/dashboard/trends?from&to&bucket
+ * Xu hướng doanh thu (GMV / doanh thu nền tảng) và buổi học theo thời gian.
+ * bucket: auto | day | week | month (mặc định auto).
+ */
+export const getAdminDashboardTrends = async (
+  from?: Date | null,
+  to?: Date | null,
+  bucket: 'auto' | 'day' | 'week' | 'month' = 'auto'
+): Promise<DashboardTrend> => {
+  try {
+    const params: Record<string, unknown> = { bucket };
+    if (from) params.from = toDateOnly(from);
+    if (to) params.to = toDateOnly(to);
+    const { data } = await api.get('/admin/dashboard/trends', { params });
     return data.content;
   } catch (error) {
     throw error;

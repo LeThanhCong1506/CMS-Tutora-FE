@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { getAllUsers, deactivateUser, updateUser, issueWarning, suspendTutor } from '../../services/admin.service';
+import { getAllUsers, deactivateUser, reactivateUser, issueWarning, suspendTutor } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import type { UserListItem } from '../../types/admin.types';
@@ -137,7 +137,9 @@ const UserManagementPage = () => {
     const handleUnblockUser = async () => {
         if (!selectedUser) return;
         try {
-            await updateUser(selectedUser.userid, { status: 1 });
+            // Dedicated reactivate endpoint: restores status = 1 and, for an
+            // Active tutor, also re-publishes the profile (Ispublic = true).
+            await reactivateUser(selectedUser.userid);
             toast.success(`Đã mở khóa tài khoản ${selectedUser.fullname}`);
             setIsDetailModalOpen(false);
             await fetchUsers();
@@ -413,6 +415,7 @@ const UserManagementPage = () => {
                                     <option value="Student">Vai trò: Học viên</option>
                                     <option value="Tutor">Vai trò: Gia sư</option>
                                     <option value="Parent">Vai trò: Phụ huynh</option>
+                                    <option value="Staff">Vai trò: Nhân viên</option>
                                     <option value="Admin">Vai trò: Quản trị viên</option>
                                 </select>
                             </div>

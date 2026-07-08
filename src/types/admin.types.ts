@@ -162,30 +162,73 @@ export interface AdminDisputeStats {
   filterTo: string | null;
 }
 
+// --- GET /api/admin/dashboard/summary ---
+// Một KPI số kèm % thay đổi so với kỳ trước cùng độ dài (null khi kỳ trước = 0).
+export interface MetricWithChange {
+  value: number;
+  changePercent: number | null;
+}
+
+export interface SummaryBookings {
+  active: number;
+  newInPeriod: number;
+  completedInPeriod: number;
+}
+
+export interface SummaryPendingActions {
+  total: number;
+  tutorApprovals: number;
+  withdrawalReviews: number;
+  openDisputes: number;
+  unresolvedAlerts: number;
+  overdueCount: number;
+}
+
+export interface AdminDashboardSummary {
+  gmv: MetricWithChange;
+  platformRevenue: MetricWithChange;
+  bookings: SummaryBookings;
+  pendingActions: SummaryPendingActions;
+  filterFrom: string;
+  filterTo: string;
+}
+
+// --- GET /api/admin/dashboard/trends ---
+export interface FinancialTrendPoint {
+  label: string;
+  gmv: number;
+  platformRevenue: number;
+}
+
+export interface LessonTrendPoint {
+  label: string;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+}
+
+export interface LessonRates {
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+}
+
+export interface DashboardTrend {
+  from: string;
+  to: string;
+  bucket: string;
+  financialTrend: FinancialTrendPoint[];
+  lessonTrend: LessonTrendPoint[];
+  lessonRates: LessonRates;
+}
+
 // ============================================
 // VETTING TYPES (ADM-02)
 // ============================================
 
-export type ProfileStatus =
-  | 'onboarding_incomplete'
-  | 'pending_review'
-  | 'approved'
-  | 'rejected'
-  | 'suspended';
+export type ProfileStatus = 'onboarding_incomplete' | 'pending_review' | 'approved' | 'rejected' | 'suspended';
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
-
-export interface TutorForReview {
-  tutorid: string;
-  userid: string;
-  fullname: string;
-  email: string;
-  phone: string;
-  avatarurl: string | null;
-  profilestatus: ProfileStatus;
-  createdat: string;
-  subjects: string[]; // Array of subject names
-}
 
 // Interface cho API response từ /api/Tutor/pending
 // Nested sections structure matching actual API response
@@ -215,7 +258,7 @@ export interface PendingTutorSections {
   video?: {
     videoUrl: string | null;
     status: string;
-    updatedAt: string;
+    updatedAt: string | null;
   };
   basicInfo?: {
     avatarUrl: string | null;
@@ -223,9 +266,9 @@ export interface PendingTutorSections {
     teachingAreaCity: string | null;
     teachingAreaDistrict: string | null;
     teachingMode: string | null;
-    subjects: PendingTutorSubject[];
+    subjects?: PendingTutorSubject[];
     status: string;
-    updatedAt: string;
+    updatedAt: string | null;
   };
   introduction?: {
     bio: string | null;
@@ -234,20 +277,26 @@ export interface PendingTutorSections {
     gpaScale: number | null;
     experience: string | null;
     status: string;
-    updatedAt: string;
+    updatedAt: string | null;
   };
   certificates?: {
     totalCount: number;
     certificates: PendingTutorCertificate[];
     status: string;
-    updatedAt: string;
+    updatedAt: string | null;
   };
   identityCard?: {
-    frontImageUrl: string | null;
-    backImageUrl: string | null;
+    identityNumberMasked?: string | null;
+    fullName?: string | null;
+    dateOfBirth?: string | null;
+    gender?: string | null;
+    permanentAddress?: string | null;
+    portraitImageUrl?: string | null;
+    frontImageUrl?: string | null;
+    backImageUrl?: string | null;
     isVerified: boolean;
     status: string;
-    updatedAt: string;
+    updatedAt: string | null;
   };
   pricing?: {
     hourlyRate: number | null;
@@ -329,6 +378,42 @@ export interface ReviewProfileUpdateRequestBody {
   note?: string;
 }
 
+// Một chứng chỉ chờ duyệt (cert-centric) kèm thông tin gia sư tối thiểu.
+// Khớp với endpoint đề xuất GET /api/admin/certificates/pending; cũng là shape
+// mà FE dựng tạm (derived) từ danh sách pending tutors cho tới khi BE ship.
+export interface PendingCertificate {
+  certificateId: string;
+  certificateName: string;
+  certificateType: string | null;
+  issuingOrganization: string;
+  yearIssued: number | null;
+  credentialId: string | null;
+  credentialUrl: string | null;
+  verificationStatus: string; // "pending_review" | "verified" | "rejected"
+  certificateFileUrl: string | null;
+  createdAt: string | null;
+  tutorId: string;
+  tutorName: string;
+  tutorEmail: string;
+  tutorAvatarUrl: string | null;
+}
+
+export interface PendingCertificatesResponse {
+  content: PendingCertificate[];
+  total: number; // tổng theo header X-Pagination (toàn bộ trang)
+}
+
+// Response cho API duyệt/từ chối từng chứng chỉ
+// PUT /api/admin/tutors/{tutorId}/certificates/{certId}/verify
+export interface AdminVerifyCertificateResponse {
+  certificateId: string;
+  tutorId: string;
+  certificateName: string;
+  verificationStatus: string; // "verified" | "rejected"
+  verificationNote: string | null;
+  isProfileActivated: boolean; // true nếu duyệt cert này khiến hồ sơ được kích hoạt
+}
+
 export interface EKYCContent {
   id: string; // CCCD number
   name: string; // Full name from CCCD
@@ -391,28 +476,13 @@ export interface TutorAvailability {
   isavailable: boolean;
 }
 
-export interface TutorDetailForReview {
-  user: UserInfo;
-  profile: TutorProfileInfo;
-  subjects: TutorSubject[];
-  availability: TutorAvailability[];
-}
-
 // ============================================
 // DISPUTES TYPES (ADM-03)
 // ============================================
 
-export type DisputeType =
-  | 'no_show'
-  | 'quality'
-  | 'payment'
-  | 'other';
+export type DisputeType = 'no_show' | 'quality' | 'payment' | 'other';
 
-export type DisputeStatus =
-  | 'pending'
-  | 'investigating'
-  | 'resolved'
-  | 'closed';
+export type DisputeStatus = 'pending' | 'investigating' | 'resolved' | 'closed';
 
 export type DisputePriority = 'low' | 'medium' | 'high';
 
@@ -501,10 +571,7 @@ export interface DisputeDetail {
   timeSinceCreation: string | null;
 }
 
-export type ResolutionType =
-  | 'refund_100'
-  | 'refund_50'
-  | 'release';
+export type ResolutionType = 'refund_100' | 'refund_50' | 'release';
 
 export interface ResolveDisputeRequest {
   resolutionType: ResolutionType;
@@ -604,13 +671,7 @@ export interface WithdrawalRequest {
   [key: string]: any;
 }
 
-export type TransactionType =
-  | 'Deposit'
-  | 'Escrow'
-  | 'Release'
-  | 'Refund'
-  | 'Withdrawal'
-  | 'Fee';
+export type TransactionType = 'Deposit' | 'Escrow' | 'Release' | 'Refund' | 'Withdrawal' | 'Fee';
 
 export type TransactionStatus = 'pending' | 'completed' | 'failed';
 
@@ -632,7 +693,7 @@ export interface Transaction {
 // USER MANAGEMENT TYPES (ADM-05)
 // ============================================
 
-export type UserRole = 'student' | 'tutor' | 'parent' | 'admin';
+export type UserRole = 'student' | 'tutor' | 'parent' | 'admin' | 'staff';
 
 export type UserStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
 
@@ -778,36 +839,4 @@ export interface FilterParams {
   startDate?: string;
   endDate?: string;
   search?: string;
-}
-
-// ============================================
-// API REQUEST/RESPONSE TYPES
-// ============================================
-
-export interface ApproveTutorResponse {
-  success: boolean;
-  message: string;
-  tutorid: string;
-}
-
-export interface RejectTutorRequest {
-  rejectionNote: string; // Min 20 chars
-}
-
-export interface RejectTutorResponse {
-  success: boolean;
-  message: string;
-  tutorid: string;
-}
-
-export interface VerifyIdentityResponse {
-  success: boolean;
-  message: string;
-  userid: string;
-}
-
-export interface VerifyCredentialResponse {
-  success: boolean;
-  message: string;
-  credentialIndex: number;
 }

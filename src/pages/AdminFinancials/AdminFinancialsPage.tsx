@@ -88,8 +88,8 @@ const AdminFinancialsPage = () => {
             key: 'tutor',
             title: 'Gia sư',
             render: (row) => (
-                <div className="admin-table-user">
-                    <div className="admin-user-thumbnail" style={{ backgroundImage: `url('${row.tutoravatar}')` }} />
+                <div className="financial-table-user">
+                    <img className="financial-avatar" src={row.tutoravatar} alt="" loading="lazy" />
                     <div className="admin-ui-entity">
                         <span className="admin-ui-entity-primary">{row.tutorname}</span>
                         <span className="admin-ui-entity-secondary">{row.tutorsubject}</span>
@@ -124,7 +124,7 @@ const AdminFinancialsPage = () => {
             title: 'Hành động',
             align: 'right',
             render: (row) => (
-                <div className="admin-ui-actions" style={{ justifyContent: 'flex-end' }}>
+                <div className="admin-ui-actions financial-actions">
                     <button className="admin-ui-button admin-ui-button-danger" onClick={() => handleRejectClick(row)}>
                         Từ chối
                     </button>
@@ -214,7 +214,7 @@ const AdminFinancialsPage = () => {
                             loadingText="Đang tải yêu cầu rút tiền..."
                             emptyText="Không có yêu cầu rút tiền nào đang chờ xử lý"
                             emptyIcon={
-                                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#94a3b8' }}>
+                                <span className="material-symbols-outlined financial-empty-icon">
                                     check_circle
                                 </span>
                             }
@@ -227,7 +227,7 @@ const AdminFinancialsPage = () => {
 
                     {activeTab === 'commission' && (
                         <div className="admin-ui-muted-state">
-                            <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                            <span className="material-symbols-outlined financial-muted-icon">
                                 settings
                             </span>
                             <p>Cài đặt hoa hồng sẽ được triển khai trong Phase 3.</p>

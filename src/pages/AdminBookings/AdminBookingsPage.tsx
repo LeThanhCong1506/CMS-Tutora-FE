@@ -1,48 +1,32 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { getAdminBookings } from '../../services/adminBooking.service';
-import type {
-    AdminBookingListItem,
-    AdminBookingListParams,
-} from '../../types/adminBooking.types';
+import type { AdminBookingListItem, AdminBookingListParams } from '../../types/adminBooking.types';
 import { formatDateTime } from '../../utils/formatters';
-import {
-    getBookingStatusDisplay,
-    getTeachingModeLabel,
-    formatVND,
-} from './bookingDisplay';
+import { formatVND, getBookingStatusDisplay, getTeachingModeLabel } from './bookingDisplay';
 import BookingFilterBar from './BookingFilterBar';
+import styles from './AdminBookings.module.css';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [5, 10, 20];
 
-/**
- * Admin Booking list page — gọi GET /api/admin/bookings với filter đa chiều.
- *
- * Pattern theo `UserManagementPage`:
- *  - `searchInput` (live keystroke) vs `searchQuery` (committed) → tránh API call
- *    mỗi keystroke
- *  - AbortController cho race condition khi filter đổi nhanh
- */
 export default function AdminBookingsPage() {
     const navigate = useNavigate();
 
-    // Data state
     const [bookings, setBookings] = useState<AdminBookingListItem[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
-    // Filters
     const [status, setStatus] = useState('');
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
-    // AbortController giữa các fetch — tránh response cũ ghi đè response mới
     const fetchAbortRef = useRef<AbortController | null>(null);
 
     const fetchBookings = useCallback(async () => {
@@ -52,33 +36,30 @@ export default function AdminBookingsPage() {
 
         setLoading(true);
         try {
-            const params: AdminBookingListParams = { page, pageSize: PAGE_SIZE };
+            const params: AdminBookingListParams = { page, pageSize };
             if (status) params.status = status;
             if (from) params.from = from;
             if (to) params.to = to;
             if (searchQuery) params.search = searchQuery;
 
             const res = await getAdminBookings(params, controller.signal);
-
-            if (controller.signal.aborted) return; // dropped: newer request started
+            if (controller.signal.aborted) return;
 
             setBookings(res.content?.items ?? []);
             setTotalCount(res.content?.totalCount ?? 0);
         } catch (err: unknown) {
-            // Bỏ qua nếu request bị abort (user đổi filter quá nhanh)
             if (controller.signal.aborted) return;
-            const e = err as { code?: string; name?: string; message?: string };
-            if (e?.code === 'ERR_CANCELED' || e?.name === 'CanceledError') return;
+            const error = err as { code?: string; name?: string };
+            if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') return;
+
             console.error('getAdminBookings failed:', err);
-            toast.error('Không thể tải danh sách booking. Vui lòng thử lại.', {
+            toast.error('Không thể tải danh sách đặt lịch. Vui lòng thử lại.', {
                 toastId: 'admin-bookings-load-error',
             });
         } finally {
-            if (!controller.signal.aborted) {
-                setLoading(false);
-            }
+            if (!controller.signal.aborted) setLoading(false);
         }
-    }, [from, page, searchQuery, status, to]);
+    }, [from, page, pageSize, searchQuery, status, to]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -95,70 +76,104 @@ export default function AdminBookingsPage() {
         setPage(1);
     };
 
-    // Bất cứ filter nào đổi → reset về trang 1 (trừ pagination change)
-    const handleStatusChange = (v: string) => {
-        setStatus(v);
+    const handleStatusChange = (value: string) => {
+        setStatus(value);
         setPage(1);
     };
+
     const handleDateRangeChange = (newFrom: string, newTo: string) => {
         setFrom(newFrom);
         setTo(newTo);
         setPage(1);
     };
+
     const handleSearchSubmit = () => {
         setSearchQuery(searchInput.trim());
         setPage(1);
     };
 
+    const handlePageSizeChange = (newPageSize: number) => {
+        setPageSize(newPageSize);
+        setPage(1);
+    };
+
+    const openDetails = (record: AdminBookingListItem) => {
+        navigate(`/admin-portal/bookings/${record.bookingId}`);
+    };
+
     const columns: DataTableColumn<AdminBookingListItem>[] = [
         {
             key: 'bookingId',
-            title: 'Mã booking',
-            dataIndex: 'bookingId',
-            width: 100,
-            render: (record) => <span className="admin-ui-code-chip">#{record.bookingId}</span>,
+            title: 'Mã đặt lịch',
+            width: 126,
+            render: (record) => (
+                <div className={styles.bookingMeta}>
+                    <span className={styles.bookingCode}>#{record.bookingId}</span>
+                    <span className={styles.bookingDate}>
+                        {record.createdAt ? formatDateTime(record.createdAt) : 'Chưa có ngày'}
+                    </span>
+                </div>
+            ),
         },
         {
             key: 'student',
             title: 'Học sinh',
-            minWidth: 160,
+            minWidth: 168,
             render: (record) => (
-                <div className="admin-ui-entity">
-                    <span className="admin-ui-entity-primary">{record.studentName ?? '—'}</span>
-                    {record.gradeLevel && (
-                        <span className="admin-ui-entity-secondary">{record.gradeLevel}</span>
-                    )}
+                <div className={styles.personCell}>
+                    <span className={styles.personAvatar} aria-hidden="true">
+                        {record.studentName?.trim().charAt(0).toUpperCase() || 'H'}
+                    </span>
+                    <span className={styles.cellStack}>
+                        <span className={styles.cellPrimary}>{record.studentName ?? 'Chưa cập nhật'}</span>
+                        <span className={styles.cellSecondary}>{record.gradeLevel ?? 'Chưa có khối lớp'}</span>
+                    </span>
                 </div>
             ),
         },
         {
             key: 'tutor',
             title: 'Gia sư',
-            minWidth: 160,
+            minWidth: 150,
+            hideOnMobile: true,
             render: (record) => (
-                <div className="admin-ui-entity">
-                    <span className="admin-ui-entity-primary">{record.tutorName ?? '—'}</span>
+                <div className={styles.cellStack}>
+                    <span className={styles.cellPrimary}>{record.tutorName ?? 'Chưa cập nhật'}</span>
+                    <span className={styles.cellSecondary}>Người phụ trách</span>
                 </div>
             ),
         },
         {
-            key: 'subject',
+            key: 'classInfo',
             title: 'Môn học',
-            dataIndex: 'subjectName',
-            minWidth: 110,
-            render: (record) => record.subjectName ?? '—',
+            minWidth: 128,
             hideOnMobile: true,
+            render: (record) => (
+                <div className={styles.cellStack}>
+                    <span className={styles.cellPrimary}>{record.subjectName ?? 'Chưa cập nhật'}</span>
+                    <span className={styles.cellSecondary}>{getTeachingModeLabel(record.teachingMode)}</span>
+                </div>
+            ),
         },
         {
-            key: 'createdAt',
-            title: 'Ngày tạo',
-            minWidth: 130,
-            render: (record) => (
-                <span className="admin-ui-table-meta">
-                    {record.createdAt ? formatDateTime(record.createdAt) : '—'}
-                </span>
-            ),
+            key: 'progress',
+            title: 'Tiến độ',
+            minWidth: 142,
             hideOnMobile: true,
+            render: (record) => {
+                const total = record.lessonsTotal || record.sessionCount || 0;
+                const completed = Math.min(record.lessonsCompleted || 0, total);
+                const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                return (
+                    <div className={styles.progressCell}>
+                        <span>{total > 0 ? `${completed}/${total} buổi` : 'Chưa có buổi học'}</span>
+                        <span className={styles.progressTrack} aria-hidden="true">
+                            <span className={styles.progressValue} style={{ width: `${percentage}%` }} />
+                        </span>
+                    </div>
+                );
+            },
         },
         {
             key: 'status',
@@ -170,33 +185,32 @@ export default function AdminBookingsPage() {
             },
         },
         {
-            key: 'teachingMode',
-            title: 'Hình thức',
-            minWidth: 100,
-            render: (record) => getTeachingModeLabel(record.teachingMode),
-            hideOnMobile: true,
-        },
-        {
             key: 'finalPrice',
             title: 'Tổng tiền',
             align: 'right',
-            minWidth: 130,
+            minWidth: 132,
+            hideOnMobile: true,
             render: (record) => (
-                <span className="admin-ui-amount">{formatVND(record.finalPrice ?? record.price)}</span>
+                <span className={styles.cellMoney}>{formatVND(record.finalPrice ?? record.price)}</span>
             ),
         },
         {
             key: 'action',
             title: '',
-            width: 90,
+            width: 56,
             align: 'right',
             render: (record) => (
                 <button
                     type="button"
-                    className="admin-ui-button admin-ui-button-secondary"
-                    onClick={() => navigate(`/admin-portal/bookings/${record.bookingId}`)}
+                    className={styles.detailButton}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        openDetails(record);
+                    }}
+                    aria-label={`Xem chi tiết đặt lịch số ${record.bookingId}`}
+                    title="Xem chi tiết"
                 >
-                    Chi tiết
+                    <span className="material-symbols-outlined">chevron_right</span>
                 </button>
             ),
         },
@@ -204,28 +218,47 @@ export default function AdminBookingsPage() {
 
     return (
         <PageContainer
-            eyebrow="Vận hành"
-            title="Quản lý booking"
-            subtitle="Toàn bộ booking trên hệ thống: giám sát tiến độ, tranh chấp và hỗ trợ vận hành."
+            title="Quản lý đặt lịch"
             maxWidth="wide"
             headerAction={
-                <div className="admin-ui-actions">
-                    <span className="admin-ui-code-chip">Tổng {totalCount.toLocaleString('vi-VN')}</span>
+                <div className={styles.headerActions}>
+                    <div className={styles.totalSummary} aria-label={`${totalCount} lịch đặt`}>
+                        <span className={`material-symbols-outlined ${styles.totalIcon}`}>calendar_month</span>
+                        <span>
+                            <strong>{totalCount.toLocaleString('vi-VN')}</strong>
+                            <small>Tổng lịch đặt</small>
+                        </span>
+                    </div>
                     <button
                         type="button"
-                        className="admin-ui-button admin-ui-button-secondary"
+                        className={styles.refreshButton}
                         onClick={() => void fetchBookings()}
+                        disabled={loading}
                     >
-                        <span className="material-symbols-outlined">refresh</span>
+                        <span className={`material-symbols-outlined ${loading ? styles.spinning : ''}`}>refresh</span>
                         Làm mới
                     </button>
                 </div>
             }
         >
             <SectionCard
-                title="Danh sách booking"
-                subtitle="Lọc theo trạng thái, khoảng ngày hoặc tên học sinh/gia sư để xử lý nhanh."
-                footer={`Hiển thị ${bookings.length} / ${totalCount.toLocaleString('vi-VN')} booking`}
+                title="Danh sách đặt lịch"
+                headerAction={
+                    <label className={styles.pageSizeControl}>
+                        <span>Số dòng</span>
+                        <select
+                            value={pageSize}
+                            onChange={(event) => handlePageSizeChange(Number(event.target.value))}
+                            aria-label="Số dòng mỗi trang"
+                        >
+                            {PAGE_SIZE_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                }
             >
                 <BookingFilterBar
                     status={status}
@@ -234,6 +267,7 @@ export default function AdminBookingsPage() {
                     to={to}
                     onDateRangeChange={handleDateRangeChange}
                     searchInput={searchInput}
+                    searchQuery={searchQuery}
                     onSearchInputChange={setSearchInput}
                     onSearchSubmit={handleSearchSubmit}
                     onReset={resetFilters}
@@ -244,14 +278,17 @@ export default function AdminBookingsPage() {
                     data={bookings}
                     rowKey="bookingId"
                     loading={loading}
+                    loadingText="Đang tải danh sách đặt lịch..."
                     pagination={{
                         current: page,
-                        pageSize: PAGE_SIZE,
+                        pageSize,
                         total: totalCount,
                         onChange: setPage,
                     }}
-                    emptyText="Không có booking nào khớp bộ lọc."
+                    onRowClick={openDetails}
+                    emptyText="Không có lịch đặt nào phù hợp với bộ lọc."
                     variant="embedded"
+                    minWidth={900}
                 />
             </SectionCard>
         </PageContainer>

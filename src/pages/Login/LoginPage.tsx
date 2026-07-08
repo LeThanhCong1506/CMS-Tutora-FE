@@ -8,7 +8,7 @@ const LoginPage: React.FC = () => {
       <section className="login-panel" aria-label="Đăng nhập quản trị">
         <header className="login-brand">
           <img className="login-brand__logo" src="/tutora-logo.png" alt="" />
-          <p className="login-brand__name">Tutora Admin</p>
+          <p className="login-brand__name">Cổng quản trị viên Tutora</p>
         </header>
 
         <div className="login-card">
