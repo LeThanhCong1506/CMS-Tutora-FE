@@ -1,0 +1,121 @@
+/* ============================================
+   ADMIN STAFF MANAGEMENT
+   Tái sử dụng shell modal của admin-vetting-modal.css
+   (.vetting-modal-overlay / .vetting-rejection-* / .vetting-btn*).
+   File này chỉ bổ sung layout form tạo nhân viên + vài tiện ích danh sách.
+   ============================================ */
+
+/* ---- Danh sách nhân viên ---- */
+.staff-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.staff-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(212, 180, 131, 0.35);
+}
+
+/* ---- Modal tạo nhân viên ---- */
+/* Rộng hơn modal từ chối mặc định để chứa lưới 2 cột. */
+.staff-create-modal {
+  max-width: 720px;
+}
+
+.staff-form-intro {
+  margin: 0 0 20px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.staff-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+/* Trường chiếm trọn chiều ngang (địa chỉ). */
+.staff-form-grid .staff-field--full {
+  grid-column: 1 / -1;
+}
+
+/* Field tự dựng (select giới tính, input ngày sinh) — canh khớp InputGroup. */
+.staff-field label.staff-field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-navy, #1a2238);
+  margin-bottom: 6px;
+}
+
+.staff-field-control {
+  width: 100%;
+  box-sizing: border-box;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--color-navy, #1a2238);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.staff-field-control:focus {
+  outline: none;
+  border-color: var(--color-gold, #d4b483);
+  box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.18);
+}
+
+.staff-field-control--invalid {
+  border-color: #dc2626;
+}
+
+.staff-field-control--invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.staff-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.staff-field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Banner lỗi tổng (trùng dữ liệu trả về từ server). */
+.staff-form-alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.staff-form-alert .material-symbols-outlined {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .staff-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

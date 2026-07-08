@@ -654,7 +654,7 @@ export interface Transaction {
 // USER MANAGEMENT TYPES (ADM-05)
 // ============================================
 
-export type UserRole = 'student' | 'tutor' | 'parent' | 'admin';
+export type UserRole = 'student' | 'tutor' | 'parent' | 'admin' | 'staff';
 
 export type UserStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
 

@@ -26,6 +26,7 @@ const ROLE_MAP: Record<string, RoleDisplay> = {
     parent: { label: 'Phụ huynh', variant: 'warning', icon: 'family_restroom' },
     student: { label: 'Học viên', variant: 'neutral', icon: 'person' },
     admin: { label: 'Quản trị', variant: 'dark', icon: 'admin_panel_settings' },
+    staff: { label: 'Nhân viên', variant: 'success', icon: 'support_agent' },
 };
 
 /**

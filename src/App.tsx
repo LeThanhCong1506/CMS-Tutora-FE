@@ -28,6 +28,7 @@ const ForbiddenPage = lazy(() => import('./pages/Error/ForbiddenPage'));
 // Admin pages
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboard/AdminDashboardPageEnhanced'));
 const UserManagementPage = lazy(() => import('./pages/AdminUserManagement/UserManagementPage'));
+const StaffManagementPage = lazy(() => import('./pages/AdminStaffManagement/StaffManagementPage'));
 const AdminVettingPage = lazy(() => import('./pages/AdminVetting/AdminVettingPage'));
 const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/AdminCertificateVettingPage'));
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
@@ -123,6 +124,7 @@ function App() {
               <Route index element={<Navigate to="/admin-portal/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="users" element={<UserManagementPage />} />
+              <Route path="staff" element={<StaffManagementPage />} />
               <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
               <Route path="vetting/profiles" element={<AdminVettingPage />} />
               <Route path="vetting/certificates" element={<AdminCertificateVettingPage />} />
