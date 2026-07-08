@@ -26,6 +26,7 @@ const AdminLayout: React.FC = () => {
     const navItems: NavItem[] = [
         { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard' },
         { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group' },
+        { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge' },
         { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note' },
         {
             path: '/admin-portal/vetting',
