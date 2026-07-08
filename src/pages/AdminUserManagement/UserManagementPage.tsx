@@ -415,6 +415,7 @@ const UserManagementPage = () => {
                                     <option value="Student">Vai trò: Học viên</option>
                                     <option value="Tutor">Vai trò: Gia sư</option>
                                     <option value="Parent">Vai trò: Phụ huynh</option>
+                                    <option value="Staff">Vai trò: Nhân viên</option>
                                     <option value="Admin">Vai trò: Quản trị viên</option>
                                 </select>
                             </div>
