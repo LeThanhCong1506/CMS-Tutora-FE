@@ -2,16 +2,50 @@ import { useState, useEffect, useCallback } from 'react';
 import { ConfigProvider, Pagination } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import { toast } from 'react-toastify';
-import { getPendingTutors, updateTutorApproval } from '../../services/admin.service';
+import {
+  getPendingTutors,
+  updateTutorApproval,
+  getPendingProfileUpdateRequests,
+  getProfileUpdateRequestDetail,
+  reviewProfileUpdateRequest,
+} from '../../services/admin.service';
 import TutorDetailModal from './components/TutorDetailModal';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
-import type { PendingTutorFromAPI } from '../../types/admin.types';
+import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import '../../styles/pages/admin-vetting.css';
 
 const PAGE_SIZE = 15;
 const DEFAULT_ORDER = 'createdat_asc';
+
+// Các cặp field (cũ/đề xuất) để vẽ diff cho tab "Yêu cầu cập nhật hồ sơ".
+// proposed === null nghĩa là tutor không đụng tới field đó ở lần nộp này.
+const PROFILE_UPDATE_DIFF_FIELDS: Array<{
+  label: string;
+  current: keyof ProfileUpdateRequestFromAPI;
+  proposed: keyof ProfileUpdateRequestFromAPI;
+}> = [
+  { label: 'Tiêu đề', current: 'currentHeadline', proposed: 'proposedHeadline' },
+  { label: 'Thành phố', current: 'currentTeachingAreaCity', proposed: 'proposedTeachingAreaCity' },
+  { label: 'Quận/huyện', current: 'currentTeachingAreaDistrict', proposed: 'proposedTeachingAreaDistrict' },
+  { label: 'Giới thiệu (Bio)', current: 'currentBio', proposed: 'proposedBio' },
+  { label: 'Học vấn', current: 'currentEducation', proposed: 'proposedEducation' },
+  { label: 'Kinh nghiệm', current: 'currentExperience', proposed: 'proposedExperience' },
+  { label: 'Video giới thiệu', current: 'currentVideoIntroUrl', proposed: 'proposedVideoIntroUrl' },
+];
+
+// Field dùng để phát hiện "Tutor vừa nộp thêm thay đổi mới trong lúc Admin đang xem" — so bản
+// đang hiển thị trên màn hình với bản mới nhất lấy lại từ server ngay trước khi Duyệt/Từ chối.
+const PROFILE_UPDATE_COMPARE_KEYS: Array<keyof ProfileUpdateRequestFromAPI> = [
+  ...PROFILE_UPDATE_DIFF_FIELDS.map((f) => f.proposed),
+  'hasProposedSubjectGradePrices',
+];
+
+const hasProfileUpdateRequestChanged = (
+  known: ProfileUpdateRequestFromAPI,
+  fresh: ProfileUpdateRequestFromAPI,
+): boolean => PROFILE_UPDATE_COMPARE_KEYS.some((key) => known[key] !== fresh[key]);
 
 type ApiError = {
   response?: { status?: number };
@@ -67,6 +101,15 @@ const AdminVettingPage = () => {
   const [rejectionNote, setRejectionNote] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState<'new' | 'updates'>('new');
+  const [updateRequests, setUpdateRequests] = useState<ProfileUpdateRequestFromAPI[]>([]);
+  const [updateRequestsLoading, setUpdateRequestsLoading] = useState(true);
+  const [updateRequestsError, setUpdateRequestsError] = useState<string | null>(null);
+  const [updateActionLoading, setUpdateActionLoading] = useState<string | null>(null);
+  const [updateRejectionNote, setUpdateRejectionNote] = useState('');
+  const [showUpdateRejectModal, setShowUpdateRejectModal] = useState<string | null>(null);
+  const [selectedUpdateRequest, setSelectedUpdateRequest] = useState<ProfileUpdateRequestFromAPI | null>(null);
+
   const fetchPendingTutors = useCallback(async () => {
     try {
       setLoading(true);
@@ -121,6 +164,120 @@ const AdminVettingPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fresh !== selectedTutor) setSelectedTutor(fresh);
   }, [tutors, selectedTutor]);
+
+  const fetchPendingUpdateRequests = useCallback(async () => {
+    try {
+      setUpdateRequestsLoading(true);
+      setUpdateRequestsError(null);
+      const response = await getPendingProfileUpdateRequests();
+      setUpdateRequests(response.content || []);
+    } catch (err: unknown) {
+      console.error('Error fetching pending profile update requests:', err);
+      setUpdateRequestsError(getVettingErrorMessage(err));
+      setUpdateRequests([]);
+    } finally {
+      setUpdateRequestsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchPendingUpdateRequests();
+  }, [fetchPendingUpdateRequests]);
+
+  /**
+   * Gọi lại API lấy bản MỚI NHẤT của request trước khi thực sự Duyệt/Từ chối, vì danh sách
+   * không tự cập nhật real-time — nếu Tutor vừa nộp thêm thay đổi trong lúc Admin đang xem,
+   * ta phải phát hiện ra và đồng bộ lại UI thay vì để Admin duyệt nhầm nội dung chưa từng thấy.
+   */
+  const verifyProfileUpdateRequestFreshness = async (tutorId: string): Promise<'fresh' | 'stale' | 'gone'> => {
+    const fresh = await getProfileUpdateRequestDetail(tutorId);
+    if (!fresh) return 'gone';
+
+    const known = updateRequests.find((r) => r.tutorId === tutorId);
+    const changed = known ? hasProfileUpdateRequestChanged(known, fresh) : false;
+
+    // Đồng bộ lại UI với bản mới nhất trong mọi trường hợp (kể cả khi không đổi, để chắc
+    // chắn dữ liệu hiển thị luôn khớp với server tại thời điểm vừa kiểm tra).
+    setUpdateRequests((prev) => prev.map((r) => (r.tutorId === tutorId ? fresh : r)));
+    setSelectedUpdateRequest((prev) => (prev && prev.tutorId === tutorId ? fresh : prev));
+
+    return changed ? 'stale' : 'fresh';
+  };
+
+  const handleApproveUpdateRequest = async (tutorId: string) => {
+    try {
+      setUpdateActionLoading(tutorId);
+
+      const freshness = await verifyProfileUpdateRequestFreshness(tutorId);
+      if (freshness === 'gone') {
+        toast.info('Yêu cầu này không còn tồn tại — có thể đã được xử lý trước đó. Danh sách đang được làm mới.');
+        await fetchPendingUpdateRequests();
+        return;
+      }
+      if (freshness === 'stale') {
+        toast.warning('Tutor vừa nộp thêm thay đổi mới trong lúc bạn xem. Vui lòng xem lại nội dung mới rồi bấm Duyệt lại.');
+        return;
+      }
+
+      const response = await reviewProfileUpdateRequest(tutorId, true);
+      // BE có thể chèn thêm cảnh báo vào message (VD: tutor vừa nộp thêm thay đổi mới
+      // ngay trong khoảng giữa lúc verifyProfileUpdateRequestFreshness và lúc PUT này chạy)
+      // — luôn ưu tiên hiển thị message thật từ server thay vì text tĩnh.
+      toast.success(response?.message || 'Duyệt cập nhật hồ sơ thành công. Marketplace đã hiển thị thông tin mới.');
+      await fetchPendingUpdateRequests();
+    } catch (err) {
+      console.error('Error approving profile update request:', err);
+      toast.error('Không thể duyệt yêu cầu. Vui lòng thử lại.');
+    } finally {
+      setUpdateActionLoading(null);
+    }
+  };
+
+  const handleOpenUpdateRejectModal = (tutorId: string) => {
+    setShowUpdateRejectModal(tutorId);
+    setUpdateRejectionNote('');
+  };
+
+  const handleRejectUpdateRequest = async () => {
+    if (!showUpdateRejectModal) return;
+    if (updateRejectionNote.trim().length < 10) {
+      toast.error('Lý do từ chối phải có ít nhất 10 ký tự.');
+      return;
+    }
+
+    const tutorId = showUpdateRejectModal;
+
+    try {
+      setUpdateActionLoading(tutorId);
+
+      const freshness = await verifyProfileUpdateRequestFreshness(tutorId);
+      if (freshness === 'gone') {
+        toast.info('Yêu cầu này không còn tồn tại — có thể đã được xử lý trước đó. Danh sách đang được làm mới.');
+        setShowUpdateRejectModal(null);
+        setUpdateRejectionNote('');
+        await fetchPendingUpdateRequests();
+        return;
+      }
+      if (freshness === 'stale') {
+        toast.warning('Tutor vừa nộp thêm thay đổi mới trong lúc bạn xem. Vui lòng xem lại nội dung mới rồi từ chối lại nếu cần.');
+        setShowUpdateRejectModal(null);
+        setUpdateRejectionNote('');
+        return;
+      }
+
+      const response = await reviewProfileUpdateRequest(tutorId, false, updateRejectionNote);
+      toast.success(response?.message || 'Đã từ chối yêu cầu cập nhật hồ sơ.');
+      setShowUpdateRejectModal(null);
+      setUpdateRejectionNote('');
+      await fetchPendingUpdateRequests();
+    } catch (err) {
+      console.error('Error rejecting profile update request:', err);
+      toast.error('Không thể từ chối yêu cầu. Vui lòng thử lại.');
+    } finally {
+      setUpdateActionLoading(null);
+    }
+  };
 
   // Commit the live input as the search term (Enter or the search button).
   const commitSearch = () => {
@@ -257,144 +414,299 @@ const AdminVettingPage = () => {
     },
   ];
 
+  const updateRequestColumns: DataTableColumn<ProfileUpdateRequestFromAPI>[] = [
+    {
+      key: 'tutor',
+      title: 'Gia sư',
+      minWidth: 220,
+      render: (req) => (
+        <div className="vetting-tutor-info">
+          <div
+            className="vetting-tutor-avatar"
+            style={{ backgroundImage: cssBackgroundUrl(req.tutorAvatarUrl || getFallbackAvatar(req.tutorFullName)) }}
+          />
+          <div className="vetting-profile-cell">
+            <span className="vetting-profile-name">{req.tutorFullName || 'Chưa rõ tên'}</span>
+            <span className="vetting-profile-email">{req.tutorEmail}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'changes',
+      title: 'Thay đổi',
+      minWidth: 190,
+      render: (req) => {
+        const changedLabels = PROFILE_UPDATE_DIFF_FIELDS.filter((f) => req[f.proposed] !== null).map((f) => f.label);
+        if (req.hasProposedSubjectGradePrices) changedLabels.push('Môn học & Bảng giá');
+        return (
+          <span className="admin-ui-entity-secondary">
+            {changedLabels.length > 0 ? changedLabels.join(', ') : 'Không có thay đổi nào được ghi nhận'}
+          </span>
+        );
+      },
+      hideOnMobile: true,
+    },
+    {
+      key: 'date',
+      title: 'Đã nộp',
+      render: (req) => <span className="vetting-submitted-at">{formatSubmittedAt(req.submittedAt)}</span>,
+      hideOnMobile: true,
+    },
+    {
+      key: 'status',
+      title: 'Trạng thái',
+      render: () => <StatusBadge variant="warning">Chờ xem xét</StatusBadge>,
+    },
+    {
+      key: 'actions',
+      title: 'Hành động',
+      align: 'right',
+      render: (req) => (
+        <div className="certificate-row-actions">
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-success"
+            onClick={() => handleApproveUpdateRequest(req.tutorId)}
+            disabled={updateActionLoading === req.tutorId}
+          >
+            <span className="material-symbols-outlined">check</span>
+            Duyệt
+          </button>
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-danger"
+            onClick={() => handleOpenUpdateRejectModal(req.tutorId)}
+            disabled={updateActionLoading === req.tutorId}
+          >
+            Từ chối
+          </button>
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-secondary"
+            onClick={() => setSelectedUpdateRequest(req)}
+          >
+            Xem thay đổi
+          </button>
+        </div>
+      ),
+      minWidth: 300,
+    },
+  ];
+
   return (
     <>
       <div className="certificate-vetting-page">
         <PageContainer title="Kiểm duyệt gia sư" maxWidth="wide">
-          <SectionCard
-            title="Hồ sơ chờ duyệt"
-            headerAction={
-              <button
-                type="button"
-                className="vetting-refresh-button"
-                onClick={() => void fetchPendingTutors()}
-                disabled={loading}
-                aria-label="Làm mới danh sách hồ sơ chờ duyệt"
-              >
-                <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
-                Làm mới
-              </button>
-            }
-            footer={
-              <div className="certificate-table-footer">
-                <span>
-                  {searchQuery
-                    ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
-                    : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`}
-                </span>
-                {total > PAGE_SIZE && (
-                  <ConfigProvider
-                    locale={viVN}
-                    theme={{
-                      token: {
-                        colorPrimary: '#1a2238',
-                        borderRadius: 8,
-                        fontFamily: "'IBM Plex Sans', sans-serif",
-                      },
-                      components: {
-                        Pagination: {
-                          itemActiveBg: '#1a2238',
-                          itemActiveColor: '#ffffff',
-                          itemActiveColorHover: '#ffffff',
-                          itemBg: 'transparent',
-                          itemLinkBg: 'transparent',
-                        },
-                      },
-                    }}
-                  >
-                    <Pagination
-                      current={page}
-                      pageSize={PAGE_SIZE}
-                      total={total}
-                      onChange={(nextPage) => setPage(nextPage)}
-                      showSizeChanger={false}
-                      showLessItems
-                      responsive
-                    />
-                  </ConfigProvider>
-                )}
-              </div>
-            }
-          >
-            <div className="certificate-vetting-toolbar">
-              <div className="certificate-search-group">
-                <div className="admin-ui-search">
-                  <span className="material-symbols-outlined admin-ui-search-icon">search</span>
-                  <input
-                    id="vetting-search"
-                    type="search"
-                    className="admin-ui-search-input"
-                    placeholder="Tìm theo tên, email, số điện thoại..."
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    onKeyDown={handleSearchKeyDown}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="admin-ui-button admin-ui-button-primary"
-                  onClick={commitSearch}
-                  disabled={loading}
-                >
-                  Tìm kiếm
-                </button>
-                {searchQuery && (
-                  <button type="button" className="admin-ui-button admin-ui-button-secondary" onClick={clearSearch}>
-                    Xóa tìm kiếm
-                  </button>
-                )}
-              </div>
-              <label className="certificate-sort-control">
-                <span>Sắp xếp</span>
-                <select
-                  id="vetting-sort"
-                  className="admin-ui-search-input vetting-sort-select"
-                  value={orderBy}
-                  onChange={(event) => {
-                    setOrderBy(event.target.value);
-                    setPage(1);
-                  }}
-                  aria-label="Sắp xếp"
-                >
-                  <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
-                  <option value="createdat_desc">Mới nhất trước</option>
-                  <option value="tutorname_asc">Tên gia sư A→Z</option>
-                  <option value="tutorname_desc">Tên gia sư Z→A</option>
-                </select>
-              </label>
-            </div>
+          <div className="admin-ui-actions" style={{ marginBottom: 16 }}>
+            <button
+              type="button"
+              className={`admin-ui-button ${activeTab === 'new' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
+              onClick={() => setActiveTab('new')}
+            >
+              Hồ sơ mới ({total})
+            </button>
+            <button
+              type="button"
+              className={`admin-ui-button ${activeTab === 'updates' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
+              onClick={() => setActiveTab('updates')}
+            >
+              Yêu cầu cập nhật hồ sơ ({updateRequests.length})
+            </button>
+          </div>
 
-            {error && !loading ? (
-              <div className="vetting-error-state">
-                <span className="material-symbols-outlined vetting-state-icon">error</span>
-                <p>{error}</p>
+          {activeTab === 'new' && (
+            <SectionCard
+              title="Hồ sơ chờ duyệt"
+              headerAction={
                 <button
                   type="button"
-                  className="admin-ui-button admin-ui-button-primary"
+                  className="vetting-refresh-button"
                   onClick={() => void fetchPendingTutors()}
+                  disabled={loading}
+                  aria-label="Làm mới danh sách hồ sơ chờ duyệt"
                 >
-                  Thử lại
+                  <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+                  Làm mới
                 </button>
-              </div>
-            ) : (
-              <DataTable<PendingTutorFromAPI>
-                columns={vettingColumns}
-                data={visibleTutors}
-                rowKey="userid"
-                loading={loading}
-                loadingText="Đang tải danh sách gia sư..."
-                emptyText={searchQuery ? 'Không tìm thấy hồ sơ phù hợp' : 'Không có gia sư nào đang chờ duyệt'}
-                emptyIcon={
-                  <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
-                    check_circle
+              }
+              footer={
+                <div className="certificate-table-footer">
+                  <span>
+                    {searchQuery
+                      ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
+                      : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`}
                   </span>
-                }
-                onRowClick={(tutor) => setSelectedTutor(tutor)}
-                minWidth={900}
-                variant="embedded"
-              />
-            )}
-          </SectionCard>
+                  {total > PAGE_SIZE && (
+                    <ConfigProvider
+                      locale={viVN}
+                      theme={{
+                        token: {
+                          colorPrimary: '#1a2238',
+                          borderRadius: 8,
+                          fontFamily: "'IBM Plex Sans', sans-serif",
+                        },
+                        components: {
+                          Pagination: {
+                            itemActiveBg: '#1a2238',
+                            itemActiveColor: '#ffffff',
+                            itemActiveColorHover: '#ffffff',
+                            itemBg: 'transparent',
+                            itemLinkBg: 'transparent',
+                          },
+                        },
+                      }}
+                    >
+                      <Pagination
+                        current={page}
+                        pageSize={PAGE_SIZE}
+                        total={total}
+                        onChange={(nextPage) => setPage(nextPage)}
+                        showSizeChanger={false}
+                        showLessItems
+                        responsive
+                      />
+                    </ConfigProvider>
+                  )}
+                </div>
+              }
+            >
+              <div className="certificate-vetting-toolbar">
+                <div className="certificate-search-group">
+                  <div className="admin-ui-search">
+                    <span className="material-symbols-outlined admin-ui-search-icon">search</span>
+                    <input
+                      id="vetting-search"
+                      type="search"
+                      className="admin-ui-search-input"
+                      placeholder="Tìm theo tên, email, số điện thoại..."
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      onKeyDown={handleSearchKeyDown}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-primary"
+                    onClick={commitSearch}
+                    disabled={loading}
+                  >
+                    Tìm kiếm
+                  </button>
+                  {searchQuery && (
+                    <button type="button" className="admin-ui-button admin-ui-button-secondary" onClick={clearSearch}>
+                      Xóa tìm kiếm
+                    </button>
+                  )}
+                </div>
+                <label className="certificate-sort-control">
+                  <span>Sắp xếp</span>
+                  <select
+                    id="vetting-sort"
+                    className="admin-ui-search-input vetting-sort-select"
+                    value={orderBy}
+                    onChange={(event) => {
+                      setOrderBy(event.target.value);
+                      setPage(1);
+                    }}
+                    aria-label="Sắp xếp"
+                  >
+                    <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
+                    <option value="createdat_desc">Mới nhất trước</option>
+                    <option value="tutorname_asc">Tên gia sư A→Z</option>
+                    <option value="tutorname_desc">Tên gia sư Z→A</option>
+                  </select>
+                </label>
+              </div>
+
+              {error && !loading ? (
+                <div className="vetting-error-state">
+                  <span className="material-symbols-outlined vetting-state-icon">error</span>
+                  <p>{error}</p>
+                  <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-primary"
+                    onClick={() => void fetchPendingTutors()}
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              ) : (
+                <DataTable<PendingTutorFromAPI>
+                  columns={vettingColumns}
+                  data={visibleTutors}
+                  rowKey="userid"
+                  loading={loading}
+                  loadingText="Đang tải danh sách gia sư..."
+                  emptyText={searchQuery ? 'Không tìm thấy hồ sơ phù hợp' : 'Không có gia sư nào đang chờ duyệt'}
+                  emptyIcon={
+                    <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
+                      check_circle
+                    </span>
+                  }
+                  onRowClick={(tutor) => setSelectedTutor(tutor)}
+                  minWidth={900}
+                  variant="embedded"
+                />
+              )}
+            </SectionCard>
+          )}
+
+          {activeTab === 'updates' && (
+            <SectionCard
+              title="Yêu cầu cập nhật hồ sơ"
+              subtitle="Tutor đã Active gửi chỉnh sửa hồ sơ — Marketplace vẫn hiển thị thông tin cũ cho đến khi duyệt ở đây."
+              headerAction={
+                <button
+                  type="button"
+                  className="vetting-refresh-button"
+                  onClick={() => void fetchPendingUpdateRequests()}
+                  disabled={updateRequestsLoading}
+                  aria-label="Làm mới danh sách yêu cầu cập nhật hồ sơ"
+                >
+                  <span className={`material-symbols-outlined ${updateRequestsLoading ? 'vetting-spinning' : ''}`}>
+                    refresh
+                  </span>
+                  Làm mới
+                </button>
+              }
+              footer={
+                <div className="certificate-table-footer">
+                  <span>{`Hiển thị ${updateRequests.length} yêu cầu`}</span>
+                </div>
+              }
+            >
+              {updateRequestsError && !updateRequestsLoading ? (
+                <div className="vetting-error-state">
+                  <span className="material-symbols-outlined vetting-state-icon">error</span>
+                  <p>{updateRequestsError}</p>
+                  <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-primary"
+                    onClick={() => void fetchPendingUpdateRequests()}
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              ) : (
+                <DataTable<ProfileUpdateRequestFromAPI>
+                  columns={updateRequestColumns}
+                  data={updateRequests}
+                  rowKey="tutorId"
+                  loading={updateRequestsLoading}
+                  loadingText="Đang tải danh sách yêu cầu cập nhật..."
+                  emptyText="Không có yêu cầu cập nhật hồ sơ nào đang chờ duyệt"
+                  emptyIcon={
+                    <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
+                      check_circle
+                    </span>
+                  }
+                  minWidth={920}
+                  variant="embedded"
+                />
+              )}
+            </SectionCard>
+          )}
         </PageContainer>
       </div>
 
@@ -456,6 +768,89 @@ const AdminVettingPage = () => {
                 disabled={rejectionNote.trim().length < 20 || actionLoading !== null}
               >
                 {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedUpdateRequest && (
+        <div className="vetting-modal-overlay" onClick={() => setSelectedUpdateRequest(null)}>
+          <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="vetting-modal-header">
+              <h3>Thay đổi hồ sơ đề xuất — {selectedUpdateRequest.tutorFullName || 'Chưa rõ tên'}</h3>
+              <button className="vetting-modal-close" onClick={() => setSelectedUpdateRequest(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="vetting-modal-body">
+              {PROFILE_UPDATE_DIFF_FIELDS.filter((f) => selectedUpdateRequest[f.proposed] !== null).map((f) => (
+                <div key={f.label} style={{ marginBottom: 14 }}>
+                  <strong>{f.label}</strong>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                    <div style={{ flex: 1, opacity: 0.6 }}>
+                      <div className="admin-ui-entity-secondary">Hiện tại</div>
+                      <div>{String(selectedUpdateRequest[f.current] ?? '—')}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="admin-ui-entity-secondary">Đề xuất</div>
+                      <div>{String(selectedUpdateRequest[f.proposed] ?? '—')}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {selectedUpdateRequest.hasProposedSubjectGradePrices && (
+                <p className="vetting-modal-description">
+                  Tutor cũng đề xuất thay đổi Môn học &amp; Bảng giá — xem chi tiết bảng giá hiện tại của tutor trong hồ
+                  sơ đầy đủ trước khi duyệt.
+                </p>
+              )}
+              {PROFILE_UPDATE_DIFF_FIELDS.every((f) => selectedUpdateRequest[f.proposed] === null) &&
+                !selectedUpdateRequest.hasProposedSubjectGradePrices && (
+                  <p className="vetting-modal-description">Không có thay đổi nào được ghi nhận.</p>
+                )}
+            </div>
+            <div className="vetting-modal-footer">
+              <button className="vetting-btn vetting-btn-outline" onClick={() => setSelectedUpdateRequest(null)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUpdateRejectModal && (
+        <div className="vetting-modal-overlay" onClick={() => setShowUpdateRejectModal(null)}>
+          <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="vetting-modal-header">
+              <h3>Từ chối cập nhật hồ sơ</h3>
+              <button className="vetting-modal-close" onClick={() => setShowUpdateRejectModal(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="vetting-modal-body">
+              <p className="vetting-modal-description">
+                Vui lòng nhập lý do từ chối. Hồ sơ hiện tại của tutor trên Marketplace sẽ không bị ảnh hưởng.
+              </p>
+              <textarea
+                className="vetting-rejection-textarea"
+                placeholder="Nhập lý do từ chối (ít nhất 10 ký tự)..."
+                value={updateRejectionNote}
+                onChange={(e) => setUpdateRejectionNote(e.target.value)}
+                rows={4}
+              />
+              <p className="vetting-char-count">{updateRejectionNote.length}/10 ký tự tối thiểu</p>
+            </div>
+            <div className="vetting-modal-footer">
+              <button className="vetting-btn vetting-btn-outline" onClick={() => setShowUpdateRejectModal(null)}>
+                Hủy
+              </button>
+              <button
+                className="vetting-btn vetting-btn-reject"
+                onClick={handleRejectUpdateRequest}
+                disabled={updateRejectionNote.trim().length < 10 || updateActionLoading !== null}
+              >
+                {updateActionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>
             </div>
           </div>
