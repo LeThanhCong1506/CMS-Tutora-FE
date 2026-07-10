@@ -58,6 +58,11 @@ export interface NavItem {
     badge?: number;
     /** data-tour attribute value */
     dataTour?: string;
+    /** Non-clickable section heading rendered above this item — marks the
+     *  start of a visual group that runs until the next item carrying a
+     *  sectionLabel. Collapses to a divider line while the sidebar is
+     *  icon-only. */
+    sectionLabel?: string;
     /** Optional sub-items. When present, clicking the item toggles an
      *  expandable group instead of navigating. */
     children?: NavItem[];
@@ -298,6 +303,84 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
         </>
     );
 
+    // Renders one nav entry — expandable group (has children) or flat item.
+    // Keys live on the wrapping Fragment in the nav list below.
+    const renderNavItem = (item: NavItem) => {
+        // ── Group item with sub-items: toggles expansion ──
+        if (item.children && item.children.length > 0) {
+            const anyChildActive = item.children.some((c) => checkActive(c.path));
+            const expanded = expandedGroups[item.path] ?? anyChildActive;
+
+            return (
+                <div className={styles.navGroup}>
+                    <button
+                        type="button"
+                        className={`${styles.navItem} ${anyChildActive ? styles.navItemGroupActive : ''}`}
+                        title={item.label}
+                        aria-expanded={expanded}
+                        {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
+                        onClick={() =>
+                            setExpandedGroups((prev) => ({
+                                ...prev,
+                                [item.path]: !(prev[item.path] ?? anyChildActive),
+                            }))
+                        }
+                    >
+                        {renderNavContent(item)}
+                        <span
+                            className={`material-symbols-outlined ${styles.navChevron} ${expanded ? styles.navChevronOpen : ''}`}
+                        >
+                            expand_more
+                        </span>
+                    </button>
+
+                    {expanded && (
+                        <div className={styles.navSubmenu}>
+                            {item.children.map((child) => {
+                                const childActive = checkActive(child.path);
+                                return (
+                                    <button
+                                        type="button"
+                                        key={child.path}
+                                        className={`${styles.navSubItem} ${childActive ? styles.navSubItemActive : ''}`}
+                                        title={child.label}
+                                        aria-current={childActive ? 'page' : undefined}
+                                        {...(child.dataTour ? { 'data-tour': child.dataTour } : {})}
+                                        onClick={() => {
+                                            navigate(child.path);
+                                            setSidebarOpen(false);
+                                        }}
+                                    >
+                                        {renderNavContent(child)}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ── Flat item: navigates ──
+        const active = checkActive(item.path);
+
+        return (
+            <button
+                type="button"
+                className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
+                title={item.label}
+                aria-current={active ? 'page' : undefined}
+                {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
+                onClick={() => {
+                    navigate(item.path);
+                    setSidebarOpen(false);
+                }}
+            >
+                {renderNavContent(item)}
+            </button>
+        );
+    };
+
     // ── Render ──
     return (
         <div className={styles.layout}>
@@ -330,82 +413,18 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
                 {/* Navigation */}
                 <nav className={styles.sidebarNav}>
-                    {navItems.map((item) => {
-                        // ── Group item with sub-items: toggles expansion ──
-                        if (item.children && item.children.length > 0) {
-                            const anyChildActive = item.children.some((c) => checkActive(c.path));
-                            const expanded = expandedGroups[item.path] ?? anyChildActive;
-
-                            return (
-                                <div key={item.path} className={styles.navGroup}>
-                                    <button
-                                        type="button"
-                                        className={`${styles.navItem} ${anyChildActive ? styles.navItemGroupActive : ''}`}
-                                        title={item.label}
-                                        aria-expanded={expanded}
-                                        {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
-                                        onClick={() =>
-                                            setExpandedGroups((prev) => ({
-                                                ...prev,
-                                                [item.path]: !(prev[item.path] ?? anyChildActive),
-                                            }))
-                                        }
-                                    >
-                                        {renderNavContent(item)}
-                                        <span
-                                            className={`material-symbols-outlined ${styles.navChevron} ${expanded ? styles.navChevronOpen : ''}`}
-                                        >
-                                            expand_more
-                                        </span>
-                                    </button>
-
-                                    {expanded && (
-                                        <div className={styles.navSubmenu}>
-                                            {item.children.map((child) => {
-                                                const childActive = checkActive(child.path);
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={child.path}
-                                                        className={`${styles.navSubItem} ${childActive ? styles.navSubItemActive : ''}`}
-                                                        title={child.label}
-                                                        aria-current={childActive ? 'page' : undefined}
-                                                        {...(child.dataTour ? { 'data-tour': child.dataTour } : {})}
-                                                        onClick={() => {
-                                                            navigate(child.path);
-                                                            setSidebarOpen(false);
-                                                        }}
-                                                    >
-                                                        {renderNavContent(child)}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                    {navItems.map((item) => (
+                        <React.Fragment key={item.path}>
+                            {item.sectionLabel && (
+                                <div className={styles.navSectionLabel}>
+                                    <span className={styles.navSectionLabelText}>
+                                        {item.sectionLabel}
+                                    </span>
                                 </div>
-                            );
-                        }
-
-                        // ── Flat item: navigates ──
-                        const active = checkActive(item.path);
-
-                        return (
-                            <button
-                            type="button"
-                            key={item.path}
-                            className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
-                            title={item.label}
-                            aria-current={active ? 'page' : undefined}
-                            {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}
-                            onClick={() => {
-                                navigate(item.path);
-                                setSidebarOpen(false);
-                            }}
-                        >
-                            {renderNavContent(item)}
-                            </button>
-                        );
-                    })}
+                            )}
+                            {renderNavItem(item)}
+                        </React.Fragment>
+                    ))}
                     {sidebarNavFooter}
                 </nav>
 

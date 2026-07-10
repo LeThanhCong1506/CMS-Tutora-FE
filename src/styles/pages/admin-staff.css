@@ -23,16 +23,17 @@
 }
 
 /* ---- Modal tạo nhân viên ---- */
+.staff-create-trigger {
+  border-radius: 12px;
+}
+
 /* Rộng hơn modal từ chối mặc định để chứa lưới 2 cột. */
 .staff-create-modal {
   max-width: 720px;
 }
 
-.staff-form-intro {
-  margin: 0 0 20px;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.55;
+.staff-create-modal .vetting-btn {
+  border-radius: 10px;
 }
 
 .staff-form-grid {

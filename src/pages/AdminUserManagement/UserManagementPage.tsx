@@ -348,7 +348,7 @@ const UserManagementPage = () => {
             <PageContainer
                 eyebrow="Quản trị"
                 title="Danh sách người dùng"
-                subtitle={`Quản lý ${total.toLocaleString('vi-VN')} tài khoản trên toàn nền tảng.`}
+                subtitle={`Quản lý ${total.toLocaleString('vi-VN')} tài khoản học viên, phụ huynh và gia sư.`}
                 maxWidth="wide"
                 headerAction={
                     <div className="admin-ui-actions">
@@ -400,7 +400,10 @@ const UserManagementPage = () => {
 
                         {/* Filters Group */}
                         <div className="user-mgmt-filters">
-                            {/* Role Dropdown */}
+                            {/* Role Dropdown — chỉ các role khách hàng nền tảng.
+                                Tài khoản nội bộ (Staff/Admin) được BE loại khỏi
+                                GET /admin/users; Staff quản lý ở trang riêng
+                                "Quản lý nhân viên". */}
                             <div className="user-mgmt-filter-group">
                                 <select
                                     className="user-mgmt-filter-btn"
@@ -415,8 +418,6 @@ const UserManagementPage = () => {
                                     <option value="Student">Vai trò: Học viên</option>
                                     <option value="Tutor">Vai trò: Gia sư</option>
                                     <option value="Parent">Vai trò: Phụ huynh</option>
-                                    <option value="Staff">Vai trò: Nhân viên</option>
-                                    <option value="Admin">Vai trò: Quản trị viên</option>
                                 </select>
                             </div>
 

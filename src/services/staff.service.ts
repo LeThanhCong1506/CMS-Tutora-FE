@@ -27,21 +27,21 @@ setupAuthInterceptor(api);
 
 /**
  * Tạo tài khoản nhân viên mới.
- * Backend: POST /api/users (Authorize = Admin) với RoleName = "Staff".
+ * Backend: POST /api/staffs (StaffController, Authorize = Admin) — BE tự gắn
+ * role Staff. Bắt buộc: password/email/fullname; tùy chọn: username/phone.
  * Trả về `UserResponse` của nhân viên vừa tạo.
  *
  * Ném lỗi axios nguyên bản để caller (modal) tự map sang thông báo tiếng Việt
  * qua {@link getCreateStaffErrorMessage}.
  */
 export const createStaff = async (request: CreateStaffRequest): Promise<StaffListItem> => {
-  const body = { ...request, roleName: 'Staff' };
-  const { data } = await api.post('/users', body);
+  const { data } = await api.post('/staffs', request);
   return data.content as StaffListItem;
 };
 
 /**
  * Lấy danh sách nhân viên (role Staff).
- * Backend: GET /api/users/staffs (Authorize = Admin).
+ * Backend: GET /api/staffs (StaffController, Authorize = Admin).
  *
  * BE trả `APIResponse<PagedList<UserResponse>>`; `PagedList` kế thừa `List<T>`
  * nên serialize thành mảng phẳng — metadata phân trang không có trong body và
@@ -57,7 +57,7 @@ export const getStaffs = async (
     PageNumber: pageNumber,
     PageSize: pageSize,
   };
-  const { data } = await api.get('/users/staffs', { params });
+  const { data } = await api.get('/staffs', { params });
   const content: StaffListItem[] = data.content ?? [];
   return { content, hasMore: content.length >= pageSize };
 };
@@ -67,7 +67,6 @@ export const getStaffs = async (
 const DUPLICATE_MESSAGE_MAP: Array<{ match: RegExp; vi: string }> = [
   { match: /email/i, vi: 'Email này đã được sử dụng.' },
   { match: /username/i, vi: 'Tên đăng nhập này đã tồn tại.' },
-  { match: /identity/i, vi: 'Số CCCD này đã được đăng ký.' },
   { match: /phone/i, vi: 'Số điện thoại này đã được sử dụng.' },
 ];
 

@@ -123,6 +123,50 @@
     color: rgba(242, 240, 228, 0.9);
 }
 
+/* ── Section label (nhãn nhóm, không click được) ── */
+/* Chữ nhóm hiện khi sidebar mở rộng; khi thu gọn (icon-only) crossfade sang
+   đường kẻ ngang để các nhóm vẫn được phân tách thị giác — cùng pattern
+   navBadge/navBadgeDot. */
+.navSectionLabel {
+    position: relative;
+    margin-top: 10px;
+    padding: 6px 14px 2px;
+    user-select: none;
+}
+
+.navSectionLabelText {
+    display: block;
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(242, 240, 228, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease 0.05s;
+}
+
+.sidebar:hover .navSectionLabelText {
+    opacity: 1;
+}
+
+.navSectionLabel::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: 50%;
+    height: 1px;
+    background-color: rgba(242, 240, 228, 0.16);
+    transition: opacity 0.2s ease;
+}
+
+.sidebar:hover .navSectionLabel::before {
+    opacity: 0;
+}
+
 /* ── Expandable nav group (item with sub-items) ── */
 .navGroup {
     display: flex;
@@ -941,8 +985,14 @@
     .sidebar .logoText,
     .sidebar .navText,
     .sidebar .userInfo,
-    .sidebar .navBadge {
+    .sidebar .navBadge,
+    .sidebar .navSectionLabelText {
         opacity: 1;
+    }
+
+    /* Drawer luôn mở rộng → divider chỉ dành cho trạng thái thu gọn */
+    .sidebar .navSectionLabel::before {
+        opacity: 0;
     }
 
     /* Chevron is hover-gated on desktop; the drawer has no hover, so reveal it. */
