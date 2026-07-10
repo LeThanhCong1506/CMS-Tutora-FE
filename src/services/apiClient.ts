@@ -92,3 +92,10 @@ export const setupAuthInterceptor = (axiosInstance: AxiosInstance): AxiosInstanc
 
   return axiosInstance;
 };
+
+// export axios instance with auth interceptor applied
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+setupAuthInterceptor(apiClient);
