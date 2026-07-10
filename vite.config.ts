@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 
 /**
  * Strips `console.log / console.info / console.debug` calls from app source
@@ -88,6 +89,9 @@ function stripConsoleDebug(): Plugin {
 
 export default defineConfig({
   plugins: [react(), stripConsoleDebug()],
+  resolve: {
+    alias: { "@": path.resolve(__dirname, "./src") },
+  },
   base: "/",
   build: {
     polyfillModulePreload: false,
