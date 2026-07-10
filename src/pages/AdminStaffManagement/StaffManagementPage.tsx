@@ -24,7 +24,7 @@ const genderLabel = (gender: number | null): string => {
 
 const avatarFor = (staff: StaffListItem): string =>
     staff.avatarurl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.fullname || staff.username)}&background=random`;
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.fullname || staff.username || 'NV')}&background=random`;
 
 const StaffManagementPage = () => {
     const [staffs, setStaffs] = useState<StaffListItem[]>([]);
@@ -74,7 +74,7 @@ const StaffManagementPage = () => {
         {
             key: 'username',
             title: 'Tên đăng nhập',
-            render: (staff) => <span className="admin-ui-table-meta">{staff.username}</span>,
+            render: (staff) => <span className="admin-ui-table-meta">{staff.username || '—'}</span>,
             hideOnMobile: true,
         },
         {
@@ -130,7 +130,7 @@ const StaffManagementPage = () => {
                 headerAction={
                     <button
                         type="button"
-                        className="admin-ui-button admin-ui-button-primary"
+                        className="admin-ui-button admin-ui-button-primary staff-create-trigger"
                         onClick={() => setIsCreateOpen(true)}
                     >
                         <span className="material-symbols-outlined">person_add</span>

@@ -23,11 +23,14 @@ const AdminLayout: React.FC = () => {
         }).catch(() => { /* ignore */ });
     }, []);
 
+    // Sidebar chia nhóm theo domain nghiệp vụ. "Tài khoản" gom người dùng nền
+    // tảng (khách hàng) và nhân viên nội bộ — 2 mục riêng vì lifecycle + hành
+    // động khác nhau, không gộp thành menu cha-con.
     const navItems: NavItem[] = [
         { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard' },
-        { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group' },
+        { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản' },
         { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge' },
-        { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note' },
+        { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành' },
         {
             path: '/admin-portal/vetting',
             label: 'Kiểm duyệt',
@@ -40,9 +43,9 @@ const AdminLayout: React.FC = () => {
         },
         { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel' },
         { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning' },
-        { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance' },
+        { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính' },
         { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring' },
-        { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings' },
+        { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', sectionLabel: 'Hệ thống' },
     ];
 
     const isActive = (path: string, pathname: string) => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import InputGroup from '../../../components/InputGroup/InputGroup';
 import { createStaff, getCreateStaffErrorMessage } from '../../../services/staff.service';
-import type { CreateStaffRequest, StaffGender } from '../../../types/staff.types';
+import type { CreateStaffRequest } from '../../../types/staff.types';
 
 interface CreateStaffModalProps {
     isOpen: boolean;
@@ -11,18 +11,14 @@ interface CreateStaffModalProps {
     onCreated: () => void;
 }
 
-// State form dùng string cho mọi trường (kể cả gender) để bind trực tiếp vào
-// input/select; chỉ convert khi submit.
+// Chỉ giữ trường tối thiểu để nhân viên đăng nhập được — hồ sơ cá nhân
+// (ngày sinh, giới tính, địa chỉ, avatar) nhân viên tự cập nhật sau.
 interface StaffForm {
     fullname: string;
     username: string;
     email: string;
     password: string;
     phone: string;
-    identityNumber: string;
-    birthdate: string;
-    gender: string;
-    address: string;
 }
 
 type FormErrors = Partial<Record<keyof StaffForm, string>>;
@@ -33,10 +29,6 @@ const EMPTY_FORM: StaffForm = {
     email: '',
     password: '',
     phone: '',
-    identityNumber: '',
-    birthdate: '',
-    gender: '',
-    address: '',
 };
 
 // Khớp ràng buộc password của BE: >= 8 ký tự, đủ hoa/thường/số/ký tự đặc biệt.
@@ -50,8 +42,8 @@ function validate(form: StaffForm): FormErrors {
     if (!form.fullname.trim()) errors.fullname = 'Vui lòng nhập họ tên.';
     else if (form.fullname.trim().length > 100) errors.fullname = 'Họ tên không vượt quá 100 ký tự.';
 
-    if (!form.username.trim()) errors.username = 'Vui lòng nhập tên đăng nhập.';
-    else if (form.username.trim().length < 3 || form.username.trim().length > 50)
+    // Username tùy chọn — nhân viên đăng nhập bằng email nếu không có.
+    if (form.username.trim() && (form.username.trim().length < 3 || form.username.trim().length > 50))
         errors.username = 'Tên đăng nhập từ 3 đến 50 ký tự.';
 
     if (!form.email.trim()) errors.email = 'Vui lòng nhập email.';
@@ -61,21 +53,10 @@ function validate(form: StaffForm): FormErrors {
     else if (!PASSWORD_REGEX.test(form.password))
         errors.password = 'Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&).';
 
+    // Phone là trường tùy chọn — chỉ validate định dạng khi có nhập.
     const phoneDigits = form.phone.replace(/[\s.-]/g, '');
-    if (!form.phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại.';
-    else if (!/^\+?\d{9,15}$/.test(phoneDigits)) errors.phone = 'Số điện thoại không hợp lệ.';
-
-    if (!form.identityNumber.trim()) errors.identityNumber = 'Vui lòng nhập số CCCD.';
-    else if (!/^\d{12}$/.test(form.identityNumber.trim())) errors.identityNumber = 'CCCD phải gồm đúng 12 chữ số.';
-
-    if (!form.birthdate) errors.birthdate = 'Vui lòng chọn ngày sinh.';
-    else if (form.birthdate >= new Date().toISOString().slice(0, 10))
-        errors.birthdate = 'Ngày sinh phải ở quá khứ.';
-
-    if (form.gender === '') errors.gender = 'Vui lòng chọn giới tính.';
-
-    if (!form.address.trim()) errors.address = 'Vui lòng nhập địa chỉ.';
-    else if (form.address.trim().length > 255) errors.address = 'Địa chỉ không vượt quá 255 ký tự.';
+    if (form.phone.trim() && !/^\+?\d{9,15}$/.test(phoneDigits))
+        errors.phone = 'Số điện thoại không hợp lệ.';
 
     return errors;
 }
@@ -107,16 +88,16 @@ const CreateStaffModal = ({ isOpen, onClose, onCreated }: CreateStaffModalProps)
             return;
         }
 
+        const phoneDigits = form.phone.replace(/[\s.-]/g, '');
+        const username = form.username.trim();
         const payload: CreateStaffRequest = {
             fullname: form.fullname.trim(),
-            username: form.username.trim(),
             email: form.email.trim(),
             password: form.password,
-            phone: form.phone.replace(/[\s.-]/g, ''),
-            identityNumber: form.identityNumber.trim(),
-            birthdate: form.birthdate,
-            gender: Number(form.gender) as StaffGender,
-            address: form.address.trim(),
+            // Username/phone tùy chọn — không gửi chuỗi rỗng để BE khỏi
+            // validate/check unique vô nghĩa.
+            ...(username ? { username } : {}),
+            ...(phoneDigits ? { phone: phoneDigits } : {}),
         };
 
         try {
@@ -147,10 +128,6 @@ const CreateStaffModal = ({ isOpen, onClose, onCreated }: CreateStaffModalProps)
             >
                 <div className="vetting-rejection-body">
                     <h3>Tạo tài khoản nhân viên</h3>
-                    <p className="staff-form-intro">
-                        Nhân viên được cấp quyền truy cập cổng vận hành. Điền đầy đủ thông tin bên dưới;
-                        nhân viên có thể đăng nhập ngay bằng tên đăng nhập/email và mật khẩu vừa tạo.
-                    </p>
 
                     {serverError && (
                         <div className="staff-form-alert" role="alert">
@@ -180,12 +157,13 @@ const CreateStaffModal = ({ isOpen, onClose, onCreated }: CreateStaffModalProps)
                                 id="staff-username"
                                 name="username"
                                 type="text"
-                                label="Tên đăng nhập"
+                                label="Tên đăng nhập (tùy chọn)"
                                 placeholder="nhanvien.a"
                                 icon="person"
                                 value={form.username}
                                 onChange={(e) => setField('username')(e.target.value)}
                                 error={errors.username}
+                                hint={!errors.username ? 'Bỏ trống thì nhân viên đăng nhập bằng email.' : undefined}
                                 autoComplete="off"
                             />
                         </div>
@@ -223,12 +201,12 @@ const CreateStaffModal = ({ isOpen, onClose, onCreated }: CreateStaffModalProps)
                             />
                         </div>
 
-                        <div className="staff-field">
+                        <div className="staff-field staff-field--full">
                             <InputGroup
                                 id="staff-phone"
                                 name="phone"
                                 type="tel"
-                                label="Số điện thoại"
+                                label="Số điện thoại (tùy chọn)"
                                 placeholder="0901234567"
                                 icon="phone"
                                 value={form.phone}
@@ -239,63 +217,11 @@ const CreateStaffModal = ({ isOpen, onClose, onCreated }: CreateStaffModalProps)
                             />
                         </div>
 
-                        <div className="staff-field">
-                            <InputGroup
-                                id="staff-identity"
-                                name="identityNumber"
-                                type="text"
-                                label="Số CCCD"
-                                placeholder="12 chữ số"
-                                icon="badge"
-                                value={form.identityNumber}
-                                onChange={(e) => setField('identityNumber')(e.target.value.replace(/\D/g, ''))}
-                                error={errors.identityNumber}
-                                autoComplete="off"
-                                inputMode="numeric"
-                            />
-                        </div>
-
-                        <div className="staff-field">
-                            <label className="staff-field-label" htmlFor="staff-birthdate">Ngày sinh</label>
-                            <input
-                                id="staff-birthdate"
-                                type="date"
-                                className={`staff-field-control${errors.birthdate ? ' staff-field-control--invalid' : ''}`}
-                                value={form.birthdate}
-                                max={new Date().toISOString().slice(0, 10)}
-                                onChange={(e) => setField('birthdate')(e.target.value)}
-                            />
-                            {errors.birthdate && <p className="staff-field-error">{errors.birthdate}</p>}
-                        </div>
-
-                        <div className="staff-field">
-                            <label className="staff-field-label" htmlFor="staff-gender">Giới tính</label>
-                            <select
-                                id="staff-gender"
-                                className={`staff-field-control${errors.gender ? ' staff-field-control--invalid' : ''}`}
-                                value={form.gender}
-                                onChange={(e) => setField('gender')(e.target.value)}
-                            >
-                                <option value="" disabled>Chọn giới tính</option>
-                                <option value="1">Nam</option>
-                                <option value="2">Nữ</option>
-                                <option value="0">Khác</option>
-                            </select>
-                            {errors.gender && <p className="staff-field-error">{errors.gender}</p>}
-                        </div>
-
                         <div className="staff-field staff-field--full">
-                            <label className="staff-field-label" htmlFor="staff-address">Địa chỉ</label>
-                            <input
-                                id="staff-address"
-                                type="text"
-                                className={`staff-field-control${errors.address ? ' staff-field-control--invalid' : ''}`}
-                                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"
-                                value={form.address}
-                                maxLength={255}
-                                onChange={(e) => setField('address')(e.target.value)}
-                            />
-                            {errors.address && <p className="staff-field-error">{errors.address}</p>}
+                            <p className="staff-field-hint">
+                                Nhân viên tự bổ sung thông tin cá nhân (ngày sinh, giới
+                                tính, địa chỉ, ảnh đại diện) sau khi đăng nhập.
+                            </p>
                         </div>
                     </div>
                 </div>
