@@ -18,6 +18,11 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        green: "bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-500/40 focus-visible:ring-green-500/20 dark:bg-green-500/20 dark:hover:bg-green-500/30 dark:focus-visible:ring-green-500/40",
+        back: "bg-blue-600 text-white hover:bg-blue-700 focus-visible:border-blue-500/40 focus-visible:ring-blue-500/20 dark:bg-blue-500/20 dark:hover:bg-blue-500/30 dark:focus-visible:ring-blue-500/40",
+        drag: "bg-teal-500 text-white hover:bg-teal-500/80 focus-visible:border-teal-500/40 focus-visible:ring-teal-500/20 dark:bg-teal-500/20 dark:hover:bg-teal-500/30 dark:focus-visible:ring-teal-500/40",
+        urgent:
+          "bg-red-500 text-white hover:bg-red-500/80 focus-visible:border-red-500/40 focus-visible:ring-red-500/20 dark:bg-red-500/20 dark:hover:bg-red-500/30 dark:focus-visible:ring-red-500/40",
       },
       size: {
         default:

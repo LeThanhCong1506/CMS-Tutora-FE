@@ -1,6 +1,5 @@
 /**
  * Types cho Question Bank (ngân hàng câu hỏi AI giải bài tập).
- * Khớp BE: QuestionController + SourceDocumentController.
  */
 
 export type ReviewStatus = 'pending_review' | 'published' | 'rejected';
@@ -51,7 +50,6 @@ export interface QuestionListParams {
   chapterIds?: string;
   reviewStatus?: ReviewStatus;
   search?: string;
-  /** CSV "NHAN_BIET,THONG_HIEU" — nhiều độ khó. */
   difficulties?: string;
   hasSolution?: boolean;
   sortBy?: QuestionSortBy;
