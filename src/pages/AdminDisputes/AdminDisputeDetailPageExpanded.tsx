@@ -60,7 +60,8 @@ const getDisputeStatusLabel = (status?: string | null) => {
 };
 
 const AdminDisputeDetailPageExpanded = () => {
-    const { disputeId } = useParams<{ disputeId: string }>();
+    // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
+    const { id: disputeId } = useParams<{ id: string }>();
 
     // State management
     const [disputeDetail, setDisputeDetail] = useState<DisputeDetail | null>(null);
@@ -224,10 +225,10 @@ const AdminDisputeDetailPageExpanded = () => {
 
     // Evidence from backend (string array of URLs)
     const evidenceUrls = disputeDetail.evidence || [];
-    const lesson = disputeDetail.lesson;
+    const classSession = disputeDetail.classSession;
     const tutor = disputeDetail.tutor;
     const createdBy = disputeDetail.createdBy;
-    const lessonPrice = lesson?.lessonPrice || 0;
+    const classSessionPrice = classSession?.classSessionPrice || 0;
 
     return (
         <>
@@ -259,7 +260,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                     Đang xem xét trực tiếp
                                 </div>
                                 <div className="dispute-escrow-badge">
-                                    Số tiền: {formatCurrency(lessonPrice)}
+                                    Số tiền: {formatCurrency(classSessionPrice)}
                                 </div>
                             </div>
                         </div>
@@ -377,8 +378,8 @@ const AdminDisputeDetailPageExpanded = () => {
                                     </div>
                                 </div>
 
-                                {/* Lesson Info Section */}
-                                {lesson && (
+                                {/* Class Session Info Section */}
+                                {classSession && (
                                     <div className="dispute-party-card" style={{ marginTop: '24px' }}>
                                         <h4 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--color-navy)' }}>
                                             🎓 Thông tin buổi học
@@ -386,40 +387,40 @@ const AdminDisputeDetailPageExpanded = () => {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Mã buổi học</span>
-                                                <span className="dispute-stat-bold">{lesson.lessonId}</span>
+                                                <span className="dispute-stat-bold">{classSession.classSessionId}</span>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Thời gian dự kiến</span>
                                                 <span className="dispute-stat-bold" style={{ fontSize: '13px' }}>
-                                                    {formatDateTime(lesson.scheduledStart)} - {formatDateTime(lesson.scheduledEnd)}
+                                                    {formatDateTime(classSession.scheduledStart)} - {formatDateTime(classSession.scheduledEnd)}
                                                 </span>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
-                                                <StatusBadge variant="info" shape="tag">{lesson.status || 'N/A'}</StatusBadge>
+                                                <StatusBadge variant="info" shape="tag">{classSession.status || 'N/A'}</StatusBadge>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>
-                                                <span style={{ color: lesson.isTutorPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
-                                                    {lesson.isTutorPresent === null ? 'Không xác định' : lesson.isTutorPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
+                                                <span style={{ color: classSession.isTutorPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
+                                                    {classSession.isTutorPresent === null ? 'Không xác định' : classSession.isTutorPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
                                                 </span>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh học viên</span>
-                                                <span style={{ color: lesson.isStudentPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
-                                                    {lesson.isStudentPresent === null ? 'Không xác định' : lesson.isStudentPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
+                                                <span style={{ color: classSession.isStudentPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
+                                                    {classSession.isStudentPresent === null ? 'Không xác định' : classSession.isStudentPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
                                                 </span>
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Học phí</span>
                                                 <span className="dispute-stat-bold" style={{ color: 'var(--color-gold)' }}>
-                                                    {formatCurrency(lesson.lessonPrice || 0)}
+                                                    {formatCurrency(classSession.classSessionPrice || 0)}
                                                 </span>
                                             </div>
-                                            {lesson.lessonContent && (
+                                            {classSession.classSessionContent && (
                                                 <div className="dispute-stat-row">
                                                     <span style={{ color: '#81786a' }}>Nội dung</span>
-                                                    <span className="dispute-stat-bold">{lesson.lessonContent}</span>
+                                                    <span className="dispute-stat-bold">{classSession.classSessionContent}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -633,7 +634,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     />
                                                     <div className="dispute-radio-content">
                                                         <span className="dispute-radio-title">Hoàn tiền 100% cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Hoàn lại {formatCurrency(lessonPrice)} về nguồn</span>
+                                                        <span className="dispute-radio-desc">Hoàn lại {formatCurrency(classSessionPrice)} về nguồn</span>
                                                     </div>
                                                 </label>
 
@@ -647,7 +648,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     />
                                                     <div className="dispute-radio-content">
                                                         <span className="dispute-radio-title">Hoàn tiền 50% cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Hoàn {formatCurrency(lessonPrice / 2)}</span>
+                                                        <span className="dispute-radio-desc">Hoàn {formatCurrency(classSessionPrice / 2)}</span>
                                                     </div>
                                                 </label>
 
@@ -661,7 +662,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     />
                                                     <div className="dispute-radio-content">
                                                         <span className="dispute-radio-title">Chuyển tiền cho Gia sư</span>
-                                                        <span className="dispute-radio-desc">Chuyển {formatCurrency(lessonPrice)} cho {tutor?.fullName || 'Gia sư'}</span>
+                                                        <span className="dispute-radio-desc">Chuyển {formatCurrency(classSessionPrice)} cho {tutor?.fullName || 'Gia sư'}</span>
                                                     </div>
                                                 </label>
                                             </div>

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { DataTable } from '../../../components/shared';
 import type { DataTableColumn } from '../../../components/shared';
-import type { Transaction } from '../../../types/admin.types';
+import type { AdminTransactionItem } from '../../../types/admin.types';
 import { formatCurrency, formatDateTime, formatTransactionType } from '../../../utils/formatters';
-import { mockGetTransactions, mockExportTransactionsCSV } from '../mockData';
+import { getAdminTransactions } from '../../../services/admin.service';
 
 const ledgerPageSize = 50;
 
@@ -28,7 +28,7 @@ const getTransactionMeta = (type: string) => {
 };
 
 const TransactionLedger = () => {
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactions, setTransactions] = useState<AdminTransactionItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -39,17 +39,16 @@ const TransactionLedger = () => {
 
     const fetchTransactions = useCallback(async () => {
         try {
-            const offset = (page - 1) * ledgerPageSize;
-            const { transactions: data, total: totalCount } = await mockGetTransactions(
-                ledgerPageSize,
-                offset,
-                typeFilter === 'all' ? undefined : typeFilter,
-                startDate || undefined,
-                endDate || undefined
-            );
+            const result = await getAdminTransactions({
+                page,
+                pageSize: ledgerPageSize,
+                type: typeFilter === 'all' ? undefined : typeFilter,
+                from: startDate || undefined,
+                to: endDate || undefined,
+            });
 
-            setTransactions(data);
-            setTotal(totalCount);
+            setTransactions(result.items || []);
+            setTotal(result.totalCount || 0);
         } catch (err) {
             console.error('Error fetching transactions:', err);
             toast.error('Không thể tải giao dịch');
@@ -66,11 +65,18 @@ const TransactionLedger = () => {
     const handleExportCSV = async () => {
         try {
             setIsExporting(true);
-            const csvContent = await mockExportTransactionsCSV(
-                typeFilter === 'all' ? undefined : typeFilter,
-                startDate || undefined,
-                endDate || undefined
-            );
+            // Build CSV client-side từ dữ liệu đang hiển thị.
+            const header = ['Mã GD', 'Loại', 'Người dùng', 'Mô tả', 'Số tiền', 'Ngày'];
+            const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const rows = transactions.map((tx) => [
+                tx.transactionId,
+                tx.transactionType ?? '',
+                tx.userFullName ?? '',
+                tx.description ?? '',
+                tx.amount ?? 0,
+                tx.createdAt ?? '',
+            ].map(escape).join(','));
+            const csvContent = '﻿' + [header.map(escape).join(','), ...rows].join('\n');
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -102,26 +108,26 @@ const TransactionLedger = () => {
         setPage(1);
     };
 
-    const columns = useMemo<DataTableColumn<Transaction>[]>(
+    const columns = useMemo<DataTableColumn<AdminTransactionItem>[]>(
         () => [
             {
                 key: 'id',
                 title: 'Mã GD',
-                render: (tx) => <span className="admin-ui-code-chip">{tx.transactionid}</span>,
+                render: (tx) => <span className="admin-ui-code-chip">{tx.transactionId}</span>,
                 hideOnMobile: true,
             },
             {
                 key: 'type',
                 title: 'Loại',
                 render: (tx) => {
-                    const { icon, tone } = getTransactionMeta(tx.type);
+                    const { icon, tone } = getTransactionMeta(tx.transactionType || '');
 
                     return (
                         <span className={`financial-ledger-type ${tone}`}>
                             <span className="material-symbols-outlined" aria-hidden="true">
                                 {icon}
                             </span>
-                            {formatTransactionType(tx.type)}
+                            {formatTransactionType(tx.transactionType || '')}
                         </span>
                     );
                 },
@@ -129,7 +135,7 @@ const TransactionLedger = () => {
             {
                 key: 'user',
                 title: 'Người dùng',
-                render: (tx) => <span className="financial-ledger-user">{tx.username}</span>,
+                render: (tx) => <span className="financial-ledger-user">{tx.userFullName || tx.userEmail || 'N/A'}</span>,
             },
             {
                 key: 'description',
@@ -142,25 +148,15 @@ const TransactionLedger = () => {
                 title: 'Số tiền',
                 align: 'right',
                 render: (tx) => {
-                    const { tone } = getTransactionMeta(tx.type);
-                    return <span className={`financial-ledger-amount ${tone}`}>{formatCurrency(tx.amount)}</span>;
+                    const { tone } = getTransactionMeta(tx.transactionType || '');
+                    return <span className={`financial-ledger-amount ${tone}`}>{formatCurrency(tx.amount || 0)}</span>;
                 },
             },
             {
                 key: 'date',
                 title: 'Ngày',
-                render: (tx) => <span className="admin-ui-table-meta">{formatDateTime(tx.createdat)}</span>,
+                render: (tx) => <span className="admin-ui-table-meta">{tx.createdAt ? formatDateTime(tx.createdAt) : 'N/A'}</span>,
                 hideOnMobile: true,
-            },
-            {
-                key: 'status',
-                title: 'Trạng thái',
-                align: 'center',
-                render: (tx) => (
-                    <span className={`financial-status-pill ${tx.status === 'completed' ? 'completed' : 'pending'}`}>
-                        {tx.status === 'completed' ? 'Hoàn thành' : 'Đang xử lý'}
-                    </span>
-                ),
             },
         ],
         []
@@ -249,7 +245,7 @@ const TransactionLedger = () => {
             <DataTable
                 columns={columns}
                 data={transactions}
-                rowKey="transactionid"
+                rowKey="transactionId"
                 loading={loading}
                 loadingText="Đang tải giao dịch..."
                 emptyText="Không có giao dịch nào"

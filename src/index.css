@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 
-/* Variables (custom properties)
+/* Variables (custom properties) */
 @import "./styles/base/variables.css";
 
 /* CSS admin cũ import vào @layer base -> nhường cho @layer utilities của Tailwind/shadcn.

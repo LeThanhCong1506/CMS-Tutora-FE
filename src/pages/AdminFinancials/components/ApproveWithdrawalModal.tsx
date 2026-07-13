@@ -1,30 +1,43 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
-import type { WithdrawalRequest } from '../../../types/admin.types';
+import type { WithdrawalRequestItem } from '../../../types/adminPayout.types';
 import { formatCurrency, formatDateTime } from '../../../utils/formatters';
 
 interface ApproveWithdrawalModalProps {
     isOpen: boolean;
     onClose: () => void;
-    withdrawal: WithdrawalRequest | null;
-    onApprove: (withdrawalId: string) => Promise<void>;
+    withdrawal: WithdrawalRequestItem | null;
+    onApprove: (withdrawalId: number, note: string) => Promise<void>;
 }
 
 const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: ApproveWithdrawalModalProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // Backend yêu cầu ghi chú duyệt (ApproveWithdrawalRequest.Note, tối thiểu 3 ký tự).
+    const [note, setNote] = useState('');
+    const [error, setError] = useState('');
 
     const handleClose = () => {
         if (isSubmitting) return;
+        setNote('');
+        setError('');
         onClose();
     };
 
     const handleApprove = async () => {
         if (!withdrawal) return;
 
+        const trimmedNote = note.trim();
+        if (trimmedNote.length < 3) {
+            setError('Ghi chú phê duyệt phải có ít nhất 3 ký tự');
+            return;
+        }
+
         try {
             setIsSubmitting(true);
-            await onApprove(withdrawal.withdrawalid);
-            toast.success(`Đã phê duyệt rút tiền ${formatCurrency(withdrawal.amount)} cho ${withdrawal.tutorname}`);
+            setError('');
+            await onApprove(withdrawal.withdrawalId, trimmedNote);
+            toast.success(`Đã phê duyệt rút tiền ${formatCurrency(withdrawal.amount)} cho ${withdrawal.tutorName}`);
+            setNote('');
             onClose();
         } catch (err) {
             console.error('Error approving withdrawal:', err);
@@ -72,15 +85,9 @@ const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: Appr
                 <div className="financial-modal-body">
                     <div className="financial-withdrawal-card">
                         <div className="financial-withdrawal-tutor">
-                            <img
-                                className="financial-avatar financial-avatar-lg"
-                                src={withdrawal.tutoravatar}
-                                alt=""
-                                loading="lazy"
-                            />
                             <div className="financial-entity">
-                                <strong>{withdrawal.tutorname}</strong>
-                                <span>{withdrawal.tutorsubject}</span>
+                                <strong>{withdrawal.tutorName}</strong>
+                                <span>{withdrawal.tutorEmail}</span>
                             </div>
                         </div>
 
@@ -91,22 +98,44 @@ const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: Appr
                             </div>
                             <div className="financial-detail-item">
                                 <span>Mã yêu cầu</span>
-                                <strong className="financial-code">{withdrawal.withdrawalid}</strong>
+                                <strong className="financial-code">{withdrawal.withdrawalId}</strong>
                             </div>
                             <div className="financial-detail-item">
                                 <span>Ngân hàng</span>
-                                <strong>{withdrawal.bankname}</strong>
+                                <strong>{withdrawal.bankName}</strong>
                             </div>
                             <div className="financial-detail-item">
                                 <span>Số tài khoản</span>
-                                <strong className="financial-code">{withdrawal.bankaccountfull}</strong>
+                                <strong className="financial-code">{withdrawal.accountNumber}</strong>
                             </div>
                             <div className="financial-detail-item wide">
                                 <span>Ngày yêu cầu</span>
-                                <strong>{formatDateTime(withdrawal.requestedat)}</strong>
+                                <strong>{formatDateTime(withdrawal.requestedAt)}</strong>
                             </div>
                         </div>
                     </div>
+
+                    <label className="financial-form-field" htmlFor="financial-approve-note">
+                        <span>Ghi chú phê duyệt</span>
+                        <textarea
+                            id="financial-approve-note"
+                            className={`financial-textarea ${error ? 'has-error' : ''}`}
+                            rows={3}
+                            value={note}
+                            onChange={(event) => {
+                                setNote(event.target.value);
+                                setError('');
+                            }}
+                            placeholder="Ví dụ: Đã đối chiếu thông tin ngân hàng, duyệt chi."
+                            disabled={isSubmitting}
+                            aria-invalid={Boolean(error)}
+                        />
+                        {error ? (
+                            <small className="financial-form-error">{error}</small>
+                        ) : (
+                            <small>Tối thiểu 3 ký tự. Ghi chú được lưu vào lịch sử xử lý.</small>
+                        )}
+                    </label>
 
                     <div className="financial-modal-alert success" role="note">
                         <span className="material-symbols-outlined" aria-hidden="true">verified</span>
@@ -130,7 +159,7 @@ const ApproveWithdrawalModal = ({ isOpen, onClose, withdrawal, onApprove }: Appr
                         type="button"
                         className="admin-ui-button admin-ui-button-success"
                         onClick={handleApprove}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || note.trim().length < 3}
                     >
                         <span className="material-symbols-outlined" aria-hidden="true">
                             {isSubmitting ? 'progress_activity' : 'check_circle'}

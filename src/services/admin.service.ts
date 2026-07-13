@@ -25,6 +25,8 @@ import type {
   DisputeListItem,
   // Financials
   FinancialMetrics,
+  AdminFinancialMetrics,
+  AdminTransactionListResponse,
   WithdrawalRequest,
   Transaction,
   // User Management
@@ -485,8 +487,19 @@ export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
 };
 
 /**
- * Get list of withdrawal requests
- * @param status - Filter by status (pending, approved, rejected, completed)
+ * Get admin financial metrics (nested AdminFinancialMetricsResponse).
+ * Unwraps APIResponse envelope → data.content.
+ */
+export const getAdminFinancialMetrics = async (
+  params?: { from?: string; to?: string; period?: 'month' | 'week' | 'year' }
+): Promise<AdminFinancialMetrics> => {
+  const { data } = await api.get('/admin/financials/metrics', { params });
+  return data.content;
+};
+
+/**
+ * @deprecated Backend không có route /admin/financials/withdrawals.
+ * Rút tiền được quản lý qua adminPayout.service.ts (/admin/payouts/*). KHÔNG dùng.
  */
 export const getWithdrawalRequests = async (status?: string): Promise<WithdrawalRequest[]> => {
   try {
@@ -501,8 +514,8 @@ export const getWithdrawalRequests = async (status?: string): Promise<Withdrawal
 };
 
 /**
- * Approve withdrawal request
- * Creates transaction, updates withdrawal status
+ * @deprecated Dùng adminPayout.service.approvePayoutRequest(id, note) thay thế.
+ * Route /admin/financials/withdrawals/{id}/approve KHÔNG tồn tại ở backend.
  */
 export const approveWithdrawal = async (withdrawalId: string): Promise<ApiResponse<any>> => {
   try {
@@ -515,9 +528,8 @@ export const approveWithdrawal = async (withdrawalId: string): Promise<ApiRespon
 };
 
 /**
- * Reject withdrawal request
- * @param withdrawalId - Withdrawal ID
- * @param reason - Rejection reason
+ * @deprecated Dùng adminPayout.service.rejectPayoutRequest(id, reason) thay thế.
+ * Route /admin/financials/withdrawals/{id}/reject KHÔNG tồn tại ở backend.
  */
 export const rejectWithdrawal = async (withdrawalId: string, reason: string): Promise<ApiResponse<any>> => {
   try {
@@ -542,6 +554,23 @@ export const getTransactions = async (
     console.error('getTransactions error:', error);
     throw error;
   }
+};
+
+/**
+ * Get platform-wide wallet transaction ledger.
+ * GET /admin/financials/transactions → AdminTransactionListResponse (unwrapped từ data.content).
+ */
+export const getAdminTransactions = async (params?: {
+  page?: number;
+  pageSize?: number;
+  type?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}): Promise<AdminTransactionListResponse> => {
+  const { data } = await api.get('/admin/financials/transactions', { params });
+  return data.content;
 };
 
 // ============================================

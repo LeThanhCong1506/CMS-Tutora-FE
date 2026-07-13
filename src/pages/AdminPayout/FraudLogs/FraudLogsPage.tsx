@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import { getFraudLogs } from '../../../services/adminPayout.service';
 import type { FraudLogItem } from '../../../types/adminPayout.types';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
@@ -54,7 +55,13 @@ const FraudLogsPage: React.FC = () => {
             setTotal(response.total);
         } catch (error) {
             console.error('Failed to fetch fraud logs:', error);
-            toast.error('Không thể tải nhật ký an toàn');
+            // Backend chưa có endpoint fraud-logs → 404: degrade sang danh sách rỗng, không báo lỗi ồn ào.
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                setLogs([]);
+                setTotal(0);
+            } else {
+                toast.error('Không thể tải nhật ký an toàn');
+            }
         } finally {
             setLoading(false);
         }

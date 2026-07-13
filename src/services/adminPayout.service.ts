@@ -149,7 +149,10 @@ export const rejectPayoutRequest = async (id: number, reason: string): Promise<R
 };
 
 /**
- * Get current PayOS balance and alert levels
+ * Get current PayOS balance and alert levels.
+ * ⚠️ Backend CHƯA có route GET /admin/payouts/payos-balance (sẽ 404).
+ * Số dư PayOS hiện được lấy qua /admin/payouts/overview (payOSBalance).
+ * Giữ lại để dùng khi backend bổ sung endpoint riêng.
  */
 export const getPayOSBalance = async (): Promise<{ balance: number; currency: string; alertLevel: string }> => {
     const { data } = await api.get('/admin/payouts/payos-balance');
@@ -157,7 +160,9 @@ export const getPayOSBalance = async (): Promise<{ balance: number; currency: st
 };
 
 /**
- * Get system fraud logs
+ * Get system fraud logs.
+ * ⚠️ Backend CHƯA có route GET /admin/payouts/fraud-logs (sẽ 404) →
+ * FraudLogsPage degrade sang danh sách rỗng thay vì báo lỗi.
  */
 export const getFraudLogs = async (params: {
     page?: number;

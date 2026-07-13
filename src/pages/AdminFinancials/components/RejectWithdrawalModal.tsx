@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import type { FormEvent } from 'react';
-import type { WithdrawalRequest } from '../../../types/admin.types';
+import type { WithdrawalRequestItem } from '../../../types/adminPayout.types';
 import { formatCurrency } from '../../../utils/formatters';
 
 const commonRejectReasons = [
@@ -14,8 +14,8 @@ const commonRejectReasons = [
 interface RejectWithdrawalModalProps {
     isOpen: boolean;
     onClose: () => void;
-    withdrawal: WithdrawalRequest | null;
-    onReject: (withdrawalId: string, reason: string) => Promise<void>;
+    withdrawal: WithdrawalRequestItem | null;
+    onReject: (withdrawalId: number, reason: string) => Promise<void>;
 }
 
 const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: RejectWithdrawalModalProps) => {
@@ -43,8 +43,8 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
         try {
             setIsSubmitting(true);
             setError('');
-            await onReject(withdrawal.withdrawalid, trimmedReason);
-            toast.success(`Đã từ chối yêu cầu rút tiền ${withdrawal.withdrawalid}`);
+            await onReject(withdrawal.withdrawalId, trimmedReason);
+            toast.success(`Đã từ chối yêu cầu rút tiền ${withdrawal.withdrawalId}`);
             setReason('');
             onClose();
         } catch (err) {
@@ -94,15 +94,9 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
                 <div className="financial-modal-body">
                     <div className="financial-withdrawal-card danger">
                         <div className="financial-withdrawal-tutor">
-                            <img
-                                className="financial-avatar"
-                                src={withdrawal.tutoravatar}
-                                alt=""
-                                loading="lazy"
-                            />
                             <div className="financial-entity">
-                                <strong>{withdrawal.tutorname}</strong>
-                                <span>{withdrawal.tutorsubject}</span>
+                                <strong>{withdrawal.tutorName}</strong>
+                                <span>{withdrawal.tutorEmail}</span>
                             </div>
                         </div>
 
@@ -113,15 +107,15 @@ const RejectWithdrawalModal = ({ isOpen, onClose, withdrawal, onReject }: Reject
                             </div>
                             <div className="financial-detail-item">
                                 <span>Mã yêu cầu</span>
-                                <strong className="financial-code">{withdrawal.withdrawalid}</strong>
+                                <strong className="financial-code">{withdrawal.withdrawalId}</strong>
                             </div>
                             <div className="financial-detail-item">
                                 <span>Ngân hàng</span>
-                                <strong>{withdrawal.bankname}</strong>
+                                <strong>{withdrawal.bankName}</strong>
                             </div>
                             <div className="financial-detail-item">
                                 <span>Ngày yêu cầu</span>
-                                <strong>{new Date(withdrawal.requestedat).toLocaleDateString('vi-VN')}</strong>
+                                <strong>{new Date(withdrawal.requestedAt).toLocaleDateString('vi-VN')}</strong>
                             </div>
                         </div>
                     </div>
