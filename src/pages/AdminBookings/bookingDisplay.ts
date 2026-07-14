@@ -107,6 +107,7 @@ export function getLessonStatusDisplay(status?: string): { label: string; varian
 // ───── Escrow status ────────────────────────────────────────────────────────
 export const ESCROW_STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
     held: { label: 'Đang giữ', variant: 'warning' },
+    holding: { label: 'Đang giữ', variant: 'warning' },
     released: { label: 'Đã giải ngân', variant: 'success' },
     refunded: { label: 'Đã hoàn', variant: 'info' },
     disputed: { label: 'Tranh chấp', variant: 'error' },
@@ -120,9 +121,12 @@ export function getEscrowStatusDisplay(status?: string): { label: string; varian
 // ───── Refund status ────────────────────────────────────────────────────────
 export const REFUND_STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
     none: { label: 'Không có', variant: 'neutral' },
+    no_refund: { label: 'Không có', variant: 'neutral' },
     pending: { label: 'Chờ hoàn', variant: 'warning' },
     processed: { label: 'Đã hoàn', variant: 'success' },
+    refunded: { label: 'Đã hoàn', variant: 'success' },
     failed: { label: 'Hoàn thất bại', variant: 'error' },
+    refund_failed: { label: 'Hoàn thất bại', variant: 'error' },
 };
 
 export function getRefundStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
