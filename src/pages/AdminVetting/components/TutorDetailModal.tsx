@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { PendingTutorFromAPI } from '../../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../../utils/avatar';
+import { getYouTubeEmbedUrl } from '../../../utils/youtube';
 import '../../../styles/pages/admin-vetting.css';
 
 interface TutorDetailModalProps {
@@ -151,6 +152,8 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
   const introduction = sections?.introduction;
   const identityCard = sections?.identityCard;
   const video = sections?.video;
+  // Video giới thiệu là link YouTube (BE validate khi tutor cập nhật) — phải nhúng iframe, thẻ <video> không phát được.
+  const introVideoEmbedUrl = getYouTubeEmbedUrl(video?.videoUrl);
   const certificates = sections?.certificates;
   const isLoading = actionLoading === tutor.userid;
   const avatarUrl = tutor.avatarurl || basicInfo?.avatarUrl || getFallbackAvatar(tutor.fullname);
@@ -333,9 +336,19 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                       <p>Video do gia sư tải lên trong quá trình hoàn thiện hồ sơ.</p>
                     </div>
                   </div>
-                  <video className="profile-intro-video" src={video.videoUrl} controls>
-                    Trình duyệt không hỗ trợ video.
-                  </video>
+                  {introVideoEmbedUrl ? (
+                    <iframe
+                      className="profile-intro-video"
+                      src={introVideoEmbedUrl}
+                      title="Video giới thiệu của gia sư"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video className="profile-intro-video" src={video.videoUrl} controls>
+                      Trình duyệt không hỗ trợ video.
+                    </video>
+                  )}
                 </section>
               )}
             </main>
