@@ -120,3 +120,44 @@
     grid-template-columns: 1fr;
   }
 }
+
+.staff-no-group {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.staff-group-select,
+.staff-group-field select {
+  min-width: 180px;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.staff-group-select:focus,
+.staff-group-field select:focus {
+  border-color: #4f9bb0;
+  outline: 2px solid rgb(79 155 176 / 18%);
+}
+
+.staff-group-select:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.staff-group-field {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.staff-group-field small {
+  color: #64748b;
+  font-weight: 400;
+}

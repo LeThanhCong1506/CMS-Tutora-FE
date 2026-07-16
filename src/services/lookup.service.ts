@@ -5,6 +5,7 @@
  */
 import type { ApiResponse } from './apiHelpers';
 import type { Subject, GradeLevel, Chapter, QuestionType } from '../types/lookup.type';
+export type { Subject, GradeLevel, Chapter, QuestionType } from '../types/lookup.type';
 import { apiClient as api } from './apiClient';
 
 export const getSubjects = async (): Promise<Subject[]> => {

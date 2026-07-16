@@ -8,8 +8,7 @@ import 'katex/dist/katex.min.css';
 import { updateQuestion, deleteQuestion } from '../../services/question.service';
 import type { Question, UpdateQuestionPayload } from '../../types/question.types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const katex = katexModule.renderToString ? katexModule : (katexModule as any).default;
+const katex = katexModule;
 
 interface Props {
   question: Question;

@@ -9,6 +9,7 @@ import {
 import type { AdminWithdrawalDetail } from '../../../types/adminPayout.types';
 import { formatApprovalDecision, formatCurrency, formatDateTime } from '../../../utils/formatters';
 import { PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
+import { Can } from '../../../contexts/AccessContext';
 import WithdrawalStatusBadge from '../WithdrawalStatusBadge';
 import FraudFlagsCard from './components/FraudFlagsCard';
 import TrustScoreCard from './components/TrustScoreCard';
@@ -188,6 +189,7 @@ const PayoutDetailPage: React.FC = () => {
                     </button>
                     {isPending ? (
                         <>
+                            <Can permission="payout.reject">
                             <button
                                 type="button"
                                 className="admin-ui-button admin-ui-button-danger"
@@ -197,6 +199,8 @@ const PayoutDetailPage: React.FC = () => {
                                 <span className="material-symbols-outlined">cancel</span>
                                 Từ chối
                             </button>
+                            </Can>
+                            <Can permission="payout.approve">
                             <button
                                 type="button"
                                 className="admin-ui-button admin-ui-button-success"
@@ -206,6 +210,7 @@ const PayoutDetailPage: React.FC = () => {
                                 <span className="material-symbols-outlined">check_circle</span>
                                 Phê duyệt & chuyển tiền
                             </button>
+                            </Can>
                         </>
                     ) : (
                         <WithdrawalStatusBadge status={requestInfo.status} />

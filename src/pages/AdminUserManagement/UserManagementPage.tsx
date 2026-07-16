@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { getAllUsers, deactivateUser, reactivateUser, issueWarning, suspendTutor } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import { Can } from '../../contexts/AccessContext';
 import type { UserListItem } from '../../types/admin.types';
 import type { FlatUserDetail } from './mockData';
 import UserDetailModal from './components/UserDetailModal';
@@ -353,6 +354,7 @@ const UserManagementPage = () => {
                 headerAction={
                     <div className="admin-ui-actions">
                         <span className="admin-ui-code-chip">Tổng {total.toLocaleString('vi-VN')}</span>
+                        <Can permission="export.data">
                         <button
                             type="button"
                             className="admin-ui-button admin-ui-button-primary"
@@ -361,6 +363,7 @@ const UserManagementPage = () => {
                             <span className="material-symbols-outlined">download</span>
                             Xuất CSV
                         </button>
+                        </Can>
                     </div>
                 }
             >

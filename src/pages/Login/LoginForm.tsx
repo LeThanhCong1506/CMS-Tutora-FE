@@ -93,9 +93,10 @@ const LoginForm: React.FC = () => {
         throw new Error('Không nhận được token từ server');
       }
 
-      if (getRoleFromToken(token)?.toLowerCase() !== 'admin') {
+      const role = getRoleFromToken(token)?.toLowerCase();
+      if (role !== 'admin' && role !== 'staff') {
         await clearUserFromStorage();
-        toast.error('Tài khoản này không có quyền truy cập trang quản trị.');
+        toast.error('Tài khoản này không có quyền truy cập cổng vận hành.');
         return;
       }
 
@@ -109,7 +110,7 @@ const LoginForm: React.FC = () => {
 
       toast.success('Đăng nhập thành công!');
       setTimeout(() => {
-        navigate('/admin-portal/dashboard');
+        navigate('/admin-portal');
       }, 600);
     } catch (error: any) {
       console.error('Login Error:', error);

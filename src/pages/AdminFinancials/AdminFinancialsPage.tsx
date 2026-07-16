@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import UnderDevelopment from '../../components/UnderDevelopment/UnderDevelopment';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import { Can } from '../../contexts/AccessContext';
 import type { FinancialMetrics, WithdrawalRequest } from '../../types/admin.types';
 import { formatCurrency, formatCompactNumber, formatDateTime } from '../../utils/formatters';
 import {
@@ -125,13 +126,17 @@ const AdminFinancialsPage = () => {
             align: 'right',
             render: (row) => (
                 <div className="admin-ui-actions financial-actions">
+                    <Can permission="payout.reject">
                     <button className="admin-ui-button admin-ui-button-danger" onClick={() => handleRejectClick(row)}>
                         Từ chối
                     </button>
+                    </Can>
+                    <Can permission="payout.approve">
                     <button className="admin-ui-button admin-ui-button-success" onClick={() => handleApproveClick(row)}>
                         <span className="material-symbols-outlined">check</span>
                         Xử lý
                     </button>
+                    </Can>
                 </div>
             ),
         },
