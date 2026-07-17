@@ -42,7 +42,6 @@ const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
-const FraudLogsPage = lazy(() => import('./pages/AdminPayout/FraudLogs/FraudLogsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
 
 function App() {
@@ -144,7 +143,6 @@ function App() {
                 path="payout/review/:id"
                 element={<div className="p-6">Payout Request Detail Page (Coming Soon)</div>}
               />
-              <Route path="payout/fraud-logs" element={<FraudLogsPage />} />
             </Route>
 
             {/* Error Pages */}

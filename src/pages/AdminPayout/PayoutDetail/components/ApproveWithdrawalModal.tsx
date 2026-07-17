@@ -9,6 +9,9 @@ interface Props {
     confirmLoading: boolean;
     amount: number;
     tutorName: string;
+    bankName?: string | null;
+    accountNumber?: string | null;
+    accountHolderName?: string | null;
 }
 
 const ApproveWithdrawalModal = ({
@@ -17,9 +20,13 @@ const ApproveWithdrawalModal = ({
     onConfirm,
     confirmLoading,
     amount,
-    tutorName
+    tutorName,
+    bankName,
+    accountNumber,
+    accountHolderName
 }: Props) => {
     const [note, setNote] = useState('');
+    const [error, setError] = useState('');
 
     useEffect(() => {
         if (!open) return undefined;
@@ -41,7 +48,15 @@ const ApproveWithdrawalModal = ({
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        onConfirm(note.trim());
+
+        const trimmedNote = note.trim();
+        if (!trimmedNote) {
+            setError('Vui lòng nhập ghi chú/mã tham chiếu giao dịch chuyển khoản');
+            return;
+        }
+
+        setError('');
+        onConfirm(trimmedNote);
     };
 
     if (!open) return null;
@@ -63,9 +78,9 @@ const ApproveWithdrawalModal = ({
                             check_circle
                         </span>
                         <div>
-                            <h2 id="approve-withdrawal-title">Phê duyệt thanh toán</h2>
+                            <h2 id="approve-withdrawal-title">Xác nhận đã chuyển khoản</h2>
                             <p id="approve-withdrawal-description">
-                                Kiểm tra lần cuối trước khi chuyển tiền qua cổng thanh toán.
+                                Đánh dấu yêu cầu hoàn tất sau khi bạn đã chuyển tiền thủ công cho gia sư.
                             </p>
                         </div>
                     </div>
@@ -84,8 +99,9 @@ const ApproveWithdrawalModal = ({
                     <div className="payout-modal-alert warning" role="note">
                         <span className="material-symbols-outlined" aria-hidden="true">warning</span>
                         <p>
-                            Hành động này sẽ thực hiện chuyển tiền thật thông qua cổng thanh toán PayOS.
-                            Vui lòng kiểm tra kỹ số tiền và tài khoản thụ hưởng.
+                            Chỉ bấm xác nhận <strong>sau khi</strong> bạn đã chuyển khoản thủ công đúng số tiền
+                            vào tài khoản thụ hưởng bên dưới. Hệ thống sẽ chuyển yêu cầu sang trạng thái hoàn tất
+                            và thông báo cho gia sư — hành động này không thể hoàn tác.
                         </p>
                     </div>
 
@@ -95,23 +111,49 @@ const ApproveWithdrawalModal = ({
                             <strong className="payout-modal-value">{tutorName}</strong>
                         </div>
                         <div className="payout-modal-summary-row">
-                            <span className="payout-modal-label">Số tiền quyết toán</span>
+                            <span className="payout-modal-label">Số tiền chuyển khoản</span>
                             <strong className="payout-modal-amount-success">{formatCurrency(amount)}</strong>
                         </div>
+                        {bankName && (
+                            <div className="payout-modal-summary-row">
+                                <span className="payout-modal-label">Ngân hàng</span>
+                                <strong className="payout-modal-value">{bankName}</strong>
+                            </div>
+                        )}
+                        {accountNumber && (
+                            <div className="payout-modal-summary-row">
+                                <span className="payout-modal-label">Số tài khoản</span>
+                                <strong className="payout-modal-value">{accountNumber}</strong>
+                            </div>
+                        )}
+                        {accountHolderName && (
+                            <div className="payout-modal-summary-row">
+                                <span className="payout-modal-label">Chủ tài khoản</span>
+                                <strong className="payout-modal-value">{accountHolderName}</strong>
+                            </div>
+                        )}
                     </div>
 
                     <label className="payout-modal-field" htmlFor="approve-withdrawal-note">
-                        <span>Ghi chú nội bộ</span>
+                        <span>Ghi chú / mã giao dịch chuyển khoản</span>
                         <textarea
                             id="approve-withdrawal-note"
                             className="payout-modal-textarea"
                             rows={3}
                             value={note}
-                            onChange={(event) => setNote(event.target.value)}
-                            placeholder="Ví dụ: Đã kiểm tra đối soát, thông tin hợp lệ."
+                            onChange={(event) => {
+                                setNote(event.target.value);
+                                if (error) setError('');
+                            }}
+                            placeholder="Ví dụ: Đã CK 14:35 16/07 — mã GD FT26197xxxx."
                             disabled={confirmLoading}
+                            required
                         />
-                        <small>Không bắt buộc, chỉ hiển thị cho admin trong lịch sử xử lý.</small>
+                        {error ? (
+                            <small className="payout-modal-error" role="alert">{error}</small>
+                        ) : (
+                            <small>Bắt buộc — ghi lại mã tham chiếu/thời gian chuyển khoản để đối soát sau này.</small>
+                        )}
                     </label>
                 </div>
 
@@ -127,12 +169,12 @@ const ApproveWithdrawalModal = ({
                     <button
                         type="submit"
                         className="admin-ui-button admin-ui-button-success"
-                        disabled={confirmLoading}
+                        disabled={confirmLoading || !note.trim()}
                     >
                         <span className="material-symbols-outlined" aria-hidden="true">
                             {confirmLoading ? 'progress_activity' : 'check_circle'}
                         </span>
-                        {confirmLoading ? 'Đang xử lý...' : 'Xác nhận phê duyệt'}
+                        {confirmLoading ? 'Đang xử lý...' : 'Xác nhận đã chuyển khoản'}
                     </button>
                 </footer>
             </form>

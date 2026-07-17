@@ -1,84 +1,124 @@
 import React from 'react';
-import { StatCard } from '../../../../components/shared';
 import type { PayoutOverview } from '../../../../types/adminPayout.types';
 import { formatCurrency } from '../../../../utils/formatters';
 
 interface Props {
-    overview: PayoutOverview | null;
-    loading: boolean;
+  overview: PayoutOverview | null;
+  loading: boolean;
+}
+
+interface OperationMetricProps {
+  icon: string;
+  value: React.ReactNode;
+  label: string;
+  note: string;
+  tone: 'blue' | 'green' | 'amber' | 'red';
 }
 
 const metric = (value: React.ReactNode, loading: boolean) => (loading ? '...' : value);
 
-const Icon = ({ name }: { name: string }) => (
-    <span className="material-symbols-outlined">{name}</span>
+const OperationMetric: React.FC<OperationMetricProps> = ({ icon, value, label, note, tone }) => (
+  <article className={`payout-operation-metric payout-operation-metric--${tone}`}>
+    <span className="payout-operation-metric__icon material-symbols-outlined" aria-hidden="true">
+      {icon}
+    </span>
+    <div className="payout-operation-metric__content">
+      <strong>{value}</strong>
+      <span>{label}</span>
+      <small>{note}</small>
+    </div>
+  </article>
 );
 
 const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
-    const todayStats = overview?.todayStats;
-    const processingStats = overview?.processingStats;
-    const financialStats = overview?.financialStats;
+  const todayStats = overview?.todayStats;
+  const processingStats = overview?.processingStats;
+  const financialStats = overview?.financialStats;
 
-    return (
-        <div className="admin-ui-kpi-grid payout-stats-grid">
-            <StatCard
-                icon={<Icon name="request_quote" />}
-                value={metric(todayStats?.totalRequests ?? 0, loading)}
-                label="Yêu cầu tháng này"
-                badge="Volume"
-                badgeVariant="blue"
-            />
-            <StatCard
-                icon={<Icon name="verified" />}
-                value={metric(todayStats?.autoApproved ?? 0, loading)}
-                label="Tự động duyệt"
-                badge="Auto"
-                badgeVariant="green"
-            />
-            <StatCard
-                icon={<Icon name="pause_circle" />}
-                value={metric(todayStats?.delayed ?? 0, loading)}
-                label="Đang tạm giữ"
-                badge="Hold"
-                badgeVariant="orange"
-            />
-            <StatCard
-                icon={<Icon name="policy" />}
-                value={metric(todayStats?.manualReview ?? 0, loading)}
-                label="Chờ xét duyệt thủ công"
-                badge="Review"
-                badgeVariant="red"
-            />
-            <StatCard
-                icon={<Icon name="pending_actions" />}
-                value={metric(processingStats?.pendingCount ?? 0, loading)}
-                label="Chờ xử lý"
-                subLabel="Các yêu cầu chưa có quyết định cuối"
-                badgeVariant="orange"
-            />
-            <StatCard
-                icon={<Icon name="check_circle" />}
-                value={metric(`${(processingStats?.successRate ?? 0).toFixed(1)}%`, loading)}
-                label="Tỷ lệ thành công"
-                badge="Quality"
-                badgeVariant="green"
-            />
-            <StatCard
-                icon={<Icon name="payments" />}
-                value={metric(formatCurrency(financialStats?.totalPayoutToday ?? 0), loading)}
-                label="Tổng chi hôm nay"
-                badge="Today"
-                badgeVariant="blue"
-            />
-            <StatCard
-                icon={<Icon name="account_balance_wallet" />}
-                value={metric(formatCurrency(financialStats?.totalPayoutThisMonth ?? 0), loading)}
-                label="Tổng chi tháng này"
-                badge="Month"
-                badgeVariant="dark"
-            />
+  return (
+    <section className="payout-summary-grid" aria-label="Tổng quan thanh toán">
+      <article className="payout-cash-card">
+        <div className="payout-cash-card__orb" aria-hidden="true" />
+
+        <div className="payout-cash-card__header">
+          <div className="payout-cash-card__heading">
+            <span className="payout-cash-card__icon material-symbols-outlined" aria-hidden="true">
+              account_balance_wallet
+            </span>
+            <div>
+              <span>Quy mô giải ngân</span>
+              <h2>Dòng tiền tháng này</h2>
+            </div>
+          </div>
+          <span className="payout-live-badge">
+            <span aria-hidden="true" />
+            Cập nhật
+          </span>
         </div>
-    );
+
+        <div className="payout-cash-card__total">
+          <span>Tổng giá trị đã chi</span>
+          <strong>{metric(formatCurrency(financialStats?.totalPayoutThisMonth ?? 0), loading)}</strong>
+        </div>
+
+        <div className="payout-cash-card__metrics">
+          <div>
+            <span>Chi hôm nay</span>
+            <strong>{metric(formatCurrency(financialStats?.totalPayoutToday ?? 0), loading)}</strong>
+          </div>
+          <div>
+            <span>Tỷ lệ thành công</span>
+            <strong>{metric(`${(processingStats?.successRate ?? 0).toFixed(1)}%`, loading)}</strong>
+          </div>
+          <div>
+            <span>Đang chờ xử lý</span>
+            <strong>{metric((processingStats?.pendingCount ?? 0).toLocaleString('vi-VN'), loading)}</strong>
+          </div>
+        </div>
+      </article>
+
+      <section className="payout-operations-panel" aria-labelledby="payout-operations-title">
+        <div className="payout-operations-panel__header">
+          <div>
+            <span>Tổng quan vận hành</span>
+            <h2 id="payout-operations-title">Khối lượng xử lý</h2>
+          </div>
+          <span className="payout-period-chip">Tháng này</span>
+        </div>
+
+        <div className="payout-operation-grid">
+          <OperationMetric
+            icon="request_quote"
+            value={metric((todayStats?.totalRequests ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Tổng yêu cầu"
+            note="Phát sinh trong tháng"
+            tone="blue"
+          />
+          <OperationMetric
+            icon="verified"
+            value={metric((todayStats?.autoApproved ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Tự động duyệt"
+            note="Đã qua kiểm tra hệ thống"
+            tone="green"
+          />
+          <OperationMetric
+            icon="pause_circle"
+            value={metric((todayStats?.delayed ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Đang tạm giữ"
+            note="Cần theo dõi thời hạn"
+            tone="amber"
+          />
+          <OperationMetric
+            icon="policy"
+            value={metric((todayStats?.manualReview ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Xét duyệt thủ công"
+            note="Cần quyết định từ admin"
+            tone="red"
+          />
+        </div>
+      </section>
+    </section>
+  );
 };
 
 export default PayoutStatsCards;

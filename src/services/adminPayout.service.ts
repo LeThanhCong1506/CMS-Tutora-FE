@@ -5,7 +5,6 @@ import type {
     PayoutOverview,
     PendingReviewResponse,
     AdminWithdrawalDetail,
-    FraudLogResponse,
     SystemAlertResponse,
     ApproveResult,
     RejectResult,
@@ -149,34 +148,6 @@ export const rejectPayoutRequest = async (id: number, reason: string): Promise<R
 };
 
 /**
- * Get current PayOS balance and alert levels
- */
-export const getPayOSBalance = async (): Promise<{ balance: number; currency: string; alertLevel: string }> => {
-    const { data } = await api.get('/admin/payouts/payos-balance');
-    return data.content;
-};
-
-/**
- * Get system fraud logs
- */
-export const getFraudLogs = async (params: {
-    page?: number;
-    pageSize?: number;
-    tutorId?: string;
-    ruleName?: string;
-    passed?: boolean;
-    from?: string;
-    to?: string;
-}): Promise<FraudLogResponse> => {
-    try {
-        const { data } = await api.get('/admin/payouts/fraud-logs', { params });
-        return data.content;
-    } catch (error) {
-        throw error;
-    }
-};
-
-/**
  * Get system integrity alerts
  */
 export const getSystemAlerts = async (params: {
@@ -185,7 +156,7 @@ export const getSystemAlerts = async (params: {
     resolved?: boolean;
 }): Promise<SystemAlertResponse> => {
     try {
-        const { data } = await api.get('/admin/system-alerts', { params });
+        const { data } = await api.get('/admin/payouts/system-alerts', { params });
         return data.content;
     } catch (error) {
         throw error;
@@ -197,7 +168,7 @@ export const getSystemAlerts = async (params: {
  */
 export const resolveSystemAlert = async (id: number): Promise<void> => {
     try {
-        await api.post(`/admin/system-alerts/${id}/resolve`);
+        await api.post(`/admin/payouts/system-alerts/${id}/resolve`);
     } catch (error) {
         throw error;
     }

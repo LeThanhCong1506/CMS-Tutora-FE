@@ -39,9 +39,9 @@ const PendingReviewPage: React.FC = () => {
             withdrawalId: item.withdrawalId,
             tutorId: item.tutorId,
             tutorName: item.tutorName,
-            tutorEmail: item.topFraudFlags.length > 0 ? item.topFraudFlags.join(', ') : 'Cần xét duyệt rủi ro',
+            tutorEmail: '',
             amount: item.amount,
-            bankName: item.trustScore === null ? 'Chưa có trust score' : `Trust score ${item.trustScore}`,
+            bankName: '',
             accountNumber: '',
             requestedAt: item.requestedAt,
             status: 'pending_review',
@@ -51,8 +51,8 @@ const PendingReviewPage: React.FC = () => {
     return (
         <PageContainer
             eyebrow="Thanh toán"
-            title="Yêu cầu chờ xét duyệt rủi ro"
-            subtitle="Danh sách các yêu cầu rút tiền bị hệ thống gắn cờ cảnh báo hoặc có điểm rủi ro cao."
+            title="Yêu cầu chờ xét duyệt"
+            subtitle="Danh sách các yêu cầu rút tiền đang chờ admin/staff kiểm tra và chuyển khoản thủ công."
             maxWidth="wide"
             headerAction={
                 <button
@@ -70,15 +70,15 @@ const PendingReviewPage: React.FC = () => {
                 <div>
                     <h3>Về quy trình xét duyệt</h3>
                     <p>
-                        Các yêu cầu trong danh sách này tạm thời bị giữ lại do vi phạm quy tắc an toàn
-                        hoặc cần đối soát hồ sơ. Kiểm tra lịch sử giao dịch và fraud flags trước khi phê duyệt.
+                        Mọi yêu cầu rút tiền đều chờ xử lý thủ công: kiểm tra thông tin tài khoản và lịch sử
+                        giao dịch, chuyển khoản cho gia sư, rồi bấm xác nhận đã chuyển trong trang chi tiết.
                     </p>
                 </div>
             </div>
 
             <SectionCard
-                title="Hàng đợi rủi ro"
-                subtitle="Mỗi dòng mở sang trang chi tiết để admin xem trust score, ví và timeline xử lý."
+                title="Hàng đợi xử lý"
+                subtitle="Mỗi dòng mở sang trang chi tiết để admin/staff đối chiếu ví, lịch sử và xác nhận chuyển khoản."
                 footer={`Hiển thị ${mappedData.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
             >
                 <WithdrawalRequestTable
