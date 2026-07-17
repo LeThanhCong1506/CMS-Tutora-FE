@@ -48,7 +48,8 @@ const AdminLayout: React.FC = () => {
         },
         { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel' },
         { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning' },
-        { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính' },
+        { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz' },
+        { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance' },
         { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring' },
         { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', sectionLabel: 'Hệ thống' },
     ];

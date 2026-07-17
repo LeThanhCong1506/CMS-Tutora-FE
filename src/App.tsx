@@ -42,6 +42,8 @@ const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBoo
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
+const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
+const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
 const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPageExpanded'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
@@ -147,6 +149,9 @@ function App() {
                 <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
                 <Route path="financials" element={<AdminFinancialsPage />} />
                 <Route path="warnings" element={<AdminWarningsPage />} />
+                <Route path="question-bank" element={<QuestionBankPage />} />
+                <Route path="question-bank/upload" element={<UploadPdfPage />} />
+                <Route path="question-bank/upload/:id" element={<UploadPdfPage />} />
                 <Route path="disputes" element={<AdminDisputesPage />} />
                 <Route path="disputes/:id" element={<AdminDisputeDetailPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
