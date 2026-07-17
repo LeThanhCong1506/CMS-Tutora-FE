@@ -12,6 +12,7 @@ import {
 import TutorDetailModal from './components/TutorDetailModal';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import { Can } from '../../contexts/AccessContext';
 import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import '../../styles/pages/admin-vetting.css';
@@ -464,6 +465,7 @@ const AdminVettingPage = () => {
       align: 'right',
       render: (req) => (
         <div className="certificate-row-actions">
+          <Can permission="tutor_profile_update.decide">
           <button
             type="button"
             className="admin-ui-button admin-ui-button-success"
@@ -481,6 +483,7 @@ const AdminVettingPage = () => {
           >
             Từ chối
           </button>
+          </Can>
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"

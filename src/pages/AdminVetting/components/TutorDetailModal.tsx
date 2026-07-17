@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { PendingTutorFromAPI } from '../../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../../utils/avatar';
 import { getYouTubeEmbedUrl } from '../../../utils/youtube';
+import { Can } from '../../../contexts/AccessContext';
 import '../../../styles/pages/admin-vetting.css';
 
 interface TutorDetailModalProps {
@@ -359,6 +360,7 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
               Đóng
             </button>
             <div>
+              <Can permission="tutor_approval.decide">
               <button
                 type="button"
                 className="admin-ui-button admin-ui-button-danger"
@@ -379,6 +381,7 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                 <span className="material-symbols-outlined">check</span>
                 {isLoading ? 'Đang xử lý...' : 'Phê duyệt hồ sơ'}
               </button>
+              </Can>
             </div>
           </footer>
         </section>

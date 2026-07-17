@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { getActiveSuspensions, getUserWarnings, unsuspendUser } from '../../services/admin.service';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
+import { Can } from '../../contexts/AccessContext';
 import '../../styles/pages/admin-warnings.css';
 
 interface SuspensionListItem {
@@ -249,6 +250,7 @@ const AdminWarningsPage: React.FC = () => {
             align: 'right',
             render: (record) => (
                 record.userId ? (
+                    <Can permission="suspension.manage">
                     <button
                         type="button"
                         className="admin-ui-button admin-ui-button-success warnings-action-button"
@@ -256,6 +258,7 @@ const AdminWarningsPage: React.FC = () => {
                     >
                         Gỡ
                     </button>
+                    </Can>
                 ) : (
                     <span className="admin-ui-table-meta">—</span>
                 )

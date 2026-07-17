@@ -1,0 +1,8 @@
+.no-access-page { min-height: calc(100vh - 64px); display: grid; place-items: center; padding: 32px; }
+.no-access-card { max-width: 520px; padding: 38px; border-radius: 18px; background: #fff; text-align: center; box-shadow: 0 14px 40px rgba(26,34,56,.08); }
+.no-access-icon { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; background: #f2f0e4; color: #3d4a3e; font-size: 34px; }
+.no-access-card h1 { margin: 20px 0 8px; color: #1a2238; font-size: 25px; }
+.no-access-card p { margin: 0; color: #64748b; line-height: 1.65; }
+.no-access-actions { display: flex; justify-content: center; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+.no-access-actions button { border: 0; border-radius: 9px; padding: 10px 16px; background: #3d4a3e; color: #fff; font-weight: 700; cursor: pointer; }
+.no-access-actions button.secondary { background: #f1f5f9; color: #334155; }

@@ -1,34 +1,32 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, type ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
+import { ToastContainer, Slide } from 'react-toastify';
 
-// --- Static imports (layouts, infrastructure, always-needed components) ---
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import PermissionRoute from './components/PermissionRoute/PermissionRoute';
 import SessionExpiredModal from './components/SessionExpiredModal';
 import PageLoader from './components/PageLoader/PageLoader';
 import { ErrorBoundary } from './components/shared';
-import axios from 'axios';
+import { useAccess } from './contexts/AccessContext';
 import { getCurrentUser, isTokenExpired, updateTokens, clearUserFromStorage } from './services/auth.service';
 
-const BACKEND_API = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
-import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// TUTORA brand override — phải import SAU default CSS để cascade thắng.
 import './styles/toastify.css';
 
-// --- Lazy-loaded pages ---
-// Auth
-const LoginPage = lazy(() => import('./pages/Login/LoginPage'));
+const BACKEND_API = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
 
-// Error pages
+const LoginPage = lazy(() => import('./pages/Login/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/Error/NotFoundPage'));
 const UnauthorizedPage = lazy(() => import('./pages/Error/UnauthorizedPage'));
 const ForbiddenPage = lazy(() => import('./pages/Error/ForbiddenPage'));
+const NoAccessPage = lazy(() => import('./pages/Error/NoAccessPage'));
 
-// Admin pages
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboard/AdminDashboardPageEnhanced'));
 const UserManagementPage = lazy(() => import('./pages/AdminUserManagement/UserManagementPage'));
 const StaffManagementPage = lazy(() => import('./pages/AdminStaffManagement/StaffManagementPage'));
+const PermissionGroupsPage = lazy(() => import('./pages/AdminPermissionGroups/PermissionGroupsPage'));
 const AdminVettingPage = lazy(() => import('./pages/AdminVetting/AdminVettingPage'));
 const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/AdminCertificateVettingPage'));
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
@@ -44,8 +42,33 @@ const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
-const FraudLogsPage = lazy(() => import('./pages/AdminPayout/FraudLogs/FraudLogsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
+
+const guard = (element: ReactNode, permission?: string, adminOnly = false) => (
+  <PermissionRoute permission={permission} adminOnly={adminOnly}>{element}</PermissionRoute>
+);
+
+const PortalIndexRedirect = () => {
+  const { loading, isAdmin, can } = useAccess();
+  if (loading) return <PageLoader />;
+  if (isAdmin || can('dashboard.view')) return <Navigate to="/admin-portal/dashboard" replace />;
+
+  const firstAllowed = [
+    ['user.view', '/admin-portal/users'],
+    ['booking.view', '/admin-portal/bookings'],
+    ['tutor_approval.view', '/admin-portal/vetting/profiles'],
+    ['certificate.view', '/admin-portal/vetting/certificates'],
+    ['dispute.view', '/admin-portal/disputes'],
+    ['warning.view', '/admin-portal/warnings'],
+    ['question_bank.view', '/admin-portal/question-bank'],
+    ['financial.view', '/admin-portal/financials'],
+    ['payout.view', '/admin-portal/payouts'],
+    ['lookup.view', '/admin-portal/settings'],
+    ['notification.view', '/admin-portal/notifications'],
+  ].find(([permission]) => can(permission));
+
+  return <Navigate to={firstAllowed?.[1] ?? '/admin-portal/no-access'} replace />;
+};
 
 function App() {
   const location = useLocation();
@@ -55,7 +78,6 @@ function App() {
     const user = getCurrentUser();
     if (!user?.accessToken || !isTokenExpired()) return;
 
-    // Thử silent refresh trước khi show modal
     if (user.refreshToken) {
       try {
         const response = await axios.post(`${BACKEND_API}/tokens/refresh`, {
@@ -73,13 +95,12 @@ function App() {
     setShowSessionExpired(true);
   }, []);
 
-  // Check token expiry khi route thay đổi
   useEffect(() => {
+    // Route changes re-check the stored token and may open the expiry modal.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     checkTokenExpiry();
   }, [location.pathname, checkTokenExpiry]);
 
-  // Check token expiry định kỳ mỗi 30 giây
   useEffect(() => {
     const interval = setInterval(checkTokenExpiry, 30000);
     return () => clearInterval(interval);
@@ -87,10 +108,7 @@ function App() {
 
   return (
     <div>
-      <SessionExpiredModal
-        isOpen={showSessionExpired}
-        onClose={() => setShowSessionExpired(false)}
-      />
+      <SessionExpiredModal isOpen={showSessionExpired} onClose={() => setShowSessionExpired(false)} />
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -108,56 +126,50 @@ function App() {
       <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Root → redirect login (ProtectedRoute sẽ tự lo nếu đã đăng nhập Admin) */}
             <Route path="/" element={<Navigate to="/login" replace />} />
-
-            {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* Admin Layout - PROTECTED */}
             <Route
               path="/admin-portal"
               element={
-                <ProtectedRoute allowedRoles={["Admin"]}>
+                <ProtectedRoute allowedRoles={['Admin', 'Staff']}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin-portal/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="users" element={<UserManagementPage />} />
-              <Route path="staff" element={<StaffManagementPage />} />
+              <Route index element={<PortalIndexRedirect />} />
+              <Route path="no-access" element={<NoAccessPage />} />
+              <Route path="dashboard" element={guard(<AdminDashboardPage />, 'dashboard.view')} />
+              <Route path="users" element={guard(<UserManagementPage />, 'user.view')} />
+              <Route path="staff" element={guard(<StaffManagementPage />, undefined, true)} />
+              <Route path="permission-groups" element={guard(<PermissionGroupsPage />, undefined, true)} />
               <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
-              <Route path="vetting/profiles" element={<AdminVettingPage />} />
-              <Route path="vetting/certificates" element={<AdminCertificateVettingPage />} />
-              <Route path="bookings" element={<AdminBookingsPage />} />
-              <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
-              <Route path="financials" element={<AdminFinancialsPage />} />
-              <Route path="warnings" element={<AdminWarningsPage />} />
-              <Route path="question-bank" element={<QuestionBankPage />} />
-              <Route path="question-bank/upload" element={<UploadPdfPage />} />
-              <Route path="question-bank/upload/:id" element={<UploadPdfPage />} />
-              <Route path="disputes" element={<AdminDisputesPage />} />
-              <Route path="disputes/:id" element={<AdminDisputeDetailPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="payouts" element={<PayoutOverviewPage />} />
-              <Route path="payouts/history" element={<AllPayoutRequestsPage />} />
-              <Route path="payouts/:id" element={<PayoutDetailPage />} />
-              <Route path="payout/review" element={<PendingReviewPage />} />
+              <Route path="vetting/profiles" element={guard(<AdminVettingPage />, 'tutor_approval.view')} />
+              <Route path="vetting/certificates" element={guard(<AdminCertificateVettingPage />, 'certificate.view')} />
+              <Route path="bookings" element={guard(<AdminBookingsPage />, 'booking.view')} />
+              <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
+              <Route path="financials" element={guard(<AdminFinancialsPage />, 'financial.view')} />
+              <Route path="warnings" element={guard(<AdminWarningsPage />, 'warning.view')} />
+              <Route path="question-bank" element={guard(<QuestionBankPage />, 'question_bank.view')} />
+              <Route path="question-bank/upload" element={guard(<UploadPdfPage />, 'question_document.upload')} />
+              <Route path="question-bank/upload/:id" element={guard(<UploadPdfPage />, 'question_document.upload')} />
+              <Route path="disputes" element={guard(<AdminDisputesPage />, 'dispute.view')} />
+              <Route path="disputes/:id" element={guard(<AdminDisputeDetailPage />, 'dispute.view')} />
+              <Route path="settings" element={guard(<AdminSettingsPage />, 'lookup.view')} />
+              <Route path="notifications" element={guard(<NotificationsPage />, 'notification.view')} />
+              <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />
+              <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
+              <Route path="payouts/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />
+              <Route path="payout/review" element={guard(<PendingReviewPage />, 'payout.view')} />
               <Route
                 path="payout/review/:id"
-                element={<div className="p-6">Payout Request Detail Page (Coming Soon)</div>}
+                element={guard(<div className="p-6">Payout Request Detail Page (Coming Soon)</div>, 'payout.view')}
               />
-              <Route path="payout/fraud-logs" element={<FraudLogsPage />} />
             </Route>
 
-            {/* Error Pages */}
             <Route path="/401" element={<UnauthorizedPage />} />
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/404" element={<NotFoundPage />} />
-
-            {/* Catch-all Route - Must be last */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
