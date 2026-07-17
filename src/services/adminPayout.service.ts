@@ -9,7 +9,8 @@ import type {
     ApproveResult,
     RejectResult,
     AdminPayoutSummary,
-    WithdrawalRequestListResponse
+    WithdrawalRequestListResponse,
+    ApprovePayoutRequest
 } from '../types/adminPayout.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
@@ -17,9 +18,6 @@ const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166
 // Create axios instance
 const api = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Request interceptor - Add auth token to all requests
@@ -126,9 +124,30 @@ export const getPayoutRequestDetail = async (id: number): Promise<AdminWithdrawa
 /**
  * Manually approve a flagged request
  */
-export const approvePayoutRequest = async (id: number, note?: string): Promise<ApproveResult> => {
+export const claimPayoutRequest = async (id: number): Promise<ApproveResult> => {
+    const { data } = await api.post(`/admin/payouts/${id}/claim`);
+    return data.content;
+};
+
+/**
+ * Release a request claimed by the current staff/admin back to the queue.
+ */
+export const releasePayoutRequest = async (id: number): Promise<ApproveResult> => {
+    const { data } = await api.post(`/admin/payouts/${id}/release`);
+    return data.content;
+};
+
+/**
+ * Complete a manually transferred payout with structured audit and receipt proof.
+ */
+export const approvePayoutRequest = async (id: number, request: ApprovePayoutRequest): Promise<ApproveResult> => {
     try {
-        const { data } = await api.post(`/admin/payouts/${id}/approve`, { note });
+        const formData = new FormData();
+        formData.append('paidAt', request.paidAt);
+        formData.append('note', request.note);
+        formData.append('proofImage', request.proofImage);
+
+        const { data } = await api.post(`/admin/payouts/${id}/approve`, formData);
         return data.content;
     } catch (error) {
         throw error;

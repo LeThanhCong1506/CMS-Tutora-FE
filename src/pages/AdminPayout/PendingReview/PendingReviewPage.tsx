@@ -39,12 +39,12 @@ const PendingReviewPage: React.FC = () => {
             withdrawalId: item.withdrawalId,
             tutorId: item.tutorId,
             tutorName: item.tutorName,
-            tutorEmail: '',
+            tutorEmail: item.tutorEmail,
             amount: item.amount,
-            bankName: '',
-            accountNumber: '',
+            bankName: item.bankName,
+            accountNumber: item.accountNumber,
             requestedAt: item.requestedAt,
-            status: 'pending_review',
+            status: item.status,
         }))
     ), [items]);
 
@@ -71,7 +71,7 @@ const PendingReviewPage: React.FC = () => {
                     <h3>Về quy trình xét duyệt</h3>
                     <p>
                         Mọi yêu cầu rút tiền đều chờ xử lý thủ công: kiểm tra thông tin tài khoản và lịch sử
-                        giao dịch, chuyển khoản cho gia sư, rồi bấm xác nhận đã chuyển trong trang chi tiết.
+                        giao dịch, chuyển khoản cho người dùng, rồi bấm xác nhận đã chuyển trong trang chi tiết.
                     </p>
                 </div>
             </div>

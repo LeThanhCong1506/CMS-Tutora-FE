@@ -13,7 +13,7 @@ const payoutTabs = [
   { key: 'pending', label: 'Chờ xử lý' },
   { key: 'pending_review', label: 'Chờ xét duyệt' },
   { key: 'delayed', label: 'Đang tạm giữ' },
-  { key: 'approved', label: 'Đã phê duyệt' },
+  { key: 'approved', label: 'Đang xử lý' },
   { key: 'rejected', label: 'Đã từ chối' },
   { key: 'cancelled', label: 'Đã hủy' },
 ];
@@ -61,7 +61,7 @@ const PayoutOverviewPage: React.FC = () => {
       className="payout-overview-page"
       eyebrow="Thanh toán"
       title="Quản lý thanh toán"
-      subtitle="Xét duyệt và xử lý các yêu cầu rút tiền từ gia sư."
+      subtitle="Xét duyệt và xử lý các yêu cầu rút tiền từ người dùng."
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">

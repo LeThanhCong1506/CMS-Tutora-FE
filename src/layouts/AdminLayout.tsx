@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
 import { getPendingTutors, getPendingCertificates } from '../services/admin.service';
+import { getCurrentUserRole } from '../services/auth.service';
 
 // BE caps PageSize at 50 and the CORS policy doesn't expose the X-Pagination
 // header, so `total` falls back to the returned slice length. Request the full
@@ -11,9 +12,13 @@ const BADGE_FETCH_SIZE = 50;
 const AdminLayout: React.FC = () => {
     const [pendingTutors, setPendingTutors] = useState(0);
     const [pendingCertificates, setPendingCertificates] = useState(0);
+    const role = getCurrentUserRole() || 'Admin';
+    const isAdmin = role.toLowerCase() === 'admin';
 
     // Fetch pending profile + certificate counts for the vetting badges.
     useEffect(() => {
+        if (!isAdmin) return;
+
         getPendingTutors(1, BADGE_FETCH_SIZE).then((res) => {
             setPendingTutors(res?.total || 0);
         }).catch(() => { /* ignore */ });
@@ -21,12 +26,12 @@ const AdminLayout: React.FC = () => {
         getPendingCertificates(1, BADGE_FETCH_SIZE).then((res) => {
             setPendingCertificates(res?.total || 0);
         }).catch(() => { /* ignore */ });
-    }, []);
+    }, [isAdmin]);
 
     // Sidebar chia nhóm theo domain nghiệp vụ. "Tài khoản" gom người dùng nền
     // tảng (khách hàng) và nhân viên nội bộ — 2 mục riêng vì lifecycle + hành
     // động khác nhau, không gộp thành menu cha-con.
-    const navItems: NavItem[] = [
+    const adminNavItems: NavItem[] = [
         { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard' },
         { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản' },
         { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge' },
@@ -47,6 +52,16 @@ const AdminLayout: React.FC = () => {
         { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring' },
         { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', sectionLabel: 'Hệ thống' },
     ];
+    const navItems: NavItem[] = isAdmin
+        ? adminNavItems
+        : [
+            {
+                path: '/admin-portal/payouts',
+                label: 'Payout',
+                materialIcon: 'monitoring',
+                sectionLabel: 'Tài chính',
+            },
+        ];
 
     const isActive = (path: string, pathname: string) => {
         if (path === '/admin-portal/payouts') {
@@ -67,7 +82,8 @@ const AdminLayout: React.FC = () => {
     return (
         <PortalLayout
             navItems={navItems}
-            userRole="ADMIN"
+            homePath={isAdmin ? '/admin-portal/dashboard' : '/admin-portal/payouts'}
+            userRole={role.toUpperCase()}
             isActive={isActive}
 
             showAvatarImage={true}

@@ -52,7 +52,11 @@ export interface PendingReviewItem {
     withdrawalId: number;
     tutorId: string;
     tutorName: string;
+    tutorEmail: string;
     amount: number;
+    bankName: string;
+    accountNumber: string;
+    status: string;
     requestedAt: string;
 }
 
@@ -108,6 +112,12 @@ export interface RequestInfo {
     processedAt: string | null;
     processedBy: string | null;
     completionNote: string | null;
+    claimedBy: string | null;
+    claimedAt: string | null;
+    rejectionReason: string | null;
+    transactionId: string | null;
+    paidAt: string | null;
+    proofImageUrl: string | null;
 }
 
 export interface TutorInfo {
@@ -167,6 +177,12 @@ export interface SystemAlertResponse {
 export interface ApproveResult {
     success: boolean;
     message: string;
+}
+
+export interface ApprovePayoutRequest {
+    paidAt: string;
+    note: string;
+    proofImage: File;
 }
 
 export interface RejectResult {

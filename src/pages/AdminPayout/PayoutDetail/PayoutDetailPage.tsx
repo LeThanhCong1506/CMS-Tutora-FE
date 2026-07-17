@@ -4,9 +4,12 @@ import { toast } from 'react-toastify';
 import {
   getPayoutRequestDetail,
   approvePayoutRequest,
+  claimPayoutRequest,
+  releasePayoutRequest,
   rejectPayoutRequest,
 } from '../../../services/adminPayout.service';
-import type { AdminWithdrawalDetail } from '../../../types/adminPayout.types';
+import type { AdminWithdrawalDetail, ApprovePayoutRequest } from '../../../types/adminPayout.types';
+import { getUserIdFromToken } from '../../../services/auth.service';
 import { formatApprovalDecision, formatCurrency, formatDateTime } from '../../../utils/formatters';
 import { PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
 import WithdrawalStatusBadge from '../WithdrawalStatusBadge';
@@ -112,11 +115,39 @@ const PayoutDetailPage: React.FC = () => {
     void fetchDetail();
   }, [fetchDetail]);
 
-  const handleApprove = async (note: string) => {
+  const handleClaim = async () => {
     if (!Number.isFinite(requestId)) return;
     setActionLoading(true);
     try {
-      const result = await approvePayoutRequest(requestId, note);
+      const result = await claimPayoutRequest(requestId);
+      toast.success(result.message || 'Đã nhận xử lý yêu cầu');
+      await fetchDetail();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không thể nhận xử lý yêu cầu'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!Number.isFinite(requestId)) return;
+    setActionLoading(true);
+    try {
+      const result = await releasePayoutRequest(requestId);
+      toast.success(result.message || 'Đã trả yêu cầu về hàng đợi');
+      await fetchDetail();
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không thể trả yêu cầu về hàng đợi'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleApprove = async (request: ApprovePayoutRequest) => {
+    if (!Number.isFinite(requestId)) return;
+    setActionLoading(true);
+    try {
+      const result = await approvePayoutRequest(requestId, request);
       if (result.success) {
         toast.success(result.message || 'Đã phê duyệt và chuyển tiền thành công');
         void fetchDetail();
@@ -191,7 +222,11 @@ const PayoutDetailPage: React.FC = () => {
   }
 
   const { requestInfo, tutorInfo, previousWithdrawals, walletInfo, timeline } = detail;
-  const isPending = ['pending', 'pending_review', 'delayed'].includes(requestInfo.status);
+  const normalizedStatus = requestInfo.status.toLowerCase();
+  const isPending = ['pending', 'pending_review', 'delayed'].includes(normalizedStatus);
+  const isClaimed = normalizedStatus === 'approved';
+  const currentUserId = getUserIdFromToken();
+  const isClaimedByCurrentUser = isClaimed && requestInfo.claimedBy === currentUserId;
 
   return (
     <PageContainer
@@ -226,7 +261,7 @@ const PayoutDetailPage: React.FC = () => {
         </div>
 
         <div className="payout-detail-summary__facts">
-          <SummaryFact icon="person" label="Gia sư">
+          <SummaryFact icon="person" label="Người dùng">
             <strong>{tutorInfo.name}</strong>
             <small>{tutorInfo.email || tutorInfo.phone || 'Chưa có thông tin liên hệ'}</small>
           </SummaryFact>
@@ -247,25 +282,58 @@ const PayoutDetailPage: React.FC = () => {
       </section>
 
       <section
-        className={`payout-decision-bar ${isPending ? 'payout-decision-bar--pending' : 'payout-decision-bar--resolved'}`}
+        className={`payout-decision-bar ${isPending || isClaimed ? 'payout-decision-bar--pending' : 'payout-decision-bar--resolved'}`}
         aria-label="Trạng thái xử lý yêu cầu"
       >
         <div className="payout-decision-bar__copy">
           <span className="payout-decision-bar__icon material-symbols-outlined" aria-hidden="true">
-            {isPending ? 'rule' : 'task_alt'}
+            {isPending ? 'rule' : isClaimed ? 'lock_person' : 'task_alt'}
           </span>
           <div>
-            <strong>{isPending ? 'Yêu cầu cần quyết định' : 'Yêu cầu đã được xử lý'}</strong>
+            <strong>
+              {isPending
+                ? 'Yêu cầu đang chờ người xử lý'
+                : isClaimed
+                  ? isClaimedByCurrentUser
+                    ? 'Bạn đang xử lý yêu cầu này'
+                    : 'Yêu cầu đang được xử lý'
+                  : 'Yêu cầu đã được xử lý'}
+            </strong>
             <span>
               {isPending
-                ? 'Đối chiếu tài khoản, chuyển khoản thủ công và chỉ xác nhận sau khi giao dịch thành công.'
-                : requestInfo.completionNote || 'Trạng thái cuối cùng đã được cập nhật trên hệ thống.'}
+                ? 'Nhận xử lý trước khi kiểm tra tài khoản và thực hiện chuyển khoản.'
+                : isClaimed
+                  ? `Đã nhận lúc ${requestInfo.claimedAt ? formatDateTime(requestInfo.claimedAt) : 'chưa xác định'} bởi ${requestInfo.claimedBy || 'nhân viên hệ thống'}.`
+                  : requestInfo.rejectionReason
+                    || requestInfo.completionNote
+                    || 'Trạng thái cuối cùng đã được cập nhật trên hệ thống.'}
             </span>
           </div>
         </div>
 
         {isPending ? (
           <div className="payout-decision-bar__actions">
+            <button
+              type="button"
+              className="admin-ui-button admin-ui-button-primary"
+              onClick={() => void handleClaim()}
+              disabled={actionLoading}
+            >
+              <span className="material-symbols-outlined">person_check</span>
+              {actionLoading ? 'Đang nhận...' : 'Nhận xử lý'}
+            </button>
+          </div>
+        ) : isClaimedByCurrentUser ? (
+          <div className="payout-decision-bar__actions">
+            <button
+              type="button"
+              className="admin-ui-button admin-ui-button-secondary"
+              onClick={() => void handleRelease()}
+              disabled={actionLoading}
+            >
+              <span className="material-symbols-outlined">undo</span>
+              Trả hàng đợi
+            </button>
             <button
               type="button"
               className="admin-ui-button admin-ui-button-danger"
@@ -282,9 +350,14 @@ const PayoutDetailPage: React.FC = () => {
               disabled={actionLoading}
             >
               <span className="material-symbols-outlined">check_circle</span>
-              Xác nhận đã chuyển khoản
+              Xác nhận đã chuyển
             </button>
           </div>
+        ) : isClaimed ? (
+          <span className="payout-decision-bar__meta">
+            <span className="material-symbols-outlined" aria-hidden="true">lock</span>
+            Chỉ người đã nhận xử lý mới được thao tác
+          </span>
         ) : (
           <span className="payout-decision-bar__meta">
             <span className="material-symbols-outlined" aria-hidden="true">
@@ -309,19 +382,47 @@ const PayoutDetailPage: React.FC = () => {
               <DetailItem label="Ngày xử lý">
                 {requestInfo.processedAt ? formatDateTime(requestInfo.processedAt) : '---'}
               </DetailItem>
+              <DetailItem label="Người nhận xử lý">{requestInfo.claimedBy || '---'}</DetailItem>
+              <DetailItem label="Thời gian nhận">
+                {requestInfo.claimedAt ? formatDateTime(requestInfo.claimedAt) : '---'}
+              </DetailItem>
               <DetailItem label="Hình thức duyệt">
                 <StatusBadge variant={decisionVariant(requestInfo.decision)} shape="tag">
                   {formatApprovalDecision(requestInfo.decision)}
                 </StatusBadge>
               </DetailItem>
               <DetailItem label="Người xử lý">{requestInfo.processedBy || '---'}</DetailItem>
-              <DetailItem label="Ghi chú xử lý / mã giao dịch" wide>
+              <DetailItem label="Mã giao dịch ngân hàng">
+                {requestInfo.transactionId ? (
+                  <span className="admin-ui-code-chip">{requestInfo.transactionId}</span>
+                ) : '---'}
+              </DetailItem>
+              <DetailItem label="Thời gian chuyển khoản">
+                {requestInfo.paidAt ? formatDateTime(requestInfo.paidAt) : '---'}
+              </DetailItem>
+              <DetailItem label="Ghi chú đối soát" wide>
                 {requestInfo.completionNote ? (
-                  <span className="admin-ui-code-chip">{requestInfo.completionNote}</span>
+                  requestInfo.completionNote
                 ) : (
                   <span className="admin-ui-table-meta">---</span>
                 )}
               </DetailItem>
+              {requestInfo.rejectionReason && (
+                <DetailItem label="Lý do từ chối" wide>
+                  {requestInfo.rejectionReason}
+                </DetailItem>
+              )}
+              {requestInfo.proofImageUrl && (
+                <DetailItem label="Ảnh biên lai chuyển khoản" wide>
+                  <a href={requestInfo.proofImageUrl} target="_blank" rel="noreferrer">
+                    <img
+                      className="payout-proof-image"
+                      src={requestInfo.proofImageUrl}
+                      alt={`Biên lai payout #${requestInfo.withdrawalId}`}
+                    />
+                  </a>
+                </DetailItem>
+              )}
             </div>
 
             <div className="payout-bank-panel">
@@ -343,8 +444,8 @@ const PayoutDetailPage: React.FC = () => {
 
           <SectionCard
             className="payout-detail-card"
-            title="Thông tin gia sư & ví"
-            subtitle="Đối chiếu hồ sơ gia sư với số dư ví trước khi ra quyết định."
+            title="Thông tin người dùng & ví"
+            subtitle="Đối chiếu hồ sơ người dùng với số dư ví trước khi ra quyết định."
             padded
           >
             <div className="payout-split-grid">
@@ -366,7 +467,7 @@ const PayoutDetailPage: React.FC = () => {
                     {formatCurrency(walletInfo.availableBalance)}
                   </span>
                 </DetailItem>
-                <DetailItem label="Tổng thu nhập">{formatCurrency(tutorInfo.totalEarnings)}</DetailItem>
+                <DetailItem label="Tổng tiền đã nhận">{formatCurrency(tutorInfo.totalEarnings)}</DetailItem>
                 <DetailItem label="Buổi học hoàn thành">
                   {(tutorInfo.completedClassSessions ?? 0).toLocaleString('vi-VN')}
                 </DetailItem>

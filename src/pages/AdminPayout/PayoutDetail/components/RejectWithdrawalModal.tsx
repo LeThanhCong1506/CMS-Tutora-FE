@@ -41,8 +41,8 @@ const RejectWithdrawalModal = ({
         event.preventDefault();
 
         const trimmedReason = reason.trim();
-        if (!trimmedReason) {
-            setError('Vui lòng nhập lý do từ chối');
+        if (trimmedReason.length < 3) {
+            setError('Vui lòng nhập lý do từ chối ít nhất 3 ký tự');
             return;
         }
 
@@ -71,7 +71,7 @@ const RejectWithdrawalModal = ({
                         <div>
                             <h2 id="reject-withdrawal-title">Từ chối yêu cầu rút tiền</h2>
                             <p id="reject-withdrawal-description">
-                                Nhập lý do rõ ràng để tutor biết cần điều chỉnh thông tin nào.
+                                Nhập lý do rõ ràng để người dùng biết cần điều chỉnh thông tin nào.
                             </p>
                         </div>
                     </div>
@@ -90,23 +90,24 @@ const RejectWithdrawalModal = ({
                     <div className="payout-modal-alert error" role="note">
                         <span className="material-symbols-outlined" aria-hidden="true">error</span>
                         <p>
-                            Yêu cầu của <strong>{tutorName}</strong> sẽ bị hủy và số tiền sẽ được hoàn lại vào ví
-                            của gia sư. Thông báo lỗi sẽ được gửi tới tutor.
+                            Chỉ từ chối khi bạn chắc chắn chưa chuyển khoản. Yêu cầu của <strong>{tutorName}</strong>
+                            {' '}sẽ bị hủy và toàn bộ số tiền được hoàn lại vào ví người dùng.
                         </p>
                     </div>
 
                     <label className="payout-modal-field" htmlFor="reject-withdrawal-reason">
-                        <span>Lý do từ chối gửi tới tutor</span>
+                        <span>Lý do từ chối gửi tới người dùng</span>
                         <textarea
                             id="reject-withdrawal-reason"
                             className={`payout-modal-textarea ${error ? 'has-error' : ''}`}
                             rows={4}
                             value={reason}
+                            maxLength={500}
                             onChange={(event) => {
                                 setReason(event.target.value);
                                 setError('');
                             }}
-                            placeholder="Ví dụ: Thông tin tài khoản ngân hàng không chính xác. Tên chủ tài khoản không khớp với hồ sơ gia sư."
+                            placeholder="Ví dụ: Thông tin tài khoản ngân hàng không chính xác. Tên chủ tài khoản không khớp với hồ sơ người dùng."
                             disabled={confirmLoading}
                             aria-invalid={Boolean(error)}
                             aria-describedby={error ? 'reject-withdrawal-error' : undefined}
@@ -116,7 +117,7 @@ const RejectWithdrawalModal = ({
                                 {error}
                             </small>
                         ) : (
-                            <small>Thông tin này sẽ xuất hiện trong thông báo gửi tới tutor.</small>
+                            <small>Thông tin này sẽ xuất hiện trong thông báo gửi tới người dùng.</small>
                         )}
                     </label>
                 </div>
@@ -133,7 +134,7 @@ const RejectWithdrawalModal = ({
                     <button
                         type="submit"
                         className="admin-ui-button admin-ui-button-danger"
-                        disabled={confirmLoading}
+                        disabled={confirmLoading || reason.trim().length < 3}
                     >
                         <span className="material-symbols-outlined" aria-hidden="true">
                             {confirmLoading ? 'progress_activity' : 'cancel'}

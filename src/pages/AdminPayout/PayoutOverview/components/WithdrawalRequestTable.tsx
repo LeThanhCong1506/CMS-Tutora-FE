@@ -17,7 +17,7 @@ interface Props {
 
 const getTutorInitials = (name: string): string => {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'GS';
+  if (parts.length === 0) return 'ND';
 
   return parts
     .slice(-2)
@@ -42,7 +42,7 @@ const WithdrawalRequestTable: React.FC<Props> = ({ data, loading, total, current
     },
     {
       key: 'tutor',
-      title: 'Gia sư',
+      title: 'Người dùng',
       render: (record) => (
         <div className="payout-tutor-cell">
           <span className="payout-tutor-avatar" aria-hidden="true">

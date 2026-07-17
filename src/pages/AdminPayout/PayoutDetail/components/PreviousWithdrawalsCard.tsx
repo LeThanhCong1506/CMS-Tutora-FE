@@ -16,7 +16,7 @@ const PreviousWithdrawalsCard: React.FC<Props> = ({ withdrawals, loading }) => {
     <SectionCard
       className="payout-previous-card"
       title="Lịch sử rút tiền"
-      subtitle="Các yêu cầu gần nhất của gia sư này, hỗ trợ đối chiếu trước khi duyệt."
+      subtitle="Các yêu cầu gần nhất của người dùng này, hỗ trợ đối chiếu trước khi duyệt."
       headerAction={
         <StatusBadge variant={items.length > 0 ? 'info' : 'neutral'} shape="tag">
           {items.length} yêu cầu
@@ -29,7 +29,7 @@ const PreviousWithdrawalsCard: React.FC<Props> = ({ withdrawals, loading }) => {
       ) : items.length === 0 ? (
         <div className="payout-empty-state">
           <span className="material-symbols-outlined">history</span>
-          <p>Đây là yêu cầu rút tiền đầu tiên của gia sư</p>
+          <p>Đây là yêu cầu rút tiền đầu tiên của người dùng</p>
         </div>
       ) : (
         <div className="payout-previous-list">
