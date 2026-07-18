@@ -35,7 +35,7 @@ const AdminLayout: React.FC = () => {
     const configured: SecuredNavItem[] = [
       { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard', permission: 'dashboard.view' },
       { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản', permission: 'user.view' },
-      { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', adminOnly: true },
+      { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành', permission: 'booking.view' },
       {
@@ -53,8 +53,8 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
       { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
       { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
-      { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', permission: 'notification.view' },
-      { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', sectionLabel: 'Hệ thống', permission: 'lookup.view' },
+      { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
+      { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
 
     return configured.flatMap((item): NavItem[] => {
