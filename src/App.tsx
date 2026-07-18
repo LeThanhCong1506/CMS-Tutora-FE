@@ -8,7 +8,13 @@ import SessionExpiredModal from './components/SessionExpiredModal';
 import PageLoader from './components/PageLoader/PageLoader';
 import { ErrorBoundary } from './components/shared';
 import axios from 'axios';
-import { getCurrentUser, isTokenExpired, updateTokens, clearUserFromStorage } from './services/auth.service';
+import {
+  getCurrentUser,
+  getCurrentUserRole,
+  isTokenExpired,
+  updateTokens,
+  clearUserFromStorage,
+} from './services/auth.service';
 
 const BACKEND_API = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
 import { ToastContainer, Slide } from 'react-toastify';
@@ -44,8 +50,16 @@ const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
-const FraudLogsPage = lazy(() => import('./pages/AdminPayout/FraudLogs/FraudLogsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
+
+const AdminPortalHomeRedirect = () => (
+  <Navigate
+    to={getCurrentUserRole()?.toLowerCase() === 'staff'
+      ? '/admin-portal/payouts'
+      : '/admin-portal/dashboard'}
+    replace
+  />
+);
 
 function App() {
   const location = useLocation();
@@ -118,38 +132,35 @@ function App() {
             <Route
               path="/admin-portal"
               element={
-                <ProtectedRoute allowedRoles={["Admin"]}>
+                <ProtectedRoute allowedRoles={["Admin", "Staff"]}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/admin-portal/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="users" element={<UserManagementPage />} />
-              <Route path="staff" element={<StaffManagementPage />} />
-              <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
-              <Route path="vetting/profiles" element={<AdminVettingPage />} />
-              <Route path="vetting/certificates" element={<AdminCertificateVettingPage />} />
-              <Route path="bookings" element={<AdminBookingsPage />} />
-              <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
-              <Route path="financials" element={<AdminFinancialsPage />} />
-              <Route path="warnings" element={<AdminWarningsPage />} />
-              <Route path="question-bank" element={<QuestionBankPage />} />
-              <Route path="question-bank/upload" element={<UploadPdfPage />} />
-              <Route path="question-bank/upload/:id" element={<UploadPdfPage />} />
-              <Route path="disputes" element={<AdminDisputesPage />} />
-              <Route path="disputes/:id" element={<AdminDisputeDetailPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
+              <Route index element={<AdminPortalHomeRedirect />} />
+              <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="users" element={<UserManagementPage />} />
+                <Route path="staff" element={<StaffManagementPage />} />
+                <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
+                <Route path="vetting/profiles" element={<AdminVettingPage />} />
+                <Route path="vetting/certificates" element={<AdminCertificateVettingPage />} />
+                <Route path="bookings" element={<AdminBookingsPage />} />
+                <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
+                <Route path="financials" element={<AdminFinancialsPage />} />
+                <Route path="warnings" element={<AdminWarningsPage />} />
+                <Route path="question-bank" element={<QuestionBankPage />} />
+                <Route path="question-bank/upload" element={<UploadPdfPage />} />
+                <Route path="question-bank/upload/:id" element={<UploadPdfPage />} />
+                <Route path="disputes" element={<AdminDisputesPage />} />
+                <Route path="disputes/:id" element={<AdminDisputeDetailPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+              </Route>
               <Route path="payouts" element={<PayoutOverviewPage />} />
               <Route path="payouts/history" element={<AllPayoutRequestsPage />} />
               <Route path="payouts/:id" element={<PayoutDetailPage />} />
               <Route path="payout/review" element={<PendingReviewPage />} />
-              <Route
-                path="payout/review/:id"
-                element={<div className="p-6">Payout Request Detail Page (Coming Soon)</div>}
-              />
-              <Route path="payout/fraud-logs" element={<FraudLogsPage />} />
             </Route>
 
             {/* Error Pages */}

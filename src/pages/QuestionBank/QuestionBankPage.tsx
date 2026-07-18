@@ -508,7 +508,10 @@ const SingleSelect: React.FC<{
   return (
     <Select
       value={value || ALL}
-      onValueChange={(v) => onValueChange(v === ALL ? '' : v)}
+      onValueChange={(v) => {
+        const nextValue = v ?? ALL;
+        onValueChange(nextValue === ALL ? '' : nextValue);
+      }}
       items={items}
       disabled={disabled}
     >
