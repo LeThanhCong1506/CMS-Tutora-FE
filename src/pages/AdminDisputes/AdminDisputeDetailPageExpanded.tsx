@@ -17,6 +17,7 @@ import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
 import { formatCurrency, formatDateTime, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
+import { Can } from '../../contexts/AccessContext';
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
@@ -267,6 +268,7 @@ const AdminDisputeDetailPageExpanded = () => {
                         {/* Admin Action Buttons */}
                         <div className="admin-ui-actions dispute-admin-actions">
                             {disputeDetail.status === 'pending' && (
+                                <Can permission="dispute.investigate">
                                 <button
                                     type="button"
                                     className="admin-ui-button admin-ui-button-secondary"
@@ -276,7 +278,9 @@ const AdminDisputeDetailPageExpanded = () => {
                                     <span className="material-symbols-outlined">search</span>
                                     Bắt đầu điều tra
                                 </button>
+                                </Can>
                             )}
+                            <Can permission="warning.create">
                             <button
                                 type="button"
                                 className="admin-ui-button admin-ui-button-secondary"
@@ -285,6 +289,8 @@ const AdminDisputeDetailPageExpanded = () => {
                                 <span className="material-symbols-outlined">warning</span>
                                 Gửi cảnh báo
                             </button>
+                            </Can>
+                            <Can permission="suspension.manage">
                             <button
                                 type="button"
                                 className="admin-ui-button admin-ui-button-secondary"
@@ -293,6 +299,8 @@ const AdminDisputeDetailPageExpanded = () => {
                                 <span className="material-symbols-outlined">block</span>
                                 Đình chỉ hồ sơ
                             </button>
+                            </Can>
+                            <Can permission="user.deactivate">
                             <button
                                 type="button"
                                 className="admin-ui-button admin-ui-button-danger"
@@ -301,6 +309,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                 <span className="material-symbols-outlined">lock</span>
                                 Khóa tài khoản
                             </button>
+                            </Can>
                         </div>
                     </div>
                 </header>
@@ -677,6 +686,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 ></textarea>
                                             </div>
 
+                                            <Can permission="dispute.resolve">
                                             <button
                                                 className="dispute-submit-btn"
                                                 onClick={handleResolveDispute}
@@ -686,6 +696,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>
                                                 {isSubmitting ? 'Đang xử lý...' : 'Thực thi quyết định'}
                                             </button>
+                                            </Can>
                                         </div>
                                     )}
                                 </div>

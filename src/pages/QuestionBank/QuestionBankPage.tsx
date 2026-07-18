@@ -26,6 +26,7 @@ import { MathText } from '../../components/MathText/MathText';
 import { getQuestions, updateQuestion, deleteQuestion } from '../../services/question.service';
 import { useLookup } from '../../hooks/useLookup';
 import { getChapters } from '../../services/lookup.service';
+import { useAccess } from '../../contexts/AccessContext';
 import {
   type Question,
   type ReviewStatus,
@@ -64,6 +65,7 @@ const fmtDate = (s: string | null) =>
 
 const QuestionBankPage: React.FC = () => {
   const navigate = useNavigate();
+  const { can } = useAccess();
   const { subjects, grades } = useLookup();
 
   const [statusTab, setStatusTab] = useState<ReviewStatus>('published');
@@ -216,12 +218,16 @@ const QuestionBankPage: React.FC = () => {
       maxWidth="wide"
       headerAction={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/admin-portal/question-bank/upload')}>
-            <FileText className="size-4" /> Upload PDF
-          </Button>
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="size-4" /> Thêm câu hỏi
-          </Button>
+          {can('question_document.upload') && (
+            <Button variant="outline" onClick={() => navigate('/admin-portal/question-bank/upload')}>
+              <FileText className="size-4" /> Upload PDF
+            </Button>
+          )}
+          {can('question_bank.create') && (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" /> Thêm câu hỏi
+            </Button>
+          )}
         </div>
       }
     >
@@ -384,7 +390,11 @@ const QuestionBankPage: React.FC = () => {
               </TableRow>
             ) : (
               data.map((q) => (
-                <TableRow key={q.id} className="cursor-pointer" onClick={() => setEditing(q)}>
+                <TableRow
+                  key={q.id}
+                  className={can('question_bank.update') ? 'cursor-pointer' : undefined}
+                  onClick={() => can('question_bank.update') && setEditing(q)}
+                >
                   {/* Nội dung: truncate + chip Môn/Chương/Loại */}
                   <TableCell className="align-top">
                     <div className="flex flex-col gap-1.5 overflow-hidden">
@@ -419,26 +429,30 @@ const QuestionBankPage: React.FC = () => {
                   <TableCell className="align-top text-sm text-slate-500">{fmtDate(q.updatedAt)}</TableCell>
                   {/* Thao tác: dropdown Select */}
                   <TableCell className="text-center align-top" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1 rounded-sm">
-                          Chọn hành động
-                          <ChevronDown className="size-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditing(q)}>Sửa</DropdownMenuItem>
-                        {q.reviewStatus !== 'published' && (
-                          <DropdownMenuItem onClick={() => changeStatus(q, 'published')}>Duyệt</DropdownMenuItem>
-                        )}
-                        {q.reviewStatus !== 'rejected' && (
-                          <DropdownMenuItem onClick={() => changeStatus(q, 'rejected')}>Từ chối</DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDelete(q)}>
-                          Xoá
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {can('question_bank.update') || can('question_bank.delete') ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Button variant="outline" size="sm" className="gap-1 rounded-sm">
+                            Chọn hành động
+                            <ChevronDown className="size-3.5" />
+                          </Button>
+                        } />
+                        <DropdownMenuContent align="end">
+                          {can('question_bank.update') && <DropdownMenuItem onClick={() => setEditing(q)}>Sửa</DropdownMenuItem>}
+                          {can('question_bank.update') && q.reviewStatus !== 'published' && (
+                            <DropdownMenuItem onClick={() => changeStatus(q, 'published')}>Duyệt</DropdownMenuItem>
+                          )}
+                          {can('question_bank.update') && q.reviewStatus !== 'rejected' && (
+                            <DropdownMenuItem onClick={() => changeStatus(q, 'rejected')}>Từ chối</DropdownMenuItem>
+                          )}
+                          {can('question_bank.delete') && (
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDelete(q)}>
+                              Xoá
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : '—'}
                   </TableCell>
                 </TableRow>
               ))
@@ -508,7 +522,7 @@ const SingleSelect: React.FC<{
   return (
     <Select
       value={value || ALL}
-      onValueChange={(v) => onValueChange(v === ALL ? '' : v)}
+      onValueChange={(v) => onValueChange(v === ALL ? '' : (v ?? ''))}
       items={items}
       disabled={disabled}
     >
@@ -540,7 +554,7 @@ const MultiSelect: React.FC<{
   emptyHint?: string;
 }> = ({ placeholder, selected, onToggle, options, disabled, emptyHint }) => (
   <DropdownMenu>
-    <DropdownMenuTrigger asChild>
+    <DropdownMenuTrigger render={
       <Button
         variant="outline"
         size="sm"
@@ -557,7 +571,7 @@ const MultiSelect: React.FC<{
         </span>
         <ChevronDown className="size-3.5 shrink-0" />
       </Button>
-    </DropdownMenuTrigger>
+    } />
     <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
       {options.length === 0 ? (
         <div className="px-2 py-4 text-center text-xs text-slate-400">{emptyHint ?? 'Không có dữ liệu'}</div>

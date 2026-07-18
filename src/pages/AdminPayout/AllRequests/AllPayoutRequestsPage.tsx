@@ -107,7 +107,7 @@ const AllPayoutRequestsPage: React.FC = () => {
                                 <input
                                     type="search"
                                     value={searchInput}
-                                    placeholder="Mã yêu cầu, tên gia sư, email..."
+                                    placeholder="Mã yêu cầu, tên người dùng, email..."
                                     onChange={(event) => setSearchInput(event.target.value)}
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {
@@ -130,7 +130,7 @@ const AllPayoutRequestsPage: React.FC = () => {
                                 <option value="all">Tất cả trạng thái</option>
                                 <option value="pending">Chờ xử lý</option>
                                 <option value="pending_review">Chờ xét duyệt</option>
-                                <option value="approved">Đã phê duyệt</option>
+                                <option value="approved">Đang xử lý</option>
                                 <option value="completed">Hoàn thành</option>
                                 <option value="rejected">Đã từ chối</option>
                                 <option value="cancelled">Đã hủy</option>

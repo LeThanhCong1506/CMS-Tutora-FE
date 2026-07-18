@@ -1,79 +1,117 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
 import { getPendingTutors, getPendingCertificates } from '../services/admin.service';
+import { useAccess } from '../contexts/AccessContext';
 
-// BE caps PageSize at 50 and the CORS policy doesn't expose the X-Pagination
-// header, so `total` falls back to the returned slice length. Request the full
-// cap in one page so the badge counts reflect the real pending totals.
 const BADGE_FETCH_SIZE = 50;
 
+type SecuredNavItem = Omit<NavItem, 'children'> & {
+  permission?: string;
+  anyOf?: string[];
+  adminOnly?: boolean;
+  children?: SecuredNavItem[];
+};
+
 const AdminLayout: React.FC = () => {
-    const [pendingTutors, setPendingTutors] = useState(0);
-    const [pendingCertificates, setPendingCertificates] = useState(0);
+  const [pendingTutors, setPendingTutors] = useState(0);
+  const [pendingCertificates, setPendingCertificates] = useState(0);
+  const { isAdmin, isStaff, can, canAny } = useAccess();
 
-    // Fetch pending profile + certificate counts for the vetting badges.
-    useEffect(() => {
-        getPendingTutors(1, BADGE_FETCH_SIZE).then((res) => {
-            setPendingTutors(res?.total || 0);
-        }).catch(() => { /* ignore */ });
+  useEffect(() => {
+    if (!canAny(['tutor_approval.view', 'certificate.view'])) return;
+    if (can('tutor_approval.view')) {
+      getPendingTutors(1, BADGE_FETCH_SIZE)
+        .then((res) => setPendingTutors(res?.total || 0))
+        .catch(() => undefined);
+    }
+    if (can('certificate.view')) {
+      getPendingCertificates(1, BADGE_FETCH_SIZE)
+        .then((res) => setPendingCertificates(res?.total || 0))
+        .catch(() => undefined);
+    }
+  }, [can, canAny]);
 
-        getPendingCertificates(1, BADGE_FETCH_SIZE).then((res) => {
-            setPendingCertificates(res?.total || 0);
-        }).catch(() => { /* ignore */ });
-    }, []);
-
-    // Sidebar chia nhóm theo domain nghiệp vụ. "Tài khoản" gom người dùng nền
-    // tảng (khách hàng) và nhân viên nội bộ — 2 mục riêng vì lifecycle + hành
-    // động khác nhau, không gộp thành menu cha-con.
-    const navItems: NavItem[] = [
-        { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard' },
-        { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản' },
-        { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge' },
-        { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành' },
-        {
-            path: '/admin-portal/vetting',
-            label: 'Kiểm duyệt',
-            materialIcon: 'description',
-            badge: pendingTutors + pendingCertificates,
-            children: [
-                { path: '/admin-portal/vetting/profiles', label: 'Hồ sơ gia sư', materialIcon: 'badge', badge: pendingTutors },
-                { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates },
-            ],
-        },
-        { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel' },
-        { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning' },
-        { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz' },
-        { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance' },
-        { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring' },
-        { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', sectionLabel: 'Hệ thống' },
+  const navItems = useMemo<NavItem[]>(() => {
+    const configured: SecuredNavItem[] = [
+      { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard', permission: 'dashboard.view' },
+      { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản', permission: 'user.view' },
+      { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
+      { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
+      { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành', permission: 'booking.view' },
+      {
+        path: '/admin-portal/vetting',
+        label: 'Kiểm duyệt',
+        materialIcon: 'description',
+        badge: pendingTutors + pendingCertificates,
+        children: [
+          {
+            path: '/admin-portal/vetting/profiles',
+            label: 'Hồ sơ gia sư',
+            materialIcon: 'badge',
+            badge: pendingTutors,
+            anyOf: ['tutor_approval.view', 'tutor_profile_update.view'],
+          },
+          { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates, permission: 'certificate.view' },
+        ],
+      },
+      { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', permission: 'dispute.view' },
+      { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
+      { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
+      { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
+      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
+      { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
+      { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
 
-    const isActive = (path: string, pathname: string) => {
-        if (path === '/admin-portal/payouts') {
-            return pathname.startsWith('/admin-portal/payout');
-        }
-        if (path === '/admin-portal/warnings') {
-            return pathname.startsWith('/admin-portal/warnings');
-        }
-        if (path === '/admin-portal/bookings') {
-            return pathname.startsWith('/admin-portal/bookings');
-        }
-        if (path === '/admin-portal/disputes') {
-            return pathname.startsWith('/admin-portal/disputes');
-        }
-        return pathname === path;
-    };
+    const isVisible = (item: SecuredNavItem) => item.adminOnly
+      ? isAdmin
+      : item.permission
+        ? can(item.permission)
+        : item.anyOf
+          ? canAny(item.anyOf)
+          : true;
 
-    return (
-        <PortalLayout
-            navItems={navItems}
-            userRole="ADMIN"
-            isActive={isActive}
+    return configured.flatMap((item): NavItem[] => {
+      const visibleChildren = item.children
+        ?.filter(isVisible)
+        .map(({ permission, anyOf, adminOnly, ...child }) => {
+          void permission;
+          void anyOf;
+          void adminOnly;
+          return child;
+        });
+      const visible = item.children ? Boolean(visibleChildren?.length) : isVisible(item);
+      if (!visible) return [];
+      const {
+        permission: _permission,
+        anyOf: _anyOf,
+        adminOnly: _adminOnly,
+        ...navItem
+      } = item;
+      void _permission;
+      void _anyOf;
+      void _adminOnly;
+      return [{ ...navItem, children: visibleChildren }];
+    });
+  }, [can, canAny, isAdmin, pendingCertificates, pendingTutors]);
 
-            showAvatarImage={true}
-        />
-    );
+  const isActive = (path: string, pathname: string) => {
+    if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');
+    if (path === '/admin-portal/warnings') return pathname.startsWith('/admin-portal/warnings');
+    if (path === '/admin-portal/bookings') return pathname.startsWith('/admin-portal/bookings');
+    if (path === '/admin-portal/disputes') return pathname.startsWith('/admin-portal/disputes');
+    return pathname === path;
+  };
+
+  return (
+    <PortalLayout
+      navItems={navItems}
+      userRole={isAdmin ? 'ADMIN' : isStaff ? 'STAFF' : 'USER'}
+      isActive={isActive}
+      showAvatarImage
+    />
+  );
 };
 
 export default AdminLayout;

@@ -5,12 +5,12 @@ import type {
     PayoutOverview,
     PendingReviewResponse,
     AdminWithdrawalDetail,
-    FraudLogResponse,
     SystemAlertResponse,
     ApproveResult,
     RejectResult,
     AdminPayoutSummary,
-    WithdrawalRequestListResponse
+    WithdrawalRequestListResponse,
+    ApprovePayoutRequest
 } from '../types/adminPayout.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
@@ -18,9 +18,6 @@ const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166
 // Create axios instance
 const api = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Request interceptor - Add auth token to all requests
@@ -127,9 +124,30 @@ export const getPayoutRequestDetail = async (id: number): Promise<AdminWithdrawa
 /**
  * Manually approve a flagged request
  */
-export const approvePayoutRequest = async (id: number, note?: string): Promise<ApproveResult> => {
+export const claimPayoutRequest = async (id: number): Promise<ApproveResult> => {
+    const { data } = await api.post(`/admin/payouts/${id}/claim`);
+    return data.content;
+};
+
+/**
+ * Release a request claimed by the current staff/admin back to the queue.
+ */
+export const releasePayoutRequest = async (id: number): Promise<ApproveResult> => {
+    const { data } = await api.post(`/admin/payouts/${id}/release`);
+    return data.content;
+};
+
+/**
+ * Complete a manually transferred payout with structured audit and receipt proof.
+ */
+export const approvePayoutRequest = async (id: number, request: ApprovePayoutRequest): Promise<ApproveResult> => {
     try {
-        const { data } = await api.post(`/admin/payouts/${id}/approve`, { note });
+        const formData = new FormData();
+        formData.append('paidAt', request.paidAt);
+        formData.append('note', request.note);
+        formData.append('proofImage', request.proofImage);
+
+        const { data } = await api.post(`/admin/payouts/${id}/approve`, formData);
         return data.content;
     } catch (error) {
         throw error;
@@ -149,34 +167,6 @@ export const rejectPayoutRequest = async (id: number, reason: string): Promise<R
 };
 
 /**
- * Get current PayOS balance and alert levels
- */
-export const getPayOSBalance = async (): Promise<{ balance: number; currency: string; alertLevel: string }> => {
-    const { data } = await api.get('/admin/payouts/payos-balance');
-    return data.content;
-};
-
-/**
- * Get system fraud logs
- */
-export const getFraudLogs = async (params: {
-    page?: number;
-    pageSize?: number;
-    tutorId?: string;
-    ruleName?: string;
-    passed?: boolean;
-    from?: string;
-    to?: string;
-}): Promise<FraudLogResponse> => {
-    try {
-        const { data } = await api.get('/admin/payouts/fraud-logs', { params });
-        return data.content;
-    } catch (error) {
-        throw error;
-    }
-};
-
-/**
  * Get system integrity alerts
  */
 export const getSystemAlerts = async (params: {
@@ -185,7 +175,7 @@ export const getSystemAlerts = async (params: {
     resolved?: boolean;
 }): Promise<SystemAlertResponse> => {
     try {
-        const { data } = await api.get('/admin/system-alerts', { params });
+        const { data } = await api.get('/admin/payouts/system-alerts', { params });
         return data.content;
     } catch (error) {
         throw error;
@@ -197,7 +187,7 @@ export const getSystemAlerts = async (params: {
  */
 export const resolveSystemAlert = async (id: number): Promise<void> => {
     try {
-        await api.post(`/admin/system-alerts/${id}/resolve`);
+        await api.post(`/admin/payouts/system-alerts/${id}/resolve`);
     } catch (error) {
         throw error;
     }

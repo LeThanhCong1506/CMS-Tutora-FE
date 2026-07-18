@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { DataTable } from '../../../components/shared';
 import type { DataTableColumn } from '../../../components/shared';
+import { Can } from '../../../contexts/AccessContext';
 import type { Transaction } from '../../../types/admin.types';
 import { formatCurrency, formatDateTime, formatTransactionType } from '../../../utils/formatters';
 import { mockGetTransactions, mockExportTransactionsCSV } from '../mockData';
@@ -177,6 +178,7 @@ const TransactionLedger = () => {
                     <p>Tổng: {total.toLocaleString('vi-VN')} giao dịch</p>
                 </div>
 
+                <Can permission="export.data">
                 <button
                     className="admin-ui-button admin-ui-button-primary"
                     onClick={handleExportCSV}
@@ -185,6 +187,7 @@ const TransactionLedger = () => {
                     <span className="material-symbols-outlined" aria-hidden="true">download</span>
                     {isExporting ? 'Đang xuất...' : 'Xuất CSV'}
                 </button>
+                </Can>
             </header>
 
             <div className="financial-ledger-filters">

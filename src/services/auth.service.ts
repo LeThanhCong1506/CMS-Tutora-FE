@@ -21,6 +21,7 @@ const api = axios.create({
 export const saveUserToStorage = async (userData: any) => {
   if (userData) {
     await storageAdapter.set(USER_LOCAL_STORAGE_KEY, JSON.stringify(userData));
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('tutora:auth-changed'));
   }
 };
 

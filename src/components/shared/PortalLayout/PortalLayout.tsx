@@ -71,6 +71,8 @@ export interface NavItem {
 export interface PortalLayoutProps {
     /** Navigation items for the sidebar */
     navItems: NavItem[];
+    /** Destination used by the sidebar logo. */
+    homePath?: string;
     /** Role label displayed next to user name in header (fallback from token) */
     userRole?: string;
     /** Custom active-path matcher. Defaults to `location.pathname.startsWith(path)` */
@@ -122,6 +124,7 @@ const getNotificationUserId = (notification: unknown) => {
 
 const PortalLayout: React.FC<PortalLayoutProps> = ({
     navItems,
+    homePath = '/admin-portal/dashboard',
     userRole,
     isActive: isActiveProp,
     headerLeft,
@@ -399,7 +402,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
             >
                 {/* Logo */}
                 <div className={styles.sidebarLogo}>
-                    <Link to="/admin-portal/dashboard" className={styles.logoLink}>
+                    <Link to={homePath} className={styles.logoLink}>
                         <LogoIcon />
                         <span className={styles.logoText}>TUTORA</span>
                     </Link>

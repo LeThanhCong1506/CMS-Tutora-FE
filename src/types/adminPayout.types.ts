@@ -6,7 +6,6 @@ export interface PayoutOverview {
     processingStats: ProcessingStats;
     financialStats: FinancialStats;
     decisionBreakdown: DecisionBreakdown;
-    payOSBalance: PayOSBalance | null;
     recentAlertsCount: number;
 }
 
@@ -36,12 +35,6 @@ export interface DecisionBreakdown {
     rejected: number;
 }
 
-export interface PayOSBalance {
-    balance: number;
-    lastChecked: string;
-    alertLevel: 'normal' | 'warning' | 'critical';
-}
-
 /**
  * Summary for the admin payout dashboard (UI usage)
  */
@@ -59,9 +52,11 @@ export interface PendingReviewItem {
     withdrawalId: number;
     tutorId: string;
     tutorName: string;
+    tutorEmail: string;
     amount: number;
-    trustScore: number | null;
-    topFraudFlags: string[];
+    bankName: string;
+    accountNumber: string;
+    status: string;
     requestedAt: string;
 }
 
@@ -100,8 +95,6 @@ export interface WithdrawalRequestListResponse {
 export interface AdminWithdrawalDetail {
     requestInfo: RequestInfo;
     tutorInfo: TutorInfo;
-    scoreBreakdown: ScoreBreakdown | null;
-    fraudFlags: string[];
     previousWithdrawals: PreviousWithdrawal[];
     walletInfo: WalletInfo;
     timeline: TimelineEvent[];
@@ -118,8 +111,13 @@ export interface RequestInfo {
     createdAt: string;
     processedAt: string | null;
     processedBy: string | null;
-    payosTransactionId: string | null;
-    payosStatus: string | null;
+    completionNote: string | null;
+    claimedBy: string | null;
+    claimedAt: string | null;
+    rejectionReason: string | null;
+    transactionId: string | null;
+    paidAt: string | null;
+    proofImageUrl: string | null;
 }
 
 export interface TutorInfo {
@@ -128,17 +126,9 @@ export interface TutorInfo {
     email: string | null;
     phone: string | null;
     accountAgeDays: number;
-    completedLessons: number;
+    completedClassSessions: number;
     totalEarnings: number;
     joinedAt: string;
-}
-
-export interface ScoreBreakdown {
-    baseScore: number;
-    positiveFactors: string[];
-    negativeFactors: string[];
-    totalScore: number;
-    decision: string;
 }
 
 export interface PreviousWithdrawal {
@@ -158,28 +148,6 @@ export interface TimelineEvent {
     timestamp: string;
     event: string;
     details: string | null;
-}
-
-/**
- * Fraud log entry
- */
-export interface FraudLogItem {
-    logId: number;
-    tutorId: string;
-    tutorName: string;
-    withdrawalRequestId: number | null;
-    ruleName: string;
-    passed: boolean;
-    isFlagged: boolean;
-    message: string | null;
-    checkedAt: string;
-}
-
-export interface FraudLogResponse {
-    items: FraudLogItem[];
-    total: number;
-    page: number;
-    pageSize: number;
 }
 
 /**
@@ -209,6 +177,12 @@ export interface SystemAlertResponse {
 export interface ApproveResult {
     success: boolean;
     message: string;
+}
+
+export interface ApprovePayoutRequest {
+    paidAt: string;
+    note: string;
+    proofImage: File;
 }
 
 export interface RejectResult {

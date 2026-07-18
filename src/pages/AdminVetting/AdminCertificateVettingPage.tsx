@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { getPendingCertificates, adminVerifyCertificate } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import { Can } from '../../contexts/AccessContext';
 import type { PendingCertificate } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import '../../styles/pages/admin-vetting.css';
@@ -588,6 +589,7 @@ const AdminCertificateVettingPage = () => {
               >
                 Đóng
               </button>
+              <Can permission="certificate.verify">
               <div className="certificate-detail-decisions">
                 <button
                   type="button"
@@ -607,6 +609,7 @@ const AdminCertificateVettingPage = () => {
                   {certActionLoading === selectedCert.certificateId ? 'Đang xử lý...' : 'Duyệt chứng chỉ'}
                 </button>
               </div>
+              </Can>
             </footer>
           </section>
         </div>
