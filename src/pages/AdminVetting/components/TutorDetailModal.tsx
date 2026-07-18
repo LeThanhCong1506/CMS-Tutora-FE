@@ -215,10 +215,12 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                   </div>
                 </div>
                 <p>Chứng chỉ được kiểm duyệt riêng để tránh tạo hai nơi ra quyết định.</p>
-                <Link to="/admin-portal/vetting/certificates" onClick={onClose}>
-                  Đến trang kiểm duyệt chứng chỉ
-                  <span className="material-symbols-outlined">arrow_forward</span>
-                </Link>
+                <Can permission="certificate.view">
+                  <Link to="/admin-portal/vetting/certificates" onClick={onClose}>
+                    Đến trang kiểm duyệt chứng chỉ
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </Link>
+                </Can>
               </div>
             </aside>
 

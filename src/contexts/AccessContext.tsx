@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getCurrentUser, getCurrentUserRole } from '../services/auth.service';
 import { getMyAccess } from '../services/access.service';
@@ -23,38 +23,91 @@ export const AccessProvider = ({ children }: { children: ReactNode }) => {
   const [access, setAccess] = useState<AccessSnapshot | null>(null);
   const [loading, setLoading] = useState(Boolean(getCurrentUser()?.accessToken));
   const [error, setError] = useState<string | null>(null);
+  const accessRef = useRef<AccessSnapshot | null>(null);
+  const refreshRequestRef = useRef<Promise<AccessSnapshot | null> | null>(null);
+  const accessGenerationRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    if (!getCurrentUser()?.accessToken) {
+  const refresh = useCallback((): Promise<AccessSnapshot | null> => {
+    const accessToken = getCurrentUser()?.accessToken;
+    if (!accessToken) {
+      accessGenerationRef.current += 1;
+      refreshRequestRef.current = null;
+      accessRef.current = null;
       setAccess(null);
       setLoading(false);
       setError(null);
-      return null;
+      return Promise.resolve(null);
     }
 
-    setLoading(true);
-    try {
-      const snapshot = await getMyAccess();
-      setAccess(snapshot);
-      setError(null);
-      return snapshot;
-    } catch {
-      setAccess(null);
-      setError('Không thể tải thông tin phân quyền. Vui lòng thử lại.');
-      return null;
-    } finally {
-      setLoading(false);
-    }
+    // Several API calls can fail with 403 at the same time after a live revoke.
+    // Reuse one /access/me request so stale responses cannot race each other.
+    if (refreshRequestRef.current) return refreshRequestRef.current;
+
+    const generation = accessGenerationRef.current;
+    if (!accessRef.current) setLoading(true);
+
+    const request = (async () => {
+      try {
+        const snapshot = await getMyAccess();
+        if (
+          generation !== accessGenerationRef.current
+          || getCurrentUser()?.accessToken !== accessToken
+        ) {
+          return null;
+        }
+
+        accessRef.current = snapshot;
+        setAccess(snapshot);
+        setError(null);
+        return snapshot;
+      } catch {
+        if (
+          generation !== accessGenerationRef.current
+          || getCurrentUser()?.accessToken !== accessToken
+        ) {
+          return null;
+        }
+
+        // A background refresh must not erase the last valid permission
+        // snapshot because of a transient network/server failure.
+        if (!accessRef.current) {
+          setAccess(null);
+          setError('Không thể tải thông tin phân quyền. Vui lòng thử lại.');
+        }
+        return null;
+      } finally {
+        if (
+          generation === accessGenerationRef.current
+          && getCurrentUser()?.accessToken === accessToken
+        ) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    refreshRequestRef.current = request;
+    void request.finally(() => {
+      if (refreshRequestRef.current === request) refreshRequestRef.current = null;
+    });
+    return request;
   }, []);
 
   useEffect(() => {
-    // Initial API synchronization for the provider.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refresh();
-    const handleAuthChanged = () => void refresh();
+    const handleAuthChanged = () => {
+      accessGenerationRef.current += 1;
+      refreshRequestRef.current = null;
+      accessRef.current = null;
+      setAccess(null);
+      setError(null);
+      setLoading(Boolean(getCurrentUser()?.accessToken));
+      void refresh();
+    };
     const handleForbidden = () => void refresh();
     window.addEventListener('tutora:auth-changed', handleAuthChanged);
     window.addEventListener('tutora:access-forbidden', handleForbidden);
+    // Initial API synchronization for the provider.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
     return () => {
       window.removeEventListener('tutora:auth-changed', handleAuthChanged);
       window.removeEventListener('tutora:access-forbidden', handleForbidden);

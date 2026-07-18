@@ -61,4 +61,18 @@ describe('route and action guard', () => {
     expect(canAccess('Staff', granted, { permission: 'user.view' })).toBe(false);
     expect(canAccess('Parent', new Set(['user.view']), { permission: 'user.view' })).toBe(false);
   });
+
+  it('allows the combined tutor vetting page with either view permission', () => {
+    const routePermissions = ['tutor_approval.view', 'tutor_profile_update.view'];
+
+    expect(canAccess('Staff', new Set(['tutor_approval.view']), { anyOf: routePermissions })).toBe(true);
+    expect(canAccess('Staff', new Set(['tutor_profile_update.view']), { anyOf: routePermissions })).toBe(true);
+    expect(canAccess('Staff', new Set(), { anyOf: routePermissions })).toBe(false);
+  });
+
+  it('does not treat one vetting permission as authorization for the other API', () => {
+    const granted = new Set(['tutor_approval.view']);
+    expect(canAccess('Staff', granted, { permission: 'tutor_approval.view' })).toBe(true);
+    expect(canAccess('Staff', granted, { permission: 'tutor_profile_update.view' })).toBe(false);
+  });
 });

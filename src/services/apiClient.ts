@@ -27,7 +27,9 @@ export const setupAuthInterceptor = (axiosInstance: AxiosInstance): AxiosInstanc
     async (error) => {
       const originalRequest = error.config;
 
-      if (error.response?.status === 403) {
+      const requestUrl = String(originalRequest?.url ?? '');
+      const isAccessSnapshotRequest = requestUrl.includes('/access/me');
+      if (error.response?.status === 403 && !isAccessSnapshotRequest) {
         window.dispatchEvent(new Event('tutora:access-forbidden'));
         return Promise.reject(error);
       }

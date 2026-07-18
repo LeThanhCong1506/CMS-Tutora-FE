@@ -9,6 +9,11 @@ const NoAccessPage = () => {
   const state = location.state as { accessError?: boolean } | null;
   const noGroup = !access?.permissionGroup;
 
+  const handleRefresh = async () => {
+    const snapshot = await refresh();
+    if (snapshot) navigate('/admin-portal', { replace: true });
+  };
+
   return (
     <div className="no-access-page">
       <div className="no-access-card">
@@ -22,7 +27,7 @@ const NoAccessPage = () => {
               : 'Nhóm quyền hiện tại không cho phép sử dụng chức năng này.'}
         </p>
         <div className="no-access-actions">
-          <button type="button" onClick={() => void refresh()}>Tải lại quyền</button>
+          <button type="button" onClick={() => void handleRefresh()}>Tải lại quyền</button>
           <button type="button" className="secondary" onClick={() => navigate('/admin-portal', { replace: true })}>
             Về trang phù hợp
           </button>

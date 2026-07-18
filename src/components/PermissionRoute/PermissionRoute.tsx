@@ -12,10 +12,10 @@ interface PermissionRouteProps {
 
 const PermissionRoute = ({ children, permission, anyOf, adminOnly }: PermissionRouteProps) => {
   const location = useLocation();
-  const { loading, error, isAdmin, can, canAny } = useAccess();
+  const { access, loading, error, isAdmin, can, canAny } = useAccess();
 
   if (loading) return <PageLoader />;
-  if (error) return <Navigate to="/admin-portal/no-access" replace state={{ accessError: true }} />;
+  if (error && !access) return <Navigate to="/admin-portal/no-access" replace state={{ accessError: true }} />;
 
   const allowed = adminOnly
     ? isAdmin

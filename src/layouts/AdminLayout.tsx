@@ -8,6 +8,7 @@ const BADGE_FETCH_SIZE = 50;
 
 type SecuredNavItem = Omit<NavItem, 'children'> & {
   permission?: string;
+  anyOf?: string[];
   adminOnly?: boolean;
   children?: SecuredNavItem[];
 };
@@ -44,7 +45,13 @@ const AdminLayout: React.FC = () => {
         materialIcon: 'description',
         badge: pendingTutors + pendingCertificates,
         children: [
-          { path: '/admin-portal/vetting/profiles', label: 'Hồ sơ gia sư', materialIcon: 'badge', badge: pendingTutors, permission: 'tutor_approval.view' },
+          {
+            path: '/admin-portal/vetting/profiles',
+            label: 'Hồ sơ gia sư',
+            materialIcon: 'badge',
+            badge: pendingTutors,
+            anyOf: ['tutor_approval.view', 'tutor_profile_update.view'],
+          },
           { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates, permission: 'certificate.view' },
         ],
       },
@@ -57,22 +64,37 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
 
+    const isVisible = (item: SecuredNavItem) => item.adminOnly
+      ? isAdmin
+      : item.permission
+        ? can(item.permission)
+        : item.anyOf
+          ? canAny(item.anyOf)
+          : true;
+
     return configured.flatMap((item): NavItem[] => {
-      const visibleChildren = item.children?.filter((child) =>
-        child.adminOnly ? isAdmin : !child.permission || can(child.permission),
-      );
-      const visible = item.adminOnly
-        ? isAdmin
-        : item.children
-          ? Boolean(visibleChildren?.length)
-          : !item.permission || can(item.permission);
+      const visibleChildren = item.children
+        ?.filter(isVisible)
+        .map(({ permission, anyOf, adminOnly, ...child }) => {
+          void permission;
+          void anyOf;
+          void adminOnly;
+          return child;
+        });
+      const visible = item.children ? Boolean(visibleChildren?.length) : isVisible(item);
       if (!visible) return [];
-      const { permission: _permission, adminOnly: _adminOnly, ...navItem } = item;
+      const {
+        permission: _permission,
+        anyOf: _anyOf,
+        adminOnly: _adminOnly,
+        ...navItem
+      } = item;
       void _permission;
+      void _anyOf;
       void _adminOnly;
       return [{ ...navItem, children: visibleChildren }];
     });
-  }, [can, isAdmin, pendingCertificates, pendingTutors]);
+  }, [can, canAny, isAdmin, pendingCertificates, pendingTutors]);
 
   const isActive = (path: string, pathname: string) => {
     if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');

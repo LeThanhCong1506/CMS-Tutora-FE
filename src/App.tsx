@@ -57,6 +57,7 @@ const PortalIndexRedirect = () => {
     ['user.view', '/admin-portal/users'],
     ['booking.view', '/admin-portal/bookings'],
     ['tutor_approval.view', '/admin-portal/vetting/profiles'],
+    ['tutor_profile_update.view', '/admin-portal/vetting/profiles'],
     ['certificate.view', '/admin-portal/vetting/certificates'],
     ['dispute.view', '/admin-portal/disputes'],
     ['warning.view', '/admin-portal/warnings'],
@@ -144,7 +145,14 @@ function App() {
               <Route path="staff" element={guard(<StaffManagementPage />, undefined, true)} />
               <Route path="permission-groups" element={guard(<PermissionGroupsPage />, undefined, true)} />
               <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />
-              <Route path="vetting/profiles" element={guard(<AdminVettingPage />, 'tutor_approval.view')} />
+              <Route
+                path="vetting/profiles"
+                element={
+                  <PermissionRoute anyOf={['tutor_approval.view', 'tutor_profile_update.view']}>
+                    <AdminVettingPage />
+                  </PermissionRoute>
+                }
+              />
               <Route path="vetting/certificates" element={guard(<AdminCertificateVettingPage />, 'certificate.view')} />
               <Route path="bookings" element={guard(<AdminBookingsPage />, 'booking.view')} />
               <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
