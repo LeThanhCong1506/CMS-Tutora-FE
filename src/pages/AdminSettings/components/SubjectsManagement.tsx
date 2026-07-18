@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { DataTable, FilterTabs, SectionCard, StatusBadge } from '../../../components/shared';
 import type { DataTableColumn } from '../../../components/shared';
+import { Can } from '../../../contexts/AccessContext';
 import type { Subject } from '../mockData';
 import {
     formatGradeLevels,
@@ -191,6 +192,7 @@ const SubjectsManagement = () => {
                 <div className="admin-ui-actions subjects-table-actions">
                     {subject.isactive ? (
                         <>
+                            <Can permission="lookup.update">
                             <button
                                 className="admin-ui-button admin-ui-button-secondary subject-inline-action"
                                 onClick={() => handleEditSubject(subject)}
@@ -199,6 +201,8 @@ const SubjectsManagement = () => {
                             >
                                 <span className="material-symbols-outlined">edit</span>
                             </button>
+                            </Can>
+                            <Can permission="lookup.delete">
                             <button
                                 className={`admin-ui-button subject-inline-action ${
                                     deletingSubjectId === subject.subjectid
@@ -217,8 +221,10 @@ const SubjectsManagement = () => {
                                     {deletingSubjectId === subject.subjectid ? 'check' : 'delete'}
                                 </span>
                             </button>
+                            </Can>
                         </>
                     ) : (
+                        <Can permission="lookup.delete">
                         <button
                             className="admin-ui-button admin-ui-button-secondary subject-inline-action"
                             onClick={() => void handleRestoreSubject(subject.subjectid)}
@@ -227,6 +233,7 @@ const SubjectsManagement = () => {
                         >
                             <span className="material-symbols-outlined">restore</span>
                         </button>
+                        </Can>
                     )}
                 </div>
             ),
@@ -239,10 +246,12 @@ const SubjectsManagement = () => {
                 title="Quản lý môn học"
                 subtitle="Quản lý danh mục môn học và phạm vi khối lớp hiển thị trên nền tảng."
                 headerAction={
+                    <Can permission="lookup.create">
                     <button className="admin-ui-button admin-ui-button-primary" onClick={handleAddSubject}>
                         <span className="material-symbols-outlined">add</span>
                         Thêm môn học
                     </button>
+                    </Can>
                 }
             >
                 <div className="admin-ui-toolbar subjects-admin-toolbar">

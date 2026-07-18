@@ -12,6 +12,7 @@ import {
 import TutorDetailModal from './components/TutorDetailModal';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import { Can, useAccess } from '../../contexts/AccessContext';
 import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import '../../styles/pages/admin-vetting.css';
@@ -57,7 +58,7 @@ const getVettingErrorMessage = (error: unknown) => {
   const err = error as ApiError;
 
   if (err?.response?.status === 401) {
-    return 'Bạn cần đăng nhập với quyền Admin để xem danh sách này.';
+    return 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.';
   }
   if (err?.response?.status === 403) {
     return 'Bạn không có quyền truy cập trang này.';
@@ -85,10 +86,13 @@ const formatSubmittedAt = (dateString: string): string => {
 };
 
 const AdminVettingPage = () => {
+  const { can } = useAccess();
+  const canViewNew = can('tutor_approval.view');
+  const canViewUpdates = can('tutor_profile_update.view');
   const [tutors, setTutors] = useState<PendingTutorFromAPI[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(canViewNew);
   const [error, setError] = useState<string | null>(null);
   // searchInput: live text-box value; searchQuery: committed term sent to BE
   // (only on Enter / button click) so we don't hit the API on every keystroke.
@@ -101,9 +105,9 @@ const AdminVettingPage = () => {
   const [rejectionNote, setRejectionNote] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'new' | 'updates'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'updates'>(canViewNew ? 'new' : 'updates');
   const [updateRequests, setUpdateRequests] = useState<ProfileUpdateRequestFromAPI[]>([]);
-  const [updateRequestsLoading, setUpdateRequestsLoading] = useState(true);
+  const [updateRequestsLoading, setUpdateRequestsLoading] = useState(canViewUpdates);
   const [updateRequestsError, setUpdateRequestsError] = useState<string | null>(null);
   const [updateActionLoading, setUpdateActionLoading] = useState<string | null>(null);
   const [updateRejectionNote, setUpdateRejectionNote] = useState('');
@@ -111,6 +115,8 @@ const AdminVettingPage = () => {
   const [selectedUpdateRequest, setSelectedUpdateRequest] = useState<ProfileUpdateRequestFromAPI | null>(null);
 
   const fetchPendingTutors = useCallback(async () => {
+    if (!canViewNew) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -148,12 +154,12 @@ const AdminVettingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, orderBy]);
+  }, [canViewNew, page, searchQuery, orderBy]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchPendingTutors();
-  }, [fetchPendingTutors]);
+    if (canViewNew) void fetchPendingTutors();
+  }, [canViewNew, fetchPendingTutors]);
 
   // Keep an open detail modal in sync with refreshed list data: after a
   // per-certificate action, reflect the updated cert statuses, or close the
@@ -166,6 +172,8 @@ const AdminVettingPage = () => {
   }, [tutors, selectedTutor]);
 
   const fetchPendingUpdateRequests = useCallback(async () => {
+    if (!canViewUpdates) return;
+
     try {
       setUpdateRequestsLoading(true);
       setUpdateRequestsError(null);
@@ -178,12 +186,21 @@ const AdminVettingPage = () => {
     } finally {
       setUpdateRequestsLoading(false);
     }
-  }, []);
+  }, [canViewUpdates]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchPendingUpdateRequests();
-  }, [fetchPendingUpdateRequests]);
+    if (canViewUpdates) void fetchPendingUpdateRequests();
+  }, [canViewUpdates, fetchPendingUpdateRequests]);
+
+  useEffect(() => {
+    if (activeTab === 'new' && !canViewNew && canViewUpdates) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab('updates');
+    } else if (activeTab === 'updates' && !canViewUpdates && canViewNew) {
+      setActiveTab('new');
+    }
+  }, [activeTab, canViewNew, canViewUpdates]);
 
   /**
    * Gọi lại API lấy bản MỚI NHẤT của request trước khi thực sự Duyệt/Từ chối, vì danh sách
@@ -464,6 +481,7 @@ const AdminVettingPage = () => {
       align: 'right',
       render: (req) => (
         <div className="certificate-row-actions">
+          <Can permission="tutor_profile_update.decide">
           <button
             type="button"
             className="admin-ui-button admin-ui-button-success"
@@ -481,6 +499,7 @@ const AdminVettingPage = () => {
           >
             Từ chối
           </button>
+          </Can>
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
@@ -499,23 +518,27 @@ const AdminVettingPage = () => {
       <div className="certificate-vetting-page">
         <PageContainer title="Kiểm duyệt gia sư" maxWidth="wide">
           <div className="admin-ui-actions" style={{ marginBottom: 16 }}>
-            <button
-              type="button"
-              className={`admin-ui-button ${activeTab === 'new' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
-              onClick={() => setActiveTab('new')}
-            >
-              Hồ sơ mới ({total})
-            </button>
-            <button
-              type="button"
-              className={`admin-ui-button ${activeTab === 'updates' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
-              onClick={() => setActiveTab('updates')}
-            >
-              Yêu cầu cập nhật hồ sơ ({updateRequests.length})
-            </button>
+            {canViewNew && (
+              <button
+                type="button"
+                className={`admin-ui-button ${activeTab === 'new' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
+                onClick={() => setActiveTab('new')}
+              >
+                Hồ sơ mới ({total})
+              </button>
+            )}
+            {canViewUpdates && (
+              <button
+                type="button"
+                className={`admin-ui-button ${activeTab === 'updates' ? 'admin-ui-button-primary' : 'admin-ui-button-secondary'}`}
+                onClick={() => setActiveTab('updates')}
+              >
+                Yêu cầu cập nhật hồ sơ ({updateRequests.length})
+              </button>
+            )}
           </div>
 
-          {activeTab === 'new' && (
+          {activeTab === 'new' && canViewNew && (
             <SectionCard
               title="Hồ sơ chờ duyệt"
               headerAction={
@@ -652,7 +675,7 @@ const AdminVettingPage = () => {
             </SectionCard>
           )}
 
-          {activeTab === 'updates' && (
+          {activeTab === 'updates' && canViewUpdates && (
             <SectionCard
               title="Yêu cầu cập nhật hồ sơ"
               subtitle="Tutor đã Active gửi chỉnh sửa hồ sơ — Marketplace vẫn hiển thị thông tin cũ cho đến khi duyệt ở đây."
@@ -711,15 +734,15 @@ const AdminVettingPage = () => {
       </div>
 
       <TutorDetailModal
-        tutor={selectedTutor}
-        isOpen={selectedTutor !== null}
+        tutor={canViewNew ? selectedTutor : null}
+        isOpen={canViewNew && selectedTutor !== null}
         onClose={() => setSelectedTutor(null)}
         onApprove={handleApprove}
         onOpenReject={handleOpenRejectModal}
         actionLoading={actionLoading}
       />
 
-      {showRejectModal && (
+      {canViewNew && showRejectModal && (
         <div className="certificate-modal-overlay" onMouseDown={() => setShowRejectModal(null)}>
           <div
             className="certificate-reject-modal"
@@ -774,7 +797,7 @@ const AdminVettingPage = () => {
         </div>
       )}
 
-      {selectedUpdateRequest && (
+      {canViewUpdates && selectedUpdateRequest && (
         <div className="vetting-modal-overlay" onClick={() => setSelectedUpdateRequest(null)}>
           <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
             <div className="vetting-modal-header">
@@ -819,7 +842,7 @@ const AdminVettingPage = () => {
         </div>
       )}
 
-      {showUpdateRejectModal && (
+      {canViewUpdates && showUpdateRejectModal && (
         <div className="vetting-modal-overlay" onClick={() => setShowUpdateRejectModal(null)}>
           <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
             <div className="vetting-modal-header">

@@ -3,6 +3,7 @@ import { formatCurrency, formatDateTime } from '../../../utils/formatters';
 import { mockGetUserWarnings, mockGetUserSuspensions } from '../mockData';
 import type { FlatUserDetail } from '../mockData';
 import { getRoleDisplay } from '../roleDisplay';
+import { Can } from '../../../contexts/AccessContext';
 
 interface UserDetailModalProps {
     isOpen: boolean;
@@ -325,28 +326,36 @@ const UserDetailModal = ({
                         </button>
                     )}
 
+                    <Can permission="warning.create">
                     <button className="vetting-btn user-detail-btn-warning" onClick={onIssueWarning}>
                         <span className="material-symbols-outlined">warning</span>
                         Cảnh cáo
                     </button>
+                    </Can>
 
                     {isTutor && !isBlocked && (
+                        <Can permission="suspension.manage">
                         <button className="vetting-btn user-detail-btn-suspend" onClick={onSuspendUser}>
                             <span className="material-symbols-outlined">pause_circle</span>
                             Tạm ngưng hồ sơ
                         </button>
+                        </Can>
                     )}
 
                     {isBlocked ? (
+                        <Can permission="user.deactivate">
                         <button className="vetting-btn vetting-btn-primary" onClick={onUnblockUser}>
                             <span className="material-symbols-outlined">check_circle</span>
                             Mở khóa tài khoản
                         </button>
+                        </Can>
                     ) : (
+                        <Can permission="user.deactivate">
                         <button className="vetting-btn vetting-btn-danger" onClick={onBlockUser}>
                             <span className="material-symbols-outlined">block</span>
                             Chặn tài khoản
                         </button>
+                        </Can>
                     )}
                 </div>
             </div>

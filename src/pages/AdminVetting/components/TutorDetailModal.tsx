@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { PendingTutorFromAPI } from '../../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../../utils/avatar';
 import { getYouTubeEmbedUrl } from '../../../utils/youtube';
+import { Can } from '../../../contexts/AccessContext';
 import '../../../styles/pages/admin-vetting.css';
 
 interface TutorDetailModalProps {
@@ -214,10 +215,12 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                   </div>
                 </div>
                 <p>Chứng chỉ được kiểm duyệt riêng để tránh tạo hai nơi ra quyết định.</p>
-                <Link to="/admin-portal/vetting/certificates" onClick={onClose}>
-                  Đến trang kiểm duyệt chứng chỉ
-                  <span className="material-symbols-outlined">arrow_forward</span>
-                </Link>
+                <Can permission="certificate.view">
+                  <Link to="/admin-portal/vetting/certificates" onClick={onClose}>
+                    Đến trang kiểm duyệt chứng chỉ
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </Link>
+                </Can>
               </div>
             </aside>
 
@@ -359,6 +362,7 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
               Đóng
             </button>
             <div>
+              <Can permission="tutor_approval.decide">
               <button
                 type="button"
                 className="admin-ui-button admin-ui-button-danger"
@@ -379,6 +383,7 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                 <span className="material-symbols-outlined">check</span>
                 {isLoading ? 'Đang xử lý...' : 'Phê duyệt hồ sơ'}
               </button>
+              </Can>
             </div>
           </footer>
         </section>

@@ -12,6 +12,7 @@ import type { AdminWithdrawalDetail, ApprovePayoutRequest } from '../../../types
 import { getUserIdFromToken } from '../../../services/auth.service';
 import { formatApprovalDecision, formatCurrency, formatDateTime } from '../../../utils/formatters';
 import { PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
+import { Can } from '../../../contexts/AccessContext';
 import WithdrawalStatusBadge from '../WithdrawalStatusBadge';
 import PayoutTimeline from './components/PayoutTimeline';
 import PreviousWithdrawalsCard from './components/PreviousWithdrawalsCard';
@@ -313,6 +314,7 @@ const PayoutDetailPage: React.FC = () => {
 
         {isPending ? (
           <div className="payout-decision-bar__actions">
+            <Can permission="payout.approve">
             <button
               type="button"
               className="admin-ui-button admin-ui-button-primary"
@@ -322,9 +324,11 @@ const PayoutDetailPage: React.FC = () => {
               <span className="material-symbols-outlined">person_check</span>
               {actionLoading ? 'Đang nhận...' : 'Nhận xử lý'}
             </button>
+            </Can>
           </div>
         ) : isClaimedByCurrentUser ? (
           <div className="payout-decision-bar__actions">
+            <Can permission="payout.approve">
             <button
               type="button"
               className="admin-ui-button admin-ui-button-secondary"
@@ -334,6 +338,8 @@ const PayoutDetailPage: React.FC = () => {
               <span className="material-symbols-outlined">undo</span>
               Trả hàng đợi
             </button>
+            </Can>
+            <Can permission="payout.reject">
             <button
               type="button"
               className="admin-ui-button admin-ui-button-danger"
@@ -343,6 +349,8 @@ const PayoutDetailPage: React.FC = () => {
               <span className="material-symbols-outlined">cancel</span>
               Từ chối
             </button>
+            </Can>
+            <Can permission="payout.approve">
             <button
               type="button"
               className="admin-ui-button admin-ui-button-success"
@@ -352,6 +360,7 @@ const PayoutDetailPage: React.FC = () => {
               <span className="material-symbols-outlined">check_circle</span>
               Xác nhận đã chuyển
             </button>
+            </Can>
           </div>
         ) : isClaimed ? (
           <span className="payout-decision-bar__meta">
