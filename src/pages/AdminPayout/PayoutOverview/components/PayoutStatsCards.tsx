@@ -31,9 +31,9 @@ const OperationMetric: React.FC<OperationMetricProps> = ({ icon, value, label, n
 );
 
 const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
-  const todayStats = overview?.todayStats;
   const processingStats = overview?.processingStats;
   const financialStats = overview?.financialStats;
+  const decisionBreakdown = overview?.decisionBreakdown;
 
   return (
     <section className="payout-summary-grid" aria-label="Tổng quan thanh toán">
@@ -89,28 +89,28 @@ const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
         <div className="payout-operation-grid">
           <OperationMetric
             icon="request_quote"
-            value={metric((todayStats?.totalRequests ?? 0).toLocaleString('vi-VN'), loading)}
+            value={metric((decisionBreakdown?.totalRequests ?? 0).toLocaleString('vi-VN'), loading)}
             label="Tổng yêu cầu"
             note="Phát sinh trong tháng"
             tone="blue"
           />
           <OperationMetric
             icon="verified"
-            value={metric((todayStats?.autoApproved ?? 0).toLocaleString('vi-VN'), loading)}
+            value={metric((decisionBreakdown?.autoApprove ?? 0).toLocaleString('vi-VN'), loading)}
             label="Tự động duyệt"
             note="Đã qua kiểm tra hệ thống"
             tone="green"
           />
           <OperationMetric
             icon="pause_circle"
-            value={metric((todayStats?.delayed ?? 0).toLocaleString('vi-VN'), loading)}
+            value={metric((decisionBreakdown?.delayed ?? 0).toLocaleString('vi-VN'), loading)}
             label="Đang tạm giữ"
             note="Cần theo dõi thời hạn"
             tone="amber"
           />
           <OperationMetric
             icon="policy"
-            value={metric((todayStats?.manualReview ?? 0).toLocaleString('vi-VN'), loading)}
+            value={metric((decisionBreakdown?.manualReview ?? 0).toLocaleString('vi-VN'), loading)}
             label="Xét duyệt thủ công"
             note="Cần quyết định từ admin"
             tone="red"

@@ -25,8 +25,8 @@ import type {
   DisputeListItem,
   // Financials
   FinancialMetrics,
-  WithdrawalRequest,
-  Transaction,
+  TransactionListResponse,
+  AdminTransactionQueryParams,
   // User Management
   UserListItem,
   UserDetail,
@@ -35,7 +35,6 @@ import type {
   PlatformConfig,
   // Common
   ApiResponse,
-  PaginationParams,
   FilterParams,
 } from '../types/admin.types';
 
@@ -471,13 +470,15 @@ export const lockAccount = async (userId: string, reason: string): Promise<ApiRe
 // ============================================
 
 /**
- * Get financial metrics
- * Total GMV, Net Revenue, Escrow Balance, Total Refunds, Pending Withdrawals
+ * Get financial metrics: revenue, bookings, class sessions, users, withdrawals, escrow.
+ * Backend: GET /api/admin/financials/metrics -> APIResponse<AdminFinancialMetricsResponse>
  */
-export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
+export const getFinancialMetrics = async (
+  params?: { from?: string; to?: string; period?: 'month' | 'week' | 'year' },
+): Promise<FinancialMetrics> => {
   try {
-    const { data } = await api.get('/admin/financials/metrics');
-    return data;
+    const { data } = await api.get('/admin/financials/metrics', { params });
+    return data.content;
   } catch (error) {
     console.error('getFinancialMetrics error:', error);
     throw error;
@@ -485,59 +486,15 @@ export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
 };
 
 /**
- * Get list of withdrawal requests
- * @param status - Filter by status (pending, approved, rejected, completed)
- */
-export const getWithdrawalRequests = async (status?: string): Promise<WithdrawalRequest[]> => {
-  try {
-    const { data } = await api.get('/admin/financials/withdrawals', {
-      params: status ? { status } : {},
-    });
-    return data;
-  } catch (error) {
-    console.error('getWithdrawalRequests error:', error);
-    throw error;
-  }
-};
-
-/**
- * Approve withdrawal request
- * Creates transaction, updates withdrawal status
- */
-export const approveWithdrawal = async (withdrawalId: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/approve`);
-    return data;
-  } catch (error) {
-    console.error('approveWithdrawal error:', error);
-    throw error;
-  }
-};
-
-/**
- * Reject withdrawal request
- * @param withdrawalId - Withdrawal ID
- * @param reason - Rejection reason
- */
-export const rejectWithdrawal = async (withdrawalId: string, reason: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/reject`, { reason });
-    return data;
-  } catch (error) {
-    console.error('rejectWithdrawal error:', error);
-    throw error;
-  }
-};
-
-/**
- * Get transaction history with pagination and filters
+ * Get wallet transaction ledger with pagination and filters.
+ * Backend: GET /api/admin/financials/transactions -> APIResponse<AdminTransactionListResponse>
  */
 export const getTransactions = async (
-  params?: PaginationParams & FilterParams,
-): Promise<{ transactions: Transaction[]; total: number }> => {
+  params?: AdminTransactionQueryParams,
+): Promise<TransactionListResponse> => {
   try {
     const { data } = await api.get('/admin/financials/transactions', { params });
-    return data;
+    return data.content;
   } catch (error) {
     console.error('getTransactions error:', error);
     throw error;

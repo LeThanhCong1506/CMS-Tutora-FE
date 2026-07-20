@@ -254,12 +254,17 @@ export const formatDisputeType = (type: string): string => {
 export const formatTransactionType = (type: string): string => {
   const typeMap: Record<string, string> = {
     Deposit: 'Nạp tiền',
+    Payment: 'Thanh toán',
     Escrow: 'Giữ tiền',
     EscrowCredit: 'Giữ tiền',
     Release: 'Giải phóng',
-    EscrowRelease: 'Giải phóng',
+    EscrowRelease: 'Giải phóng cho gia sư',
+    EscrowReversal: 'Hoàn escrow',
     Refund: 'Hoàn tiền',
     Withdrawal: 'Rút tiền',
+    DepositPayment: 'Thanh toán đặt cọc',
+    RemainingPayment: 'Thanh toán còn lại',
+    BankVerification: 'Xác thực ngân hàng',
     Fee: 'Phí',
   };
 
