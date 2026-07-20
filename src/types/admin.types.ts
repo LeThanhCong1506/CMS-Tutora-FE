@@ -641,52 +641,144 @@ export interface TutorWarning {
 // FINANCIALS TYPES (ADM-04)
 // ============================================
 
-export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+// Real backend transaction type values — Tutora-Backend/MV.DomainLayer/Constants/TransactionType.cs
+export type WalletTransactionType =
+  | 'Deposit'
+  | 'Payment'
+  | 'EscrowCredit'
+  | 'EscrowRelease'
+  | 'EscrowReversal'
+  | 'Withdrawal'
+  | 'Refund'
+  | 'DepositPayment'
+  | 'RemainingPayment'
+  | 'BankVerification';
+
+export interface RevenueOverviewMetrics {
+  totalPlatformRevenue: number;
+  totalGrossVolume: number;
+  currentMonthRevenue: number;
+  previousMonthRevenue: number;
+  monthOverMonthGrowthPercent: number | null;
+  currentYearRevenue: number;
+  totalEscrowed: number;
+}
+
+export interface BookingMetrics {
+  total: number;
+  active: number;
+  completed: number;
+  cancelled: number;
+  pendingTutor: number;
+  newThisPeriod: number;
+  byStatus: { status: string; count: number }[];
+  byTeachingMode: { mode: string; count: number }[];
+}
+
+export interface ClassSessionMetrics {
+  totalCompleted: number;
+  totalScheduled: number;
+  totalNoShow: number;
+  totalCancelled: number;
+  totalDisputed: number;
+  completionRatePercent: number | null;
+  noShowRatePercent: number | null;
+  totalClassSessionRevenue: number;
+}
+
+export interface UserGrowthMetrics {
+  totalTutors: number;
+  totalParents: number;
+  totalStudents: number;
+  activeTutors: number;
+  newTutorsThisMonth: number;
+  newParentsThisMonth: number;
+  averageTutorRating: number | null;
+}
+
+export interface WithdrawalMetrics {
+  totalPending: number;
+  totalPendingAmount: number;
+  totalApproved: number;
+  totalApprovedAmount: number;
+  totalRejected: number;
+  totalRejectedAmount: number;
+  totalCancelled: number;
+  totalCancelledAmount: number;
+  processedThisMonth: number;
+  processedAmountThisMonth: number;
+}
+
+export interface EscrowMetrics {
+  totalFrozenBalance: number;
+  totalReleasedToTutors: number;
+  totalRefundedToParents: number;
+}
+
+export interface RevenueTrendItem {
+  label: string;
+  platformRevenue: number;
+  grossVolume: number;
+  bookingCount: number;
+  classSessionsCompleted: number;
+}
+
+export interface TopSubjectItem {
+  subjectId: number;
+  subjectName: string;
+  bookingCount: number;
+  totalRevenue: number;
+}
 
 export interface FinancialMetrics {
-  totalGMV: number;
-  netRevenue: number;
-  escrowBalance: number;
-  totalRefunds: number;
-  pendingWithdrawalsCount: number;
-  pendingWithdrawalsAmount: number;
-  [key: string]: any;
+  revenue: RevenueOverviewMetrics;
+  bookings: BookingMetrics;
+  classSessions: ClassSessionMetrics;
+  users: UserGrowthMetrics;
+  withdrawals: WithdrawalMetrics;
+  escrow: EscrowMetrics;
+  revenueTrend: RevenueTrendItem[];
+  topSubjects: TopSubjectItem[];
+  filterFrom: string | null;
+  filterTo: string | null;
+  period: string;
 }
 
-export interface WithdrawalRequest {
-  withdrawalid: string;
-  userid: string;
-  tutorName: string;
-  tutorEmail: string;
-  tutorAvatar: string | null;
-  amount: number;
-  bankname: string;
-  accountnumber: string;
-  accountholdername: string;
-  ifsccode: string | null;
-  status: WithdrawalStatus;
-  requestedat: string;
-  processedat: string | null;
-  processedby: string | null;
-  [key: string]: any;
+export interface AdminTransactionItem {
+  transactionId: number;
+  walletId: number | null;
+  userId: string | null;
+  userFullName: string | null;
+  userEmail: string | null;
+  userRole: string | null;
+  amount: number | null;
+  transactionType: string | null;
+  description: string | null;
+  referenceId: number | null;
+  referenceTable: string | null;
+  orderCode: number | null;
+  createdAt: string | null;
 }
 
-export type TransactionType = 'Deposit' | 'Escrow' | 'Release' | 'Refund' | 'Withdrawal' | 'Fee';
+export interface TransactionListResponse {
+  items: AdminTransactionItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalAmount: number;
+}
 
-export type TransactionStatus = 'pending' | 'completed' | 'failed';
-
-export interface Transaction {
-  transactionid: string;
-  transactiontype: TransactionType;
-  amount: number;
-  walletid: string;
-  userid: string;
-  userName: string;
-  description: string;
-  createdat: string;
-  status: TransactionStatus;
-  relatedbookingid: string | null;
-  [key: string]: any;
+// Matches AdminFinancialController's GET /admin/financials/transactions query params exactly —
+// deliberately not the generic PaginationParams/FilterParams, whose field names (limit/offset,
+// startDate/endDate) don't match what this endpoint actually reads (pageSize, from/to).
+export interface AdminTransactionQueryParams {
+  page?: number;
+  pageSize?: number;
+  type?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
 }
 
 // ============================================
