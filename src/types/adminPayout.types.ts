@@ -29,6 +29,7 @@ export interface FinancialStats {
 }
 
 export interface DecisionBreakdown {
+    totalRequests: number;
     autoApprove: number;
     delayed: number;
     manualReview: number;
