@@ -36,8 +36,6 @@ const AdminLayout: React.FC = () => {
     const configured: SecuredNavItem[] = [
       { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard', permission: 'dashboard.view' },
       { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản', permission: 'user.view' },
-      { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
-      { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành', permission: 'booking.view' },
       {
         path: '/admin-portal/vetting',
@@ -57,9 +55,13 @@ const AdminLayout: React.FC = () => {
       },
       { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', permission: 'dispute.view' },
       { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
+      { path: '/admin-portal/resources/subjects', label: 'Môn & Lớp', materialIcon: 'category', sectionLabel: 'Tài nguyên', permission: 'lookup.view' },
+      { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
-      { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
+      { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính', permission: 'financial.view' },
       { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
+      { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
+      { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
       { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
@@ -101,6 +103,15 @@ const AdminLayout: React.FC = () => {
     if (path === '/admin-portal/warnings') return pathname.startsWith('/admin-portal/warnings');
     if (path === '/admin-portal/bookings') return pathname.startsWith('/admin-portal/bookings');
     if (path === '/admin-portal/disputes') return pathname.startsWith('/admin-portal/disputes');
+    if (path === '/admin-portal/resources/subjects') {
+      return pathname.startsWith('/admin-portal/resources/subjects')
+        || pathname.startsWith('/admin-portal/resources/grade-levels');
+    }
+    if (path === '/admin-portal/resources/chapters') {
+      return pathname.startsWith('/admin-portal/resources/chapters')
+        || pathname.startsWith('/admin-portal/resources/question-types');
+    }
+    if (path === '/admin-portal/question-bank') return pathname.startsWith('/admin-portal/question-bank');
     return pathname === path;
   };
 

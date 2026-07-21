@@ -36,6 +36,8 @@ const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettings
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
+const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjectsPage'));
+const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChaptersPage'));
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
 const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPageExpanded'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
@@ -64,7 +66,7 @@ const PortalIndexRedirect = () => {
     ['question_bank.view', '/admin-portal/question-bank'],
     ['financial.view', '/admin-portal/financials'],
     ['payout.view', '/admin-portal/payouts'],
-    ['lookup.view', '/admin-portal/settings'],
+    ['lookup.view', '/admin-portal/resources/subjects'],
     ['notification.view', '/admin-portal/notifications'],
   ].find(([permission]) => can(permission));
 
@@ -158,6 +160,17 @@ function App() {
               <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
               <Route path="financials" element={guard(<AdminFinancialsPage />, 'financial.view')} />
               <Route path="warnings" element={guard(<AdminWarningsPage />, 'warning.view')} />
+              <Route path="resources" element={<Navigate to="/admin-portal/resources/subjects" replace />} />
+              <Route path="resources/subjects" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
+              <Route path="resources/grade-levels" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
+              <Route
+                path="resources/chapters"
+                element={guard(<AdminChaptersPage />, 'lookup.view')}
+              />
+              <Route
+                path="resources/question-types"
+                element={guard(<AdminChaptersPage />, 'lookup.view')}
+              />
               <Route path="question-bank" element={guard(<QuestionBankPage />, 'question_bank.view')} />
               <Route path="question-bank/upload" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="question-bank/upload/:id" element={guard(<UploadPdfPage />, 'question_document.upload')} />
