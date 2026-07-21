@@ -26,6 +26,7 @@ import type {
   // Financials
   FinancialMetrics,
   TransactionListResponse,
+  AdminTransactionListResponse,
   AdminTransactionQueryParams,
   // User Management
   UserListItem,
@@ -499,6 +500,23 @@ export const getTransactions = async (
     console.error('getTransactions error:', error);
     throw error;
   }
+};
+
+/**
+ * Get platform-wide wallet transaction ledger.
+ * GET /admin/financials/transactions → AdminTransactionListResponse (unwrapped từ data.content).
+ */
+export const getAdminTransactions = async (params?: {
+  page?: number;
+  pageSize?: number;
+  type?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}): Promise<AdminTransactionListResponse> => {
+  const { data } = await api.get('/admin/financials/transactions', { params });
+  return data.content;
 };
 
 // ============================================
