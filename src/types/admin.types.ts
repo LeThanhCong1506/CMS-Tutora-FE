@@ -490,14 +490,14 @@ export type DisputePriority = 'low' | 'medium' | 'high';
 
 export interface DisputeForAdmin {
   disputeId: number;
-  lessonId: number | null;
+  classSessionId: number | null;
   bookingId: number | null;
   disputeType: string | null;
   status: string | null;
   reason: string | null;
   createdByName: string | null;
   tutorName: string | null;
-  lessonPrice: number | null;
+  classSessionPrice: number | null;
   createdAt: string | null;
   disputeTypeDisplay: string;
   statusDisplay: string;
@@ -530,13 +530,13 @@ export interface DisputeUserDto {
   avatarUrl: string | null;
 }
 
-export interface DisputeLessonDto {
-  lessonId: number;
+export interface DisputeClassSessionDto {
+  classSessionId: number;
   scheduledStart: string;
   scheduledEnd: string;
   status: string | null;
-  lessonPrice: number | null;
-  lessonContent: string | null;
+  classSessionPrice: number | null;
+  classSessionContent: string | null;
   homework: string | null;
   isTutorPresent: boolean | null;
   isStudentPresent: boolean | null;
@@ -554,7 +554,7 @@ export interface DisputeTutorDto {
 export interface DisputeDetail {
   disputeId: number;
   bookingId: number | null;
-  lessonId: number | null;
+  classSessionId: number | null;
   disputeType: string | null;
   reason: string | null;
   status: string | null;
@@ -566,7 +566,7 @@ export interface DisputeDetail {
   refundPercentage: number | null;
   createdBy: DisputeUserDto | null;
   resolvedBy: DisputeUserDto | null;
-  lesson: DisputeLessonDto | null;
+  classSession: DisputeClassSessionDto | null;
   tutor: DisputeTutorDto | null;
   timeSinceCreation: string | null;
 }
@@ -744,6 +744,7 @@ export interface FinancialMetrics {
   period: string;
 }
 
+// ---- GET /admin/financials/transactions (AdminTransactionListResponse) ----
 export interface AdminTransactionItem {
   transactionId: number;
   walletId: number | null;
@@ -758,6 +759,14 @@ export interface AdminTransactionItem {
   referenceTable: string | null;
   orderCode: number | null;
   createdAt: string | null;
+}
+
+export interface AdminTransactionListResponse {
+  items: AdminTransactionItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalAmount: number;
 }
 
 export interface TransactionListResponse {
