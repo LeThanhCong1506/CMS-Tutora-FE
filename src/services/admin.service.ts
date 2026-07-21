@@ -864,6 +864,29 @@ export const getDisputeStats = async (): Promise<DisputeStatsDto> => {
 };
 
 /**
+ * Get recording info for a dispute's class session
+ * Backend: GET /api/admin/disputes/{disputeId}/recording
+ * Returns APIResponse<DisputeRecordingResponse>
+ */
+export interface DisputeRecordingDto {
+  disputeId: number;
+  classSessionId: number | null;
+  status: 'available' | 'processing' | 'recording' | 'none';
+  recordingUrl: string | null;
+  available: boolean;
+}
+
+export const getDisputeRecording = async (disputeId: string | number): Promise<DisputeRecordingDto> => {
+  try {
+    const { data } = await api.get(`/admin/disputes/${disputeId}/recording`);
+    return data.content;
+  } catch (error) {
+    console.error('getDisputeRecording error:', error);
+    throw error;
+  }
+};
+
+/**
  * Get user warning summary
  */
 export const getUserWarnings = async (userId: string): Promise<ApiResponse<any>> => {

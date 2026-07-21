@@ -9,10 +9,12 @@ import {
     resolveDispute,
     investigateDispute,
     getDisputeChatHistory,
+    getDisputeRecording,
     issueWarning,
     suspendTutor,
     lockAccount,
 } from '../../services/admin.service';
+import type { DisputeRecordingDto } from '../../services/admin.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
@@ -78,6 +80,14 @@ const AdminDisputeDetailPageExpanded = () => {
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
 
+    // Recording state
+    const [recording, setRecording] = useState<DisputeRecordingDto | null>(null);
+    const [recordingLoading, setRecordingLoading] = useState(false);
+
+    // Warning state for resolve
+    const [createWarning, setCreateWarning] = useState(false);
+    const [warningLevel, setWarningLevel] = useState<1 | 2>(1);
+
     // Modal states
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
@@ -130,6 +140,28 @@ const AdminDisputeDetailPageExpanded = () => {
         }
     }, [activeTab, chatMessages.length, fetchChatHistory]);
 
+    // Fetch recording when switching to recording tab
+    const fetchRecording = useCallback(async () => {
+        if (!disputeId) return;
+        try {
+            setRecordingLoading(true);
+            const data = await getDisputeRecording(disputeId);
+            setRecording(data);
+        } catch (err) {
+            console.error('Error fetching recording:', err);
+            setRecording(null);
+        } finally {
+            setRecordingLoading(false);
+        }
+    }, [disputeId]);
+
+    useEffect(() => {
+        if (activeTab === 'recording' && !recording) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchRecording();
+        }
+    }, [activeTab, recording, fetchRecording]);
+
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
 
@@ -143,6 +175,8 @@ const AdminDisputeDetailPageExpanded = () => {
             await resolveDispute(disputeDetail.disputeId, {
                 resolutionType: verdict,
                 resolutionNote: adminNotes,
+                createTutorWarning: createWarning,
+                warningLevel: createWarning ? warningLevel : undefined,
             });
             toast.success('Đã giải quyết khiếu nại thành công!');
             // Refresh data
@@ -487,6 +521,13 @@ const AdminDisputeDetailPageExpanded = () => {
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">chat</span>
                                         Nhật ký chat
                                     </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'recording' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('recording')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">videocam</span>
+                                        Ghi hình buổi học
+                                    </button>
                                 </div>
 
                                 {/* Evidence Gallery */}
@@ -609,6 +650,85 @@ const AdminDisputeDetailPageExpanded = () => {
                                         )}
                                     </div>
                                 )}
+
+                                {/* Recording Tab */}
+                                {activeTab === 'recording' && (
+                                    <div className="dispute-chat-area">
+                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
+                                            🎥 Ghi hình buổi học
+                                        </h3>
+                                        {recordingLoading ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                Đang tải thông tin ghi hình...
+                                            </p>
+                                        ) : !recording ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    videocam_off
+                                                </span>
+                                                <p>Không có thông tin ghi hình</p>
+                                            </div>
+                                        ) : recording.status === 'available' && recording.recordingUrl ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                <div style={{
+                                                    padding: '16px 20px',
+                                                    background: '#f0fdf4',
+                                                    borderRadius: '10px',
+                                                    border: '1px solid #bbf7d0',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                }}>
+                                                    <span className="material-symbols-outlined" style={{ color: '#16a34a', fontSize: '24px' }}>check_circle</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <p style={{ margin: 0, fontWeight: 600, color: '#166534', fontSize: '14px' }}>Video buổi học đã sẵn sàng</p>
+                                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#15803d' }}>Buổi học #{recording.classSessionId}</p>
+                                                    </div>
+                                                    <a
+                                                        href={recording.recordingUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            padding: '10px 20px',
+                                                            background: '#16a34a',
+                                                            color: '#fff',
+                                                            borderRadius: '8px',
+                                                            textDecoration: 'none',
+                                                            fontSize: '14px',
+                                                            fontWeight: 600,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                        }}
+                                                    >
+                                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>play_arrow</span>
+                                                        Xem video
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        ) : recording.status === 'processing' || recording.status === 'recording' ? (
+                                            <div style={{
+                                                textAlign: 'center', padding: '40px',
+                                                background: '#fffbeb', borderRadius: '10px', border: '1px solid #fed7aa',
+                                            }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#f59e0b', marginBottom: '12px', display: 'block' }}>
+                                                    hourglass_top
+                                                </span>
+                                                <p style={{ color: '#92400e', fontWeight: 600 }}>
+                                                    {recording.status === 'recording' ? 'Đang ghi hình...' : 'Video đang được xử lý'}
+                                                </p>
+                                                <p style={{ color: '#b45309', fontSize: '13px' }}>Vui lòng kiểm tra lại sau.</p>
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    videocam_off
+                                                </span>
+                                                <p>Không có ghi hình cho buổi học này</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* RIGHT COLUMN: Verdict */}
@@ -685,6 +805,43 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     onChange={(e) => setAdminNotes(e.target.value)}
                                                     rows={5}
                                                 ></textarea>
+                                            </div>
+
+                                            {/* Warning checkbox */}
+                                            <div style={{ marginTop: '16px', padding: '14px 16px', background: '#fefce8', borderRadius: '10px', border: '1px solid #fef08a' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#854d0e' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={createWarning}
+                                                        onChange={(e) => setCreateWarning(e.target.checked)}
+                                                        style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
+                                                    />
+                                                    Gửi cảnh báo cho gia sư
+                                                </label>
+                                                {createWarning && (
+                                                    <div style={{ marginTop: '12px', display: 'flex', gap: '12px', paddingLeft: '28px' }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: '#78716c' }}>
+                                                            <input
+                                                                type="radio"
+                                                                name="warningLevel"
+                                                                checked={warningLevel === 1}
+                                                                onChange={() => setWarningLevel(1)}
+                                                                style={{ accentColor: '#f59e0b' }}
+                                                            />
+                                                            Mức 1 (Nhẹ)
+                                                        </label>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: '#78716c' }}>
+                                                            <input
+                                                                type="radio"
+                                                                name="warningLevel"
+                                                                checked={warningLevel === 2}
+                                                                onChange={() => setWarningLevel(2)}
+                                                                style={{ accentColor: '#ef4444' }}
+                                                            />
+                                                            Mức 2 (Nghiêm trọng)
+                                                        </label>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <Can permission="dispute.resolve">
