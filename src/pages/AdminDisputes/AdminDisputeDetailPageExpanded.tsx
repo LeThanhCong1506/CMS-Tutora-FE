@@ -604,6 +604,89 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <p>Không có bằng chứng nào được gửi</p>
                                             </div>
                                         )}
+
+                                        {/* Tutor rebuttal */}
+                                        <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
+                                            <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
+                                                Phản hồi từ gia sư
+                                            </h4>
+                                            {disputeDetail.tutorResponse ? (
+                                                <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                                                    <p style={{ margin: '0 0 8px', fontSize: '14px', color: 'var(--color-navy)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                                        {disputeDetail.tutorResponse}
+                                                    </p>
+                                                    {disputeDetail.tutorRespondedAt && (
+                                                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                                                            Gửi lúc {formatRelativeTime(disputeDetail.tutorRespondedAt)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p style={{ color: '#94a3b8', fontSize: '14px' }}>Gia sư chưa phản hồi khiếu nại này.</p>
+                                            )}
+
+                                            {disputeDetail.tutorEvidence && disputeDetail.tutorEvidence.length > 0 && (
+                                                <div style={{ marginTop: '16px' }}>
+                                                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
+                                                        Bằng chứng gia sư nộp ({disputeDetail.tutorEvidence.length})
+                                                    </h4>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                                                        {disputeDetail.tutorEvidence.map((item) => {
+                                                            const url = item.fileUrl || '';
+                                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                                                            return isImage ? (
+                                                                <div key={item.disputeEvidenceId} style={{ position: 'relative', paddingBottom: '75%', borderRadius: '8px', overflow: 'hidden', border: '2px solid #bfdbfe' }}>
+                                                                    <img
+                                                                        src={url}
+                                                                        alt={`Tutor evidence ${item.disputeEvidenceId}`}
+                                                                        style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                                                        onClick={() => window.open(url, '_blank')}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div
+                                                                    key={item.disputeEvidenceId}
+                                                                    style={{
+                                                                        padding: '16px',
+                                                                        background: '#eff6ff',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid #bfdbfe',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '12px',
+                                                                    }}
+                                                                >
+                                                                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#64748b' }}>
+                                                                        description
+                                                                    </span>
+                                                                    <div style={{ flex: 1 }}>
+                                                                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                                                                            Tệp bằng chứng
+                                                                        </p>
+                                                                    </div>
+                                                                    <a
+                                                                        href={url}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{
+                                                                            padding: '8px 16px',
+                                                                            background: 'var(--color-gold)',
+                                                                            color: 'var(--color-navy)',
+                                                                            borderRadius: '6px',
+                                                                            textDecoration: 'none',
+                                                                            fontSize: '13px',
+                                                                            fontWeight: 600,
+                                                                        }}
+                                                                    >
+                                                                        Xem
+                                                                    </a>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 

@@ -564,11 +564,22 @@ export interface DisputeDetail {
   resolutionNote: string | null;
   refundAmount: number | null;
   refundPercentage: number | null;
+  tutorResponse: string | null;
+  tutorRespondedAt: string | null;
+  tutorEvidence: DisputeEvidenceItemDto[] | null;
   createdBy: DisputeUserDto | null;
   resolvedBy: DisputeUserDto | null;
   classSession: DisputeClassSessionDto | null;
   tutor: DisputeTutorDto | null;
   timeSinceCreation: string | null;
+}
+
+export interface DisputeEvidenceItemDto {
+  disputeEvidenceId: number;
+  fileUrl: string | null;
+  fileType: string | null;
+  description: string | null;
+  createdAt: string | null;
 }
 
 export type ResolutionType = 'refund_100' | 'refund_50' | 'release';
