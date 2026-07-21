@@ -96,7 +96,8 @@ const TransactionLedger = () => {
                 toCsvValue(tx.amount),
                 toCsvValue(tx.createdAt ? formatDateTime(tx.createdAt) : null),
             ]);
-            const csvContent = [header, ...rows].map((row) => row.join(',')).join('\n');
+            // BOM để Excel đọc đúng tiếng Việt.
+            const csvContent = '﻿' + [header, ...rows].map((row) => row.join(',')).join('\n');
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');

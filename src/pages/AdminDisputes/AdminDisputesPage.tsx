@@ -125,7 +125,7 @@ const AdminDisputesPage = () => {
             render: (dispute) => (
                 <div className="admin-ui-entity">
                     <span className="admin-ui-entity-primary">{dispute.tutorName || 'N/A'}</span>
-                    <span className="admin-ui-entity-secondary">Buổi học #{dispute.lessonId || 'N/A'}</span>
+                    <span className="admin-ui-entity-secondary">Buổi học #{dispute.classSessionId || 'N/A'}</span>
                 </div>
             ),
             minWidth: 180,
@@ -146,7 +146,7 @@ const AdminDisputesPage = () => {
         {
             key: 'amount',
             title: 'Số tiền',
-            render: (dispute) => <span className="admin-ui-amount">{formatCurrency(dispute.lessonPrice || 0)}</span>,
+            render: (dispute) => <span className="admin-ui-amount">{formatCurrency(dispute.classSessionPrice || 0)}</span>,
             hideOnMobile: true,
         },
         {
