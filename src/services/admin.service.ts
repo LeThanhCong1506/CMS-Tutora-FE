@@ -30,7 +30,7 @@ import type {
   AdminTransactionQueryParams,
   // User Management
   UserListItem,
-  UserDetail,
+  AdminUserDetail,
   // Settings
   Subject,
   PlatformConfig,
@@ -668,15 +668,17 @@ export const deleteUser = async (userId: string): Promise<void> => {
 };
 
 /**
- * Get detailed user information
- * Includes: user info, wallet, warnings, suspensions, stats
+ * Get admin-only user detail with Parent/Student relationships.
  */
-export const getUserDetail = async (userId: string): Promise<UserDetail> => {
+export const getUserDetail = async (userId: string, signal?: AbortSignal): Promise<AdminUserDetail> => {
   try {
-    const { data } = await api.get(`/admin/users/${userId}`);
-    return data;
+    const { data } = await api.get<{ content?: AdminUserDetail }>(`/admin/users/${userId}`, { signal });
+    if (!data.content) throw new Error('Phản hồi chi tiết người dùng không có dữ liệu.');
+    return data.content;
   } catch (error) {
-    console.error('getUserDetail error:', error);
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserDetail error:', error);
+    }
     throw error;
   }
 };

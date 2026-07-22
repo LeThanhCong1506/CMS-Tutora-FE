@@ -843,27 +843,37 @@ export interface UserSuspension {
   createdByName: string;
 }
 
-export interface UserDetail {
+export interface AdminLinkedUser {
+  userId: string | null;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  role: string;
+  studentProfileId: string | null;
+  hasAccount: boolean;
+}
+
+export interface AdminUserRelationships {
+  parent: AdminLinkedUser | null;
+  students: AdminLinkedUser[];
+}
+
+export interface AdminUserDetail {
   user: {
     userid: string;
+    username?: string | null;
     fullname: string;
     email: string;
-    phone: string;
-    primaryrole: UserRole;
-    status: UserStatus;
-    isidentityverified: boolean;
-    createdat: string;
-    lastloginat: string | null;
+    phone: string | null;
+    role: string;
+    status: number | null;
+    isidentityverified: boolean | null;
+    createdat: string | null;
+    lastLoginAt: string | null;
     avatarurl: string | null;
   };
-  wallet?: WalletInfo;
-  warnings: UserWarning[];
-  suspensions: UserSuspension[];
-  stats?: {
-    totalBookings: number;
-    totalRevenue: number;
-    averageRating: number;
-  };
+  relationships: AdminUserRelationships;
 }
 
 export interface IssueWarningRequest {
