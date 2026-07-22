@@ -113,6 +113,24 @@
     background-color: rgba(242, 240, 228, 0.4);
 }
 
+/* Chromium hiện cũng ưu tiên `scrollbar-color`, vì vậy chỉ đặt thumb trong
+   suốt không còn đủ để ẩn scrollbar của rail thu gọn. Ẩn cả gutter trên
+   desktop nhưng vẫn giữ overflow để người dùng cuộn bằng wheel/trackpad.
+   Khi sidebar được hover và mở rộng, các rule mặc định phía trên tự áp dụng
+   lại và hiển thị scrollbar 6px. */
+@media (min-width: 1025px) {
+    .sidebar:not(:hover) .sidebarNav {
+        scrollbar-width: none;
+        scrollbar-color: transparent transparent;
+        -ms-overflow-style: none;
+    }
+
+    .sidebar:not(:hover) .sidebarNav::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+}
+
 .navItem {
     position: relative;
     display: flex;
