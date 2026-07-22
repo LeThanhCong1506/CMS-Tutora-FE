@@ -142,6 +142,9 @@ function App() {
               <Route path="no-access" element={<NoAccessPage />} />
               <Route path="dashboard" element={guard(<AdminDashboardPage />, 'dashboard.view')} />
               <Route path="users" element={guard(<UserManagementPage />, 'user.view')} />
+              <Route path="users/students" element={guard(<UserManagementPage lockedRole="Student" />, 'user.view')} />
+              <Route path="users/parents" element={guard(<UserManagementPage lockedRole="Parent" />, 'user.view')} />
+              <Route path="users/tutors" element={guard(<UserManagementPage lockedRole="Tutor" />, 'user.view')} />
               <Route path="staff" element={guard(<StaffManagementPage />, undefined, true)} />
               <Route path="permission-groups" element={guard(<PermissionGroupsPage />, undefined, true)} />
               <Route path="vetting" element={<Navigate to="/admin-portal/vetting/profiles" replace />} />

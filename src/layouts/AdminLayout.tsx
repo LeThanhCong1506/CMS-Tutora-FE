@@ -35,7 +35,19 @@ const AdminLayout: React.FC = () => {
   const navItems = useMemo<NavItem[]>(() => {
     const configured: SecuredNavItem[] = [
       { path: '/admin-portal/dashboard', label: 'Bảng điều khiển', materialIcon: 'dashboard', permission: 'dashboard.view' },
-      { path: '/admin-portal/users', label: 'Quản lý người dùng', materialIcon: 'group', sectionLabel: 'Tài khoản', permission: 'user.view' },
+      {
+        path: '/admin-portal/users',
+        label: 'Quản lý người dùng',
+        materialIcon: 'group',
+        sectionLabel: 'Tài khoản',
+        permission: 'user.view',
+        children: [
+          { path: '/admin-portal/users', label: 'Tất cả', materialIcon: 'groups', permission: 'user.view' },
+          { path: '/admin-portal/users/students', label: 'Học viên', materialIcon: 'school', permission: 'user.view' },
+          { path: '/admin-portal/users/parents', label: 'Phụ huynh', materialIcon: 'family_restroom', permission: 'user.view' },
+          { path: '/admin-portal/users/tutors', label: 'Gia sư', materialIcon: 'cast_for_education', permission: 'user.view' },
+        ],
+      },
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/bookings', label: 'Quản lý đặt lịch', materialIcon: 'event_note', sectionLabel: 'Vận hành', permission: 'booking.view' },

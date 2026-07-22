@@ -42,6 +42,8 @@
     gap: 10.5px;
     min-height: 68px;
     box-sizing: border-box;
+    /* Ghim trên cùng: chỉ vùng nav ở giữa được cuộn. */
+    flex-shrink: 0;
 }
 
 .logoLink {
@@ -75,6 +77,45 @@
     padding: 12px;
     gap: 4px;
     flex: 1;
+    /* min-height:0 là bắt buộc: flex item mặc định min-height:auto nên không co
+       xuống dưới chiều cao nội dung → overflow không bao giờ kích hoạt và các
+       mục cuối bị .sidebar{overflow:hidden} cắt mất. */
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Cuộn hết danh sách thì dừng, không kéo lây trang nội dung phía sau. */
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.sidebarNav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebarNav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebarNav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+.sidebarNav::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.34);
+}
+
+/* Rail thu gọn chỉ rộng 68px — thanh cuộn ở đó vừa chật vừa xấu. Ẩn phần nhìn
+   thấy (vẫn cuộn được bằng chuột/trackpad); hover giãn ra thì thanh cuộn hiện lại. */
+@media (min-width: 1025px) {
+    .sidebar:not(:hover) .sidebarNav {
+        scrollbar-width: none;
+    }
+
+    .sidebar:not(:hover) .sidebarNav::-webkit-scrollbar {
+        width: 0;
+    }
 }
 
 .navItem {
@@ -415,6 +456,8 @@
 .sidebarUser {
     border-top: 1.2px solid rgba(255, 255, 255, 0.1);
     padding: 12px 8px;
+    /* Ghim đáy: thẻ người dùng + nút đăng xuất luôn thấy được. */
+    flex-shrink: 0;
 }
 
 .userCard {
