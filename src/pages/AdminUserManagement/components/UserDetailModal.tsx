@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatCurrency, formatDateTime } from '../../../utils/formatters';
 import { mockGetUserWarnings, mockGetUserSuspensions } from '../mockData';
 import type { FlatUserDetail } from '../mockData';
+import type { AdminLinkedUser, AdminUserRelationships } from '../../../types/admin.types';
+import { getUserDetail } from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
 import { Can, useAccess } from '../../../contexts/AccessContext';
 
@@ -56,6 +58,15 @@ const SEVERITY_META: Record<string, { label: string; variant: string }> = {
     low: { label: 'Thấp', variant: 'neutral' },
 };
 
+const createEmptyRelationships = (): AdminUserRelationships => ({ parent: null, students: [] });
+
+const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
 const UserDetailModal = ({
     isOpen,
     onClose,
@@ -72,8 +83,14 @@ const UserDetailModal = ({
     const [warnings, setWarnings] = useState<UserWarningRow[]>([]);
     const [suspensions, setSuspensions] = useState<UserSuspensionRow[]>([]);
     const [loading, setLoading] = useState(false);
+    const [relationships, setRelationships] = useState<AdminUserRelationships>(createEmptyRelationships);
+    const [relationshipLoading, setRelationshipLoading] = useState(false);
+    const [relationshipError, setRelationshipError] = useState<string | null>(null);
+    const relationshipRequestRef = useRef<AbortController | null>(null);
 
     const userId = user?.userid;
+    const normalizedRole = user?.primaryrole?.toLowerCase();
+    const supportsRelationships = normalizedRole === 'parent' || normalizedRole === 'student';
 
     const fetchUserData = useCallback(async () => {
         if (!userId) return;
@@ -92,6 +109,38 @@ const UserDetailModal = ({
         }
     }, [userId]);
 
+    const fetchRelationships = useCallback(async () => {
+        if (!userId || !supportsRelationships) return;
+
+        relationshipRequestRef.current?.abort();
+        const controller = new AbortController();
+        relationshipRequestRef.current = controller;
+
+        setRelationships(createEmptyRelationships());
+        setRelationshipError(null);
+        setRelationshipLoading(true);
+
+        try {
+            const detail = await getUserDetail(userId, controller.signal);
+            if (!controller.signal.aborted) {
+                setRelationships(detail.relationships ?? createEmptyRelationships());
+            }
+        } catch (error: unknown) {
+            const isCanceled =
+                controller.signal.aborted ||
+                (error as { code?: string; name?: string })?.code === 'ERR_CANCELED' ||
+                (error as { name?: string })?.name === 'AbortError';
+            if (!isCanceled) {
+                setRelationshipError('Không thể tải thông tin liên kết. Vui lòng thử lại.');
+            }
+        } finally {
+            if (relationshipRequestRef.current === controller) {
+                relationshipRequestRef.current = null;
+                setRelationshipLoading(false);
+            }
+        }
+    }, [supportsRelationships, userId]);
+
     // Tải lịch sử cảnh cáo / tạm ngưng mỗi lần mở modal cho một user.
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
@@ -99,9 +148,43 @@ const UserDetailModal = ({
     }, [isOpen, userId, fetchUserData]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    // Quan hệ gia đình là dữ liệu admin-only, tải riêng để lỗi API này không
+    // làm mất lịch sử cảnh cáo/tạm ngưng trong cùng modal.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!isOpen || !userId || !supportsRelationships) {
+            const activeRequest = relationshipRequestRef.current;
+            relationshipRequestRef.current = null;
+            activeRequest?.abort();
+            setRelationships(createEmptyRelationships());
+            setRelationshipError(null);
+            setRelationshipLoading(false);
+            return undefined;
+        }
+
+        void fetchRelationships();
+        return () => {
+            const activeRequest = relationshipRequestRef.current;
+            relationshipRequestRef.current = null;
+            activeRequest?.abort();
+        };
+    }, [fetchRelationships, isOpen, supportsRelationships, userId]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     if (!isOpen || !user) return null;
 
-    const isTutor = user.primaryrole?.toLowerCase() === 'tutor';
+    const isTutor = normalizedRole === 'tutor';
+    const isParent = normalizedRole === 'parent';
+    const relatedUsers: AdminLinkedUser[] = isParent
+        ? relationships.students
+        : relationships.parent
+          ? [relationships.parent]
+          : [];
+    const relationshipCountLabel = isParent
+        ? `${relatedUsers.length} học sinh`
+        : relatedUsers.length > 0
+          ? 'Đã liên kết'
+          : 'Chưa liên kết';
     const isBlocked = user.accountstatus === 'blocked';
     const roleDisplay = getRoleDisplay(user.primaryrole);
     const status = STATUS_META[user.accountstatus] ?? { label: user.accountstatus, variant: 'neutral' };
@@ -182,6 +265,108 @@ const UserDetailModal = ({
                             </div>
                         </div>
                     </section>
+
+                    {/* Quan hệ Parent ↔ Student được lấy từ student_profiles. */}
+                    {supportsRelationships && (
+                        <section className="um-section" aria-labelledby="user-relationships-title">
+                            <div className="um-section-head">
+                                <h3 id="user-relationships-title" className="um-section-title">
+                                    <span className="material-symbols-outlined">family_restroom</span>
+                                    {isParent ? 'Học sinh liên kết' : 'Phụ huynh liên kết'}
+                                </h3>
+                                {!relationshipLoading && !relationshipError && (
+                                    <span
+                                        className={`um-badge ${relatedUsers.length > 0 ? 'um-badge-info' : 'um-badge-neutral'}`}
+                                    >
+                                        {relationshipCountLabel}
+                                    </span>
+                                )}
+                            </div>
+
+                            {relationshipLoading ? (
+                                <div className="um-relationship-state" role="status" aria-live="polite">
+                                    <span className="material-symbols-outlined um-relationship-spin">
+                                        progress_activity
+                                    </span>
+                                    Đang tải thông tin liên kết…
+                                </div>
+                            ) : relationshipError ? (
+                                <div className="um-relationship-error" role="alert">
+                                    <span className="material-symbols-outlined">cloud_off</span>
+                                    <div>
+                                        <strong>Chưa thể tải liên kết</strong>
+                                        <span>{relationshipError}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="um-btn um-btn-secondary"
+                                        onClick={() => void fetchRelationships()}
+                                    >
+                                        <span className="material-symbols-outlined">refresh</span>
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : relatedUsers.length === 0 ? (
+                                <div className="um-empty">
+                                    {isParent
+                                        ? 'Phụ huynh này chưa có học sinh liên kết.'
+                                        : 'Học sinh này chưa liên kết với phụ huynh.'}
+                                </div>
+                            ) : (
+                                <ul className="um-relationship-list">
+                                    {relatedUsers.map((relatedUser) => {
+                                        const relatedRole = getRoleDisplay(relatedUser.role);
+                                        return (
+                                            <li
+                                                key={
+                                                    relatedUser.userId ??
+                                                    relatedUser.studentProfileId ??
+                                                    relatedUser.fullName
+                                                }
+                                                className="um-relationship-card"
+                                            >
+                                                <div className="um-relationship-avatar" aria-hidden="true">
+                                                    {relatedUser.avatarUrl ? (
+                                                        <img src={relatedUser.avatarUrl} alt="" loading="lazy" />
+                                                    ) : (
+                                                        <span>{getInitials(relatedUser.fullName)}</span>
+                                                    )}
+                                                </div>
+                                                <div className="um-relationship-content">
+                                                    <div className="um-relationship-name-row">
+                                                        <strong>{relatedUser.fullName}</strong>
+                                                        <span className="um-badge um-badge-neutral">
+                                                            {relatedRole.label}
+                                                        </span>
+                                                    </div>
+                                                    <div className="um-relationship-meta">
+                                                        {relatedUser.email && (
+                                                            <span>
+                                                                <span className="material-symbols-outlined">mail</span>
+                                                                {relatedUser.email}
+                                                            </span>
+                                                        )}
+                                                        {relatedUser.phone && (
+                                                            <span>
+                                                                <span className="material-symbols-outlined">call</span>
+                                                                {relatedUser.phone}
+                                                            </span>
+                                                        )}
+                                                        {!relatedUser.hasAccount && (
+                                                            <span className="um-relationship-account-state">
+                                                                <span className="material-symbols-outlined">person_off</span>
+                                                                Chưa có tài khoản đăng nhập
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </section>
+                    )}
 
                     {/* Ví điện tử — chỉ gia sư mới có dòng tiền */}
                     {isTutor && (
