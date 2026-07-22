@@ -17,6 +17,22 @@
     box-shadow: none;
 }
 
+.compact .th {
+    padding: 12px 16px;
+}
+
+.compact .td {
+    padding: 11px 16px;
+}
+
+.compact .pagination {
+    padding: 10px 16px;
+}
+
+.compact .stateContainer {
+    padding: 40px 20px;
+}
+
 /* Scrollable container for horizontal overflow on mobile */
 .tableScroll {
     width: 100%;
@@ -149,8 +165,8 @@
 }
 
 .pageBtn {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -177,8 +193,8 @@
 }
 
 .pageNumber {
-    min-width: 28px;
-    height: 28px;
+    min-width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -215,6 +231,16 @@
     padding: 0 2px;
 }
 
+@media (max-width: 1024px) {
+    .hideOnTablet {
+        display: none;
+    }
+
+    .adaptive .table {
+        min-width: 620px !important;
+    }
+}
+
 /* ─── Hide on Mobile ───────────────────────────── */
 @media (max-width: 768px) {
     .hideOnMobile {
@@ -234,6 +260,17 @@
         flex-direction: column;
         gap: 10px;
         align-items: center;
+    }
+
+    .adaptive .table {
+        min-width: 100% !important;
+        table-layout: fixed;
+    }
+
+    .adaptive .th,
+    .adaptive .td {
+        min-width: var(--data-table-mobile-min-width, 0) !important;
+        width: var(--data-table-mobile-width, auto) !important;
     }
 }
 

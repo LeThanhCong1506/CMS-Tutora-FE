@@ -20,8 +20,14 @@ export interface DataTableColumn<T = object> {
     maxWidth?: number;
     /** Width (fixed) */
     width?: number | string;
+    /** Width used by adaptive tables on screens < 769px */
+    mobileWidth?: number | string;
+    /** Minimum width used by adaptive tables on screens < 769px */
+    mobileMinWidth?: number;
     /** If true, this column is hidden on screens < 768px */
     hideOnMobile?: boolean;
+    /** If true, this column is hidden on screens < 1025px */
+    hideOnTablet?: boolean;
 }
 
 // ─── Pagination Config ──────────────────────────────────
@@ -56,14 +62,24 @@ export interface DataTableProps<T = object> {
     emptyIcon?: React.ReactNode;
     /** Whether rows are clickable */
     onRowClick?: (record: T, index: number) => void;
+    /** Whether clickable rows are also keyboard focus targets. Default: true */
+    focusableRows?: boolean;
     /** Optional pagination config. If omitted, no pagination is shown. */
     pagination?: PaginationConfig;
     /** Custom className for the outer wrapper */
     className?: string;
     /** Visual style. Use embedded when the table sits inside a SectionCard. Default: default */
     variant?: 'default' | 'embedded';
+    /** Row density. Compact is useful for operational/admin lists. Default: default */
+    density?: 'default' | 'compact';
+    /** Adapt table width and visible columns at tablet/mobile breakpoints. */
+    adaptive?: boolean;
     /** Minimum table width (for horizontal scroll on mobile). Default: 700 */
     minWidth?: number;
+    /** Accessible name for the table. */
+    tableLabel?: string;
+    /** Accessible label for each clickable row. */
+    rowAriaLabel?: (record: T, index: number) => string;
 }
 
 // ─── Pagination Sub-component ───────────────────────────
@@ -111,11 +127,12 @@ function TablePagination({ config }: { config: PaginationConfig }) {
             <span className={styles.paginationInfo}>
                 Hiển thị {startItem}–{endItem} trong số {total}
             </span>
-            <div className={styles.paginationControls}>
+            <nav className={styles.paginationControls} aria-label="Phân trang">
                 <button
+                    type="button"
                     className={styles.pageBtn}
-                    onClick={() => onChange(current - 1)}
-                    disabled={current === 1}
+                    onClick={() => onChange(Math.max(1, current - 1))}
+                    disabled={current <= 1}
                     aria-label="Trang trước"
                 >
                     <ChevronLeftIcon />
@@ -123,9 +140,12 @@ function TablePagination({ config }: { config: PaginationConfig }) {
 
                 {pageNumbers.map((num) => (
                     <button
+                        type="button"
                         key={num}
                         className={`${styles.pageNumber} ${current === num ? styles.pageActive : ''}`}
                         onClick={() => onChange(num)}
+                        aria-label={`Trang ${num}`}
+                        aria-current={current === num ? 'page' : undefined}
                     >
                         {num}
                     </button>
@@ -135,8 +155,10 @@ function TablePagination({ config }: { config: PaginationConfig }) {
                     <>
                         <span className={styles.paginationEllipsis}>…</span>
                         <button
+                            type="button"
                             className={styles.pageNumber}
                             onClick={() => onChange(totalPages)}
+                            aria-label={`Trang ${totalPages}`}
                         >
                             {totalPages}
                         </button>
@@ -144,14 +166,15 @@ function TablePagination({ config }: { config: PaginationConfig }) {
                 )}
 
                 <button
+                    type="button"
                     className={styles.pageBtn}
-                    onClick={() => onChange(current + 1)}
-                    disabled={current === totalPages}
+                    onClick={() => onChange(Math.min(totalPages, current + 1))}
+                    disabled={current >= totalPages}
                     aria-label="Trang tiếp"
                 >
                     <ChevronRightIcon />
                 </button>
-            </div>
+            </nav>
         </div>
     );
 }
@@ -196,14 +219,19 @@ function DataTable<T extends object>({
     emptyText = 'Chưa có dữ liệu',
     emptyIcon,
     onRowClick,
+    focusableRows = true,
     pagination,
     className,
     variant = 'default',
+    density = 'default',
+    adaptive = false,
     minWidth = 700,
+    tableLabel,
+    rowAriaLabel,
 }: DataTableProps<T>) {
     const getRowKey = (record: T, index: number): string | number => {
         if (typeof rowKey === 'function') return rowKey(record);
-        return record[rowKey] as string | number ?? index;
+        return (record[rowKey] as string | number) ?? index;
     };
 
     const getCellContent = (column: DataTableColumn<T>, record: T, index: number): React.ReactNode => {
@@ -212,11 +240,29 @@ function DataTable<T extends object>({
         return null;
     };
 
-    const handleRowKeyDown = (
-        event: React.KeyboardEvent<HTMLTableRowElement>,
-        record: T,
-        rowIndex: number,
-    ) => {
+    const getColumnStyle = (column: DataTableColumn<T>): React.CSSProperties => {
+        const style: React.CSSProperties & {
+            '--data-table-mobile-width'?: string;
+            '--data-table-mobile-min-width'?: string;
+        } = {
+            textAlign: column.align || 'left',
+            minWidth: column.minWidth,
+            maxWidth: column.maxWidth,
+            width: column.width,
+        };
+
+        if (column.mobileWidth !== undefined) {
+            style['--data-table-mobile-width'] =
+                typeof column.mobileWidth === 'number' ? `${column.mobileWidth}px` : column.mobileWidth;
+        }
+        if (column.mobileMinWidth !== undefined) {
+            style['--data-table-mobile-min-width'] = `${column.mobileMinWidth}px`;
+        }
+
+        return style;
+    };
+
+    const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>, record: T, rowIndex: number) => {
         if (!onRowClick) return;
         if (event.key !== 'Enter' && event.key !== ' ') return;
 
@@ -225,7 +271,10 @@ function DataTable<T extends object>({
     };
 
     return (
-        <div className={`${styles.tableWrapper} ${variant === 'embedded' ? styles.embedded : ''} ${className || ''}`}>
+        <div
+            className={`${styles.tableWrapper} ${variant === 'embedded' ? styles.embedded : ''} ${density === 'compact' ? styles.compact : ''} ${adaptive ? styles.adaptive : ''} ${className || ''}`}
+            aria-busy={loading}
+        >
             {loading ? (
                 <LoadingSpinner text={loadingText} />
             ) : data.length === 0 ? (
@@ -233,19 +282,14 @@ function DataTable<T extends object>({
             ) : (
                 <>
                     <div className={styles.tableScroll}>
-                        <table className={styles.table} style={{ minWidth }}>
+                        <table className={styles.table} style={{ minWidth }} aria-label={tableLabel}>
                             <thead>
                                 <tr>
                                     {columns.map((col) => (
                                         <th
                                             key={col.key}
-                                            className={`${styles.th} ${col.hideOnMobile ? styles.hideOnMobile : ''}`}
-                                            style={{
-                                                textAlign: col.align || 'left',
-                                                minWidth: col.minWidth,
-                                                maxWidth: col.maxWidth,
-                                                width: col.width,
-                                            }}
+                                            className={`${styles.th} ${col.hideOnMobile ? styles.hideOnMobile : ''} ${col.hideOnTablet ? styles.hideOnTablet : ''}`}
+                                            style={getColumnStyle(col)}
                                         >
                                             {col.title}
                                         </th>
@@ -258,20 +302,23 @@ function DataTable<T extends object>({
                                         key={getRowKey(record, rowIndex)}
                                         className={`${styles.row} ${onRowClick ? styles.clickableRow : ''}`}
                                         onClick={() => onRowClick?.(record, rowIndex)}
-                                        onKeyDown={(event) => handleRowKeyDown(event, record, rowIndex)}
-                                        tabIndex={onRowClick ? 0 : undefined}
-                                        aria-label={onRowClick ? 'Mở chi tiết dòng' : undefined}
+                                        onKeyDown={
+                                            focusableRows
+                                                ? (event) => handleRowKeyDown(event, record, rowIndex)
+                                                : undefined
+                                        }
+                                        tabIndex={onRowClick && focusableRows ? 0 : undefined}
+                                        aria-label={
+                                            onRowClick && focusableRows
+                                                ? (rowAriaLabel?.(record, rowIndex) ?? 'Mở chi tiết dòng')
+                                                : undefined
+                                        }
                                     >
                                         {columns.map((col) => (
                                             <td
                                                 key={col.key}
-                                                className={`${styles.td} ${col.hideOnMobile ? styles.hideOnMobile : ''}`}
-                                                style={{
-                                                    textAlign: col.align || 'left',
-                                                    minWidth: col.minWidth,
-                                                    maxWidth: col.maxWidth,
-                                                    width: col.width,
-                                                }}
+                                                className={`${styles.td} ${col.hideOnMobile ? styles.hideOnMobile : ''} ${col.hideOnTablet ? styles.hideOnTablet : ''}`}
+                                                style={getColumnStyle(col)}
                                             >
                                                 {getCellContent(col, record, rowIndex)}
                                             </td>

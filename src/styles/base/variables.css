@@ -80,6 +80,13 @@
     --radius-3xl: 56px;
     --radius-full: 9999px;
 
+    /* Interactive controls — buttons, inputs, selects.
+       Deliberately NOT pill-shaped: chỉnh 1 chỗ này là đổi bo góc toàn bộ nút. */
+    --radius-button: 8px;
+    --radius-control: 8px;
+    /* Badges/chips vẫn bo mềm hơn nút một chút, nhưng không tròn hẳn. */
+    --radius-badge: 6px;
+
     /* Spacing */
     --section-padding: clamp(3.5rem, 2.5rem + 2vw, 8rem);  /* 56px -> 128px responsive */
     --section-padding-y: clamp(3.5rem, 2.5rem + 2vw, 8rem);

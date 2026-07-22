@@ -1,825 +1,1422 @@
-/* ===== ADMIN USER MANAGEMENT PAGE ===== */
+/* ============================================================================
+   QUẢN LÝ NGƯỜI DÙNG — bộ style dùng chung cho 4 trang role-scoped
+   (/users, /users/students, /users/parents, /users/tutors) và toàn bộ modal
+   của khu vực này.
 
-/* Main Layout - styles handled by admin-layout.css */
-.user-mgmt-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--color-cream);
-    min-height: 100vh;
-    overflow-y: auto;
+   Nguyên tắc:
+   - Tiền tố `um-` (user management) → không đụng tới `vetting-*` đang dùng
+     chung với Kiểm duyệt / Khiếu nại / Nhân viên.
+   - Bo góc: nút & input 8px (--radius-button/--radius-control), thẻ 10–14px,
+     badge 6px. Không dùng pill.
+   - Mật độ cao hơn bản cũ: chiều cao control 36px, padding hàng gọn lại.
+   - File này nạp SAU admin-vetting-modal.css nên override được user-detail-*.
+   ========================================================================= */
+
+.um-scope {
+    --um-ink: var(--color-navy, #1a2238);
+    --um-muted: #475569;
+    --um-faint: #6b7280;
+    --um-line: rgba(26, 34, 56, 0.1);
+    --um-line-strong: rgba(26, 34, 56, 0.18);
+    --um-surface: #ffffff;
+    --um-surface-alt: #f8fafc;
+    --um-danger: #dc2626;
+    --um-warn: #b45309;
+    --um-ok: #15803d;
+    --um-control-h: 36px;
 }
 
-/* ===== HEADER AREA ===== */
-.user-mgmt-header {
-    width: 100%;
-    padding: 32px 32px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+/* Modal render qua portal-less overlay nên cần token độc lập với .um-scope. */
+.um-overlay {
+    --um-ink: var(--color-navy, #1a2238);
+    --um-muted: #475569;
+    --um-faint: #6b7280;
+    --um-line: rgba(26, 34, 56, 0.1);
+    --um-line-strong: rgba(26, 34, 56, 0.18);
+    --um-surface: #ffffff;
+    --um-surface-alt: #f8fafc;
+    --um-danger: #dc2626;
+    --um-warn: #b45309;
+    --um-ok: #15803d;
+    --um-control-h: 36px;
 }
 
-/* Breadcrumbs */
-.user-mgmt-breadcrumbs {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-}
+/* ============================ TOOLBAR (trang) ============================ */
 
-.breadcrumb-link {
-    color: var(--color-navy-60);
-    text-decoration: none;
-    transition: color 0.2s ease;
-}
-
-.breadcrumb-link:hover {
-    color: var(--color-navy);
-}
-
-.breadcrumb-separator {
-    color: var(--color-navy-40);
-}
-
-.breadcrumb-current {
-    color: var(--color-navy);
-    font-weight: 500;
-}
-
-/* Page Title */
-.user-mgmt-title-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-}
-
-.user-mgmt-title {
-    font-family: var(--font-serif);
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--color-navy);
-    line-height: 1.2;
-    margin: 0;
-}
-
-.user-mgmt-subtitle {
-    color: var(--color-navy-60);
-    margin: 4px 0 0;
-    font-size: 16px;
-}
-
-/* ===== FILTER & TOOLBAR ===== */
-.user-mgmt-toolbar {
-    padding: 0 32px 24px;
-    width: 100%;
-}
-
-.user-mgmt-toolbar-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-/* Search */
-/* Search row groups the text input + submit button so they always stay
-   side-by-side, even on mobile (where the parent toolbar stacks vertically). */
-.user-mgmt-search-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    /* Full search row (input + button) — bounded so it doesn't crowd the filters. */
-    max-width: 640px;
-    min-width: 0;
-}
-
-.user-mgmt-admin-toolbar {
-    align-items: flex-start;
-}
-
-.user-mgmt-search-wrapper {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-}
-
-.user-mgmt-search-input {
-    width: 100%;
-    height: 48px;
-    padding-left: 48px;
-    padding-right: 16px;
-    border-radius: var(--radius-xl);
-    background-color: var(--color-white);
-    border: 1px solid #e5e7eb;
-    color: var(--color-navy);
-    font-size: 14px;
-    outline: none;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.user-mgmt-search-input::placeholder {
-    color: var(--color-navy-40);
-}
-
-.user-mgmt-search-input:focus {
-    border-color: rgba(212, 180, 131, 0.5);
-    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.1);
-}
-
-.user-mgmt-search-icon {
+.um-visually-hidden {
     position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-navy-40);
-    font-size: 20px;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.um-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--um-line);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.um-search-form {
+    display: flex;
+    align-items: center;
+    flex: 1 1 420px;
+    min-width: 300px;
+    max-width: 560px;
+    gap: 8px;
+}
+
+.um-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.um-search-icon {
+    position: absolute;
+    left: 11px;
+    font-size: 18px;
+    color: var(--um-faint);
     pointer-events: none;
 }
 
-/* Search submit button — sibling of the input, matches the 48px height
-   used across the toolbar (filter dropdowns, export button) so the row
-   reads as one cohesive control strip. Manual trigger pattern: typing
-   only updates local state; this button (or pressing Enter) fires the API. */
-.user-mgmt-search-btn {
-    flex: 0 0 auto;
+.um-search-input {
+    width: 100%;
+    height: var(--um-control-h);
+    padding: 0 36px 0 36px;
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-control);
+    background: var(--um-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: var(--um-ink);
+    outline: none;
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.um-search-input::-webkit-search-cancel-button {
+    appearance: none;
+}
+
+.um-search-input::placeholder {
+    color: var(--um-faint);
+}
+
+.um-search-input:focus {
+    border-color: var(--um-line-strong);
+    box-shadow: 0 0 0 3px rgba(26, 34, 56, 0.12);
+}
+
+.um-search-clear {
+    position: absolute;
+    right: 5px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    height: 48px;
-    padding: 0 22px;
-    border-radius: var(--radius-xl);
+    width: 28px;
+    height: 28px;
     border: none;
-    background-color: var(--color-navy);
-    color: #fff;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--um-faint);
     cursor: pointer;
-    transition: background-color 0.18s ease, transform 0.1s ease, opacity 0.18s ease, box-shadow 0.18s ease;
-    white-space: nowrap;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
-.user-mgmt-search-btn-icon {
-    font-size: 18px;
-    line-height: 1;
+.um-search-clear:hover {
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--um-ink);
 }
 
-.user-mgmt-search-btn:hover:not(:disabled) {
-    background-color: #2a3248;
-    box-shadow: 0 4px 10px rgba(26, 34, 56, 0.15);
+.um-search-clear .material-symbols-outlined {
+    font-size: 16px;
 }
 
-.user-mgmt-search-btn:active:not(:disabled) {
-    transform: scale(0.98);
-}
-
-.user-mgmt-search-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.35);
-}
-
-.user-mgmt-search-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Filters */
-.user-mgmt-filters {
+.um-filter-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.user-mgmt-filter-group {
+.um-filter-field {
     position: relative;
-    flex: 0 0 auto;
+    display: block;
+    min-width: 154px;
 }
 
-/* Native <select> styled to match the rest of the toolbar.
-   Both filter selects share the same min-width so they line up regardless
-   of the selected option's text length ("Hoạt động" vs "Vai trò: Tất cả"). */
-.user-mgmt-filter-btn {
-    /* Strip browser-default chrome so we can draw our own */
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
+.um-filter-icon {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    z-index: 1;
+    transform: translateY(-50%);
+    font-size: 17px;
+    color: var(--um-muted);
+    pointer-events: none;
+}
 
-    height: 48px;
-    min-width: 200px;
-    padding: 0 44px 0 16px;       /* right padding leaves room for the custom chevron */
-    border-radius: var(--radius-xl);
-    background-color: var(--color-white);
-    border: 1px solid #e5e7eb;
-    color: var(--color-navy);
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 48px;            /* vertical-center text without using flex on <select> */
-    cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-
-    /* Custom chevron — matches the navy used across the admin portal */
-    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%231a2238' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+.um-select {
+    width: 100%;
+    min-width: 154px;
+    height: var(--um-control-h);
+    padding: 0 30px 0 34px;
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-control);
+    background-color: var(--um-surface);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%2364748b' stroke-width='1.6'%3E%3Cpath d='M3.5 5.5L7 9l3.5-3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 16px center;
-}
-
-.user-mgmt-filter-btn:hover {
-    border-color: rgba(212, 180, 131, 0.5);
-}
-
-.user-mgmt-filter-btn:focus-visible {
+    background-position: right 9px center;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--um-ink);
+    cursor: pointer;
+    appearance: none;
     outline: none;
-    border-color: var(--color-gold);
-    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.18);
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
 }
 
-/* Legacy icon slot inside the filter button — hidden because the custom
-   chevron in the background-image is now the single source of truth */
-.user-mgmt-filter-btn .material-symbols-outlined {
-    display: none;
+.um-select:hover {
+    border-color: var(--um-line-strong);
 }
 
-/* Divider */
-.user-mgmt-divider {
-    display: none;
-    width: 1px;
-    height: 32px;
-    background-color: #e5e7eb;
-    margin: 0 8px;
+.um-select:focus-visible {
+    border-color: var(--um-line-strong);
+    box-shadow: 0 0 0 3px rgba(26, 34, 56, 0.12);
 }
 
-@media (min-width: 768px) {
-    .user-mgmt-divider {
-        display: block;
+.um-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: var(--um-control-h);
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    background: transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--um-muted);
+    cursor: pointer;
+}
+
+.um-reset-btn:hover {
+    border-color: var(--um-line);
+    background: var(--um-surface);
+    color: var(--um-ink);
+}
+
+.um-reset-btn .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.um-result-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 18px;
+    border-bottom: 1px solid var(--um-line);
+    background: var(--um-surface-alt);
+    font-size: 12px;
+    color: var(--um-muted);
+}
+
+.um-result-bar > .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--um-faint);
+}
+
+.um-result-bar strong {
+    color: #475569;
+    font-weight: 600;
+}
+
+.um-result-hint {
+    margin-left: auto;
+    color: var(--um-faint);
+}
+
+.um-result-icon-spin {
+    animation: um-spin 0.8s linear infinite;
+}
+
+@keyframes um-spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 
-/* Export Button */
-.user-mgmt-export-btn {
-    height: 48px;
-    padding: 0 24px;
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--color-gold);
-    color: var(--color-navy);
-    background-color: transparent;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.user-mgmt-export-btn:hover {
-    background-color: rgba(212, 180, 131, 0.1);
-}
-
-.user-mgmt-export-btn .material-symbols-outlined {
-    color: var(--color-gold);
-    font-size: 20px;
-}
-
-/* ===== TABLE CONTAINER ===== */
-.user-mgmt-table-container {
-    flex: 1;
-    padding: 0 32px 32px;
-    overflow: hidden;
-}
-
-.user-mgmt-table-wrapper {
-    background-color: var(--color-white);
-    width: 100%;
-    height: 100%;
-    border-radius: 24px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #f3f4f6;
-    overflow: hidden;
-}
-
-/* Table Header */
-.user-mgmt-table-header {
-    display: grid;
-    grid-template-columns: 4fr 2fr 2fr 2fr 1fr 1fr;
-    gap: 16px;
-    padding: 16px 24px;
-    border-bottom: 1px solid #f3f4f6;
-    background-color: rgba(249, 250, 251, 0.5);
-}
-
-.user-mgmt-table-header>div {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--color-navy-50);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.user-mgmt-col-actions {
-    text-align: right;
-}
-
-/* Table Body */
-.user-mgmt-table-body {
-    overflow-y: auto;
-    flex: 1;
-    padding: 8px;
-}
-
-.user-mgmt-row {
-    display: grid;
-    grid-template-columns: 4fr 2fr 2fr 2fr 1fr 1fr;
-    gap: 16px;
-    align-items: center;
-    padding: 12px 16px;
-    border-radius: var(--radius-xl);
-    transition: background-color 0.2s ease;
-}
-
-.user-mgmt-row:hover {
-    background-color: rgba(250, 249, 246, 0.5);
-}
-
-/* User Identity Column */
-.user-mgmt-user-identity {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.user-mgmt-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #f3f4f6;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    flex-shrink: 0;
-}
-
-.user-mgmt-avatar-suspended {
-    filter: grayscale(0.3);
-}
-
-.user-mgmt-avatar-initials {
-    background-color: rgba(26, 34, 56, 0.05);
-    color: var(--color-navy);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
-    font-family: var(--font-serif);
-    border: 1px solid #f3f4f6;
-}
-
-.user-mgmt-user-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.user-mgmt-user-name {
-    font-family: var(--font-serif);
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-navy);
-    line-height: 1.3;
-}
-
-.user-mgmt-user-email {
-    font-size: 14px;
-    color: var(--color-navy-50);
-}
-
-/* Role Badges */
-.user-mgmt-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: var(--radius-lg);
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.user-mgmt-badge-tutor {
-    background-color: rgba(212, 180, 131, 0.1);
-    color: var(--color-navy);
-    border: 1px solid rgba(212, 180, 131, 0.2);
-}
-
-.user-mgmt-badge-student {
-    background-color: #f3f4f6;
-    color: var(--color-navy-60);
-    border: 1px solid #e5e7eb;
-}
-
-/* Date Column */
-.user-mgmt-col-date {
-    font-size: 14px;
-    color: var(--color-navy-70);
-    font-weight: 500;
-}
-
-/* Performance Column */
-.user-mgmt-performance {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.user-mgmt-star {
-    color: #16a34a;
-    font-size: 18px;
-}
-
-.user-mgmt-rating {
-    font-size: 14px;
-    font-weight: 700;
-    color: #15803d;
-}
-
-.user-mgmt-rating-max {
-    font-size: 12px;
-    color: var(--color-navy-40);
-}
-
-.user-mgmt-flag {
-    color: var(--color-burgundy);
-    font-size: 18px;
-}
-
-.user-mgmt-flags {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-burgundy);
-}
-
-.user-mgmt-flags-detail {
-    font-size: 12px;
-    color: rgba(99, 27, 27, 0.8);
-}
-
-.user-mgmt-warning {
-    color: #f59e0b;
-    font-size: 18px;
-}
-
-.user-mgmt-warning-text {
-    font-size: 14px;
-    font-weight: 700;
-    color: #ea580c;
-}
-
-.user-mgmt-no-data {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-navy-40);
-}
-
-/* Status Badges */
-.user-mgmt-status {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 12px;
-    border-radius: var(--radius-full);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.user-mgmt-status-active {
-    background-color: #d1fae5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
-}
-
-.user-mgmt-status-suspended {
-    background-color: var(--color-white);
-    color: var(--color-burgundy);
-    border: 1px solid var(--color-burgundy);
-}
-
-.user-mgmt-status-pending {
-    background-color: #f3f4f6;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
-}
-
-.user-mgmt-status-probation {
-    background-color: #fff7ed;
-    color: #c2410c;
-    border: 1px solid #fed7aa;
-}
-
-/* Action Button */
-.user-mgmt-action-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-    background: none;
-    border: none;
-    color: var(--color-navy-40);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-left: auto;
-}
-
-.user-mgmt-action-btn:hover {
-    background-color: #f3f4f6;
-    color: var(--color-navy);
-}
-
-.user-mgmt-view-btn {
-    min-width: 74px;
-    padding-inline: 12px;
-}
-
-/* ===== PAGINATION ===== */
-.user-mgmt-pagination {
-    padding: 16px 24px;
-    border-top: 1px solid #f3f4f6;
-    background-color: rgba(249, 250, 251, 0.3);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.user-mgmt-pagination-info {
-    color: var(--color-navy-50);
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.user-mgmt-pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.user-mgmt-page-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-    border: 1px solid #e5e7eb;
-    background-color: transparent;
-    color: var(--color-navy-60);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.user-mgmt-page-btn:hover {
-    background-color: var(--color-white);
-    color: var(--color-navy);
-}
-
-.user-mgmt-page-btn .material-symbols-outlined {
-    font-size: 14px;
-}
-
-.user-mgmt-page-number {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-    border: 1px solid transparent;
-    background-color: transparent;
-    color: var(--color-navy-60);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.user-mgmt-page-number:hover {
-    background-color: #f3f4f6;
-}
-
-.user-mgmt-page-active {
-    background-color: var(--color-navy);
-    color: var(--color-gold);
-    font-weight: 700;
-    border-color: var(--color-navy);
-}
-
-.user-mgmt-pagination-ellipsis {
-    color: var(--color-navy-40);
-}
-
-/* ===== SIDEBAR PROFILE SECTION ===== */
-.admin-profile-section {
+.um-load-error {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-height: 160px;
+    padding: 28px;
+    color: var(--um-muted);
 }
 
-.admin-profile-avatar {
-    width: 40px;
-    height: 40px;
+.um-load-error > .material-symbols-outlined {
+    font-size: 28px;
+    color: var(--um-danger);
+}
+
+.um-load-error-copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.um-load-error-copy strong {
+    color: var(--um-ink);
+    font-size: 14px;
+}
+
+.um-empty-icon {
+    font-size: 40px;
+    color: var(--um-faint);
+}
+
+/* ============================= BẢNG (trang) ============================= */
+
+.um-cell-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.um-avatar {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
     border-radius: 50%;
-    background-color: rgba(212, 180, 131, 0.2);
-    border: 1px solid rgba(212, 180, 131, 0.3);
+    object-fit: cover;
+    background: var(--um-surface-alt);
+    border: 1px solid var(--um-line);
+}
+
+.um-cell-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.um-cell-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--um-ink);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.um-cell-sub {
+    font-size: 12px;
+    color: var(--um-muted);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.um-cell-mobile-meta {
+    display: none;
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--um-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.um-meta {
+    font-size: 12.5px;
+    color: var(--um-muted);
+    white-space: nowrap;
+}
+
+.um-meta-dim {
+    color: var(--um-faint);
+}
+
+/* Cột "Lịch sử": trạng thái tốt / có cảnh cáo / có tạm ngưng */
+.um-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.um-flag .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.um-flag-warn {
+    color: var(--um-warn);
+}
+
+.um-flag-suspend {
+    color: var(--um-danger);
+}
+
+.um-flag-ok {
+    color: var(--um-faint);
+    font-weight: 500;
+}
+
+/* Nút hành động trong hàng — gọn, chỉ icon trên màn hẹp. */
+.um-row-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-button);
+    background: var(--um-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--um-ink);
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease;
+}
+
+.um-row-btn:hover {
+    background: var(--um-surface-alt);
+    border-color: var(--um-line-strong);
+}
+
+.um-row-btn:focus-visible,
+.um-search-clear:focus-visible,
+.um-reset-btn:focus-visible,
+.um-btn:focus-visible {
+    outline: 2px solid rgba(212, 180, 131, 0.9);
+    outline-offset: 2px;
+}
+
+.um-row-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+/* =============================== BADGE =============================== */
+
+.um-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius-badge);
+    border: 1px solid transparent;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.um-badge-neutral {
+    background: rgba(100, 116, 139, 0.1);
+    border-color: rgba(100, 116, 139, 0.18);
+    color: #475569;
+}
+
+.um-badge-info {
+    background: rgba(37, 99, 235, 0.09);
+    border-color: rgba(37, 99, 235, 0.18);
+    color: #1d4ed8;
+}
+
+.um-badge-warning {
+    background: rgba(180, 83, 9, 0.1);
+    border-color: rgba(180, 83, 9, 0.2);
+    color: var(--um-warn);
+}
+
+.um-badge-success {
+    background: rgba(21, 128, 61, 0.1);
+    border-color: rgba(21, 128, 61, 0.2);
+    color: var(--um-ok);
+}
+
+.um-badge-danger {
+    background: rgba(220, 38, 38, 0.09);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: var(--um-danger);
+}
+
+/* =============================== MODAL =============================== */
+
+.um-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-gold);
-    font-family: var(--font-serif);
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+    animation: um-fade 0.14s ease;
+}
+
+@keyframes um-fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes um-pop {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.um-modal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: min(88vh, 860px);
+    background: var(--um-surface);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px -16px rgba(15, 23, 42, 0.32);
+    overflow: hidden;
+    animation: um-pop 0.16s ease;
+}
+
+.um-modal-sm {
+    max-width: 440px;
+}
+.um-modal-md {
+    max-width: 560px;
+}
+.um-modal-lg {
+    max-width: 880px;
+}
+
+.um-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--um-line);
+}
+
+.um-modal-head-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.um-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 16px;
+    font-weight: 700;
+    color: var(--um-ink);
+    line-height: 1.3;
+}
+
+.um-modal-title .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.um-modal-title-danger {
+    color: #991b1b;
+}
+.um-modal-title-warn {
+    color: var(--um-warn);
+}
+
+.um-modal-sub {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--um-muted);
+}
+
+.um-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    background: transparent;
+    color: var(--um-muted);
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.um-modal-close:hover {
+    background: rgba(26, 34, 56, 0.07);
+    color: var(--um-ink);
+}
+
+.um-modal-close .material-symbols-outlined {
+    font-size: 19px;
+}
+
+.um-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 18px;
+}
+
+.um-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+.um-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.um-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(26, 34, 56, 0.16);
+    border-radius: 8px;
+}
+.um-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(26, 34, 56, 0.28);
+}
+
+.um-modal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--um-line);
+    background: var(--um-surface-alt);
+}
+
+/* Đẩy nhóm nút phụ sang trái, tách khỏi nhóm xác nhận bên phải. */
+.um-foot-left {
+    margin-right: auto;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ============================== NÚT ============================== */
+
+.um-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--um-control-h);
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.um-btn .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.um-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.um-btn-primary {
+    background: var(--um-ink);
+    color: #fff;
+}
+
+.um-btn-primary:hover:not(:disabled) {
+    background: #24304f;
+}
+
+.um-btn-secondary {
+    background: var(--um-surface);
+    border-color: var(--um-line);
+    color: var(--um-ink);
+}
+
+.um-btn-secondary:hover:not(:disabled) {
+    background: var(--um-surface-alt);
+    border-color: var(--um-line-strong);
+}
+
+.um-btn-danger {
+    background: var(--um-danger);
+    color: #fff;
+}
+
+.um-btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.um-btn-danger-soft {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.22);
+    color: var(--um-danger);
+}
+
+.um-btn-danger-soft:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.14);
+}
+
+.um-btn-warn {
+    background: rgba(180, 83, 9, 0.09);
+    border-color: rgba(180, 83, 9, 0.22);
+    color: var(--um-warn);
+}
+
+.um-btn-warn:hover:not(:disabled) {
+    background: rgba(180, 83, 9, 0.15);
+}
+
+/* ============================== FORM ============================== */
+
+.um-field {
+    margin-bottom: 14px;
+}
+
+.um-field:last-child {
+    margin-bottom: 0;
+}
+
+.um-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.um-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.um-req {
+    color: var(--um-danger);
+}
+
+.um-input,
+.um-textarea {
+    width: 100%;
+    padding: 0 11px;
+    height: var(--um-control-h);
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-control);
+    background: var(--um-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: var(--um-ink);
+    outline: none;
+    box-sizing: border-box;
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.um-textarea {
+    height: auto;
+    min-height: 92px;
+    padding: 9px 11px;
+    line-height: 1.55;
+    resize: vertical;
+}
+
+.um-input::placeholder,
+.um-textarea::placeholder {
+    color: var(--um-faint);
+}
+
+.um-input:focus,
+.um-textarea:focus {
+    border-color: var(--um-line-strong);
+    box-shadow: 0 0 0 3px rgba(26, 34, 56, 0.12);
+}
+
+.um-input:disabled,
+.um-textarea:disabled {
+    background: var(--um-surface-alt);
+    color: var(--um-muted);
+    cursor: not-allowed;
+}
+
+.um-input-error,
+.um-textarea-error {
+    border-color: var(--um-danger);
+}
+
+.um-input-error:focus,
+.um-textarea-error:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.um-hint {
+    margin: 5px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--um-faint);
+}
+
+.um-error {
+    margin: 5px 0 0;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--um-danger);
+}
+
+.um-counter {
+    float: right;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--um-faint);
+}
+
+/* Nhóm nút chọn nhanh (lý do mẫu, thời hạn…) */
+.um-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.um-chip {
+    padding: 5px 10px;
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-badge);
+    background: var(--um-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.um-chip:hover {
+    background: var(--um-surface-alt);
+    border-color: var(--um-line-strong);
+    color: var(--um-ink);
+}
+
+.um-chip-active {
+    background: var(--um-ink);
+    border-color: var(--um-ink);
+    color: #fff;
+}
+
+/* Lựa chọn dạng thẻ (mức độ cảnh cáo, kiểu tạm ngưng) */
+.um-options {
+    display: grid;
+    gap: 8px;
+}
+
+.um-severity-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.um-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--um-line);
+    border-radius: var(--radius-control);
+    background: var(--um-surface);
+    cursor: pointer;
+    text-align: left;
+    transition:
+        border-color 0.16s ease,
+        background-color 0.16s ease;
+}
+
+.um-option:hover {
+    border-color: var(--um-line-strong);
+    background: var(--um-surface-alt);
+}
+
+.um-option-active {
+    border-color: var(--um-ink);
+    background: rgba(26, 34, 56, 0.04);
+    box-shadow: inset 0 0 0 1px var(--um-ink);
+}
+
+.um-option-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--um-ink);
+}
+
+.um-option-desc {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--um-muted);
+}
+
+/* ========================= KHỐI THÔNG TIN ========================= */
+
+.um-section + .um-section {
+    margin-top: 18px;
+}
+
+.um-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 9px;
+}
+
+.um-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--um-muted);
+}
+
+.um-section-title .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.um-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--um-line);
+    border: 1px solid var(--um-line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.um-info-item {
+    padding: 9px 11px;
+    background: var(--um-surface);
+    min-width: 0;
+}
+
+.um-info-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--um-faint);
+}
+
+.um-info-value {
+    margin: 3px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--um-ink);
+    overflow-wrap: anywhere;
+}
+
+.um-info-value code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+}
+
+/* Thẻ số liệu (ví tiền gia sư) */
+.um-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.um-stat {
+    padding: 10px 12px;
+    border: 1px solid var(--um-line);
+    border-radius: 10px;
+    background: var(--um-surface-alt);
+}
+
+.um-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--um-faint);
+}
+
+.um-stat-value {
+    margin: 3px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--um-ink);
+}
+
+.um-stat-value-ok {
+    color: var(--um-ok);
+}
+.um-stat-value-hold {
+    color: var(--um-warn);
+}
+
+/* Bảng gọn trong modal (lịch sử cảnh cáo / tạm ngưng) */
+.um-table-wrap {
+    border: 1px solid var(--um-line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.um-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.um-table th {
+    padding: 8px 10px;
+    background: var(--um-surface-alt);
+    border-bottom: 1px solid var(--um-line);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--um-muted);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.um-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--um-line);
+    color: var(--um-ink);
+    vertical-align: top;
+}
+
+.um-table tr:last-child td {
+    border-bottom: none;
+}
+
+.um-center {
+    text-align: center;
+}
+
+.um-table-note {
+    margin-left: 5px;
+    font-size: 11.5px;
+    color: var(--um-faint);
+}
+
+.um-empty {
+    padding: 14px;
+    border: 1px dashed var(--um-line-strong);
+    border-radius: 10px;
+    background: var(--um-surface-alt);
+    font-size: 12.5px;
+    color: var(--um-muted);
+    text-align: center;
+}
+
+.um-loading {
+    padding: 14px;
+    font-size: 12.5px;
+    color: var(--um-muted);
+    text-align: center;
+}
+
+/* Hộp nhấn mạnh (cảnh báo, lưu ý) */
+.um-callout {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--um-line);
+    border-radius: 10px;
+    background: var(--um-surface-alt);
+    margin-bottom: 14px;
+}
+
+.um-callout .material-symbols-outlined {
+    font-size: 19px;
+    flex-shrink: 0;
+}
+
+.um-callout-title {
+    margin: 0 0 2px;
+    font-size: 12.5px;
     font-weight: 700;
 }
 
-.admin-profile-info {
+.um-callout-text {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.um-callout-warn {
+    background: rgba(180, 83, 9, 0.07);
+    border-color: rgba(180, 83, 9, 0.22);
+    color: var(--um-warn);
+}
+
+.um-callout-danger {
+    background: rgba(220, 38, 38, 0.06);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: #991b1b;
+}
+
+.um-callout-info {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.18);
+    color: #1d4ed8;
+}
+
+/* ==================== DANH TÍNH (đầu modal) ==================== */
+
+.um-identity {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border: 1px solid var(--um-line);
+    border-radius: 10px;
+    background: var(--um-surface-alt);
+    margin-bottom: 14px;
 }
 
-.admin-profile-name {
+.um-identity-avatar {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--um-line);
+}
+
+.um-identity-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.um-identity-name {
+    margin: 0;
     font-size: 14px;
-    font-weight: 500;
-    color: var(--color-white);
+    font-weight: 700;
+    color: var(--um-ink);
+    line-height: 1.3;
 }
 
-.admin-profile-role {
+.um-identity-sub {
+    margin: 2px 0 0;
     font-size: 12px;
-    color: var(--color-white-40);
+    color: var(--um-muted);
+    overflow-wrap: anywhere;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 1200px) {
+/* Header của modal chi tiết: avatar lớn + tên + badge */
+.um-detail-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
 
-    .user-mgmt-table-header,
-    .user-mgmt-row {
-        grid-template-columns: 3fr 1.5fr 1.5fr 1.5fr 1fr 0.5fr;
+.um-detail-avatar {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--um-surface-alt);
+    border: 1px solid var(--um-line);
+}
+
+.um-detail-headinfo {
+    min-width: 0;
+}
+
+.um-detail-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.um-detail-name {
+    margin: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--um-ink);
+    line-height: 1.25;
+}
+
+.um-detail-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--um-muted);
+}
+
+.um-detail-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.um-detail-meta-item .material-symbols-outlined {
+    font-size: 15px;
+}
+
+.um-detail-meta-item code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: rgba(26, 34, 56, 0.06);
+}
+
+/* ============================ RESPONSIVE ============================ */
+
+@media (max-width: 1024px) {
+    .um-toolbar {
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+
+    .um-search-form {
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .um-filter-group {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+    }
+
+    .um-filter-field {
+        flex: 1 1 170px;
     }
 }
 
 @media (max-width: 768px) {
-    .user-mgmt-main {
-        margin-left: 0;
+    .um-info-grid,
+    .um-stat-grid,
+    .um-grid-2 {
+        grid-template-columns: 1fr;
     }
 
-    .user-mgmt-header {
-        padding: 16px 12px 12px;
-    }
-
-    .user-mgmt-title {
-        font-size: 22px;
-    }
-
-    .user-mgmt-subtitle {
-        font-size: 13px;
-    }
-
-    .user-mgmt-toolbar {
-        padding: 0 12px 12px;
-    }
-
-    .user-mgmt-toolbar-inner {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-
-    /* Keep the input + button on the same row on mobile too — stacking
-       them vertically would feel awkward for a search action. */
-    .user-mgmt-search-row {
+    .um-page-actions {
         width: 100%;
-        max-width: 100%;
-        gap: 8px;
     }
 
-    .user-mgmt-search-wrapper {
-        max-width: 100%;
-    }
-
-    .user-mgmt-search-input {
-        height: 42px;
-        font-size: 13px;
-        padding-right: 16px;
-    }
-
-    .user-mgmt-search-btn {
-        height: 42px;
-        padding: 0 14px;
-        font-size: 13px;
-    }
-
-    .user-mgmt-filters {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .user-mgmt-filter-group {
+    .um-page-actions .admin-ui-button {
         flex: 1 1 0;
+    }
+
+    .um-toolbar {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .um-search-form {
         min-width: 0;
     }
 
-    .user-mgmt-filter-btn {
-        height: 40px;
-        font-size: 13px;
-        line-height: 40px;
-        /* Allow shrinking below the desktop min-width on narrow screens */
+    .um-search-input {
+        font-size: 16px;
+    }
+
+    .um-filter-field,
+    .um-select {
         min-width: 0;
-        width: 100%;
     }
 
-    .user-mgmt-export-btn {
-        width: 100%;
-        height: 40px;
-        justify-content: center;
-        font-size: 13px;
+    .um-result-bar {
+        padding-inline: 14px;
     }
 
-    .user-mgmt-table-container {
-        padding: 0 12px 12px;
-    }
-
-    .user-mgmt-table-wrapper {
-        border-radius: 16px;
-    }
-
-    .user-mgmt-table-header {
+    .um-result-hint {
         display: none;
     }
 
-    .user-mgmt-row {
-        grid-template-columns: 1fr;
-        padding: 14px;
-        gap: 10px;
-        border: 1px solid #f3f4f6;
-        border-radius: 12px;
-        margin-bottom: 8px;
-        background: #fff;
+    .um-cell-mobile-meta {
+        display: block;
     }
 
-    .user-mgmt-col-identity {
-        grid-column: 1 / -1;
+    .um-row-btn-label {
+        display: none;
     }
 
-    .user-mgmt-avatar {
-        width: 40px;
-        height: 40px;
+    .um-row-btn {
+        width: 32px;
+        padding: 0;
     }
 
-    .user-mgmt-user-name {
-        font-size: 15px;
+    .um-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .user-mgmt-user-email {
-        font-size: 12px;
+    .um-table {
+        min-width: 560px;
     }
 
-    /* Show role, date, status side by side on mobile */
-    .user-mgmt-col-role,
-    .user-mgmt-col-date,
-    .user-mgmt-col-performance,
-    .user-mgmt-col-status {
-        display: inline-flex;
-        font-size: 12px;
+    .um-modal {
+        max-height: 92vh;
     }
 
-    .user-mgmt-col-actions {
-        text-align: left;
+    .um-modal-foot .um-btn {
+        flex: 1 1 auto;
     }
 
-    .user-mgmt-action-btn {
-        margin-left: 0;
-    }
-
-    .user-mgmt-pagination {
-        flex-direction: column;
-        gap: 10px;
-        align-items: center;
-        padding: 12px 16px;
-    }
-
-    .user-mgmt-pagination-info {
-        font-size: 12px;
+    .um-foot-left {
+        width: 100%;
+        margin-right: 0;
+        order: 2;
     }
 }
 
-/* Drop the search-button icon prefix on very narrow phones so the
-   button doesn't crowd the input. The label alone is enough context. */
 @media (max-width: 480px) {
-    .user-mgmt-search-btn-icon {
-        display: none;
+    .um-page-actions {
+        gap: 8px;
     }
-    .user-mgmt-search-btn {
-        padding: 0 12px;
+
+    .um-page-actions .admin-ui-button {
+        padding-inline: 10px;
+    }
+
+    .um-toolbar {
+        padding: 12px;
+    }
+
+    .um-search-form {
+        gap: 6px;
+    }
+
+    .um-search-submit {
+        padding-inline: 12px;
+    }
+
+    .um-filter-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .um-filter-group > :only-child {
+        grid-column: 1 / -1;
+    }
+
+    .um-severity-options {
+        grid-template-columns: 1fr;
+    }
+
+    .um-reset-btn {
+        grid-column: 1 / -1;
+        width: 100%;
+        border-color: var(--um-line);
+        background: var(--um-surface);
+    }
+
+    .um-result-bar {
+        padding-inline: 12px;
+    }
+
+    .um-avatar {
+        width: 34px;
+        height: 34px;
+    }
+
+    .um-load-error {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 24px 18px;
+    }
+
+    .um-load-error .um-btn {
+        width: 100%;
+    }
+
+    .um-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .um-modal {
+        max-height: 94vh;
+        border-radius: 14px 14px 0 0;
+    }
+
+    .um-modal-head,
+    .um-modal-body,
+    .um-modal-foot {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .um-result-icon-spin,
+    .um-overlay,
+    .um-modal {
+        animation: none;
     }
 }
