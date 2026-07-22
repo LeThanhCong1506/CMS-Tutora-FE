@@ -1,32 +1,51 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { getAllUsers, deactivateUser, reactivateUser, issueWarning, suspendTutor } from '../../services/admin.service';
-import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
+import {
+    getAllUsers,
+    deactivateUser,
+    reactivateUser,
+    issueWarning,
+    suspendTutor,
+    deleteUser,
+} from '../../services/admin.service';
+import { DataTable, PageContainer, SectionCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
-import { Can } from '../../contexts/AccessContext';
+import { useAccess } from '../../contexts/AccessContext';
 import type { UserListItem } from '../../types/admin.types';
 import type { FlatUserDetail } from './mockData';
 import UserDetailModal from './components/UserDetailModal';
 import BlockUserModal from './components/BlockUserModal';
 import IssueWarningModal from './components/IssueWarningModal';
 import SuspendUserModal from './components/SuspendUserModal';
+import UserFormModal from './components/UserFormModal';
 import { getRoleDisplay } from './roleDisplay';
 import { formatDateTime } from '../../utils/formatters';
 
-import '../../styles/pages/admin-user-management.css';
-import '../../styles/pages/admin-vetting-modal.css';
+/** Customer roles this page can be scoped to (via the sidebar sub-menu). */
+export type CustomerRole = 'Student' | 'Parent' | 'Tutor';
 
-const UserManagementPage = () => {
+interface UserManagementPageProps {
+    /** When set, the page is locked to a single role: the role filter is hidden,
+     *  the title reflects the role, and "Thêm người dùng" defaults to it. */
+    lockedRole?: CustomerRole;
+}
+
+const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
+    const { can } = useAccess();
+
     // State
     const [users, setUsers] = useState<FlatUserDetail[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
-    const [limit] = useState(20);
+    const [limit] = useState(10);
 
-    // Filters
+    // Filters. When the view is locked to a role, that role is the effective
+    // filter and the dropdown is hidden.
     const [roleFilter, setRoleFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const effectiveRole = lockedRole ?? roleFilter;
     // searchInput: live value of the text box (changes on every keystroke)
     // searchQuery: committed value sent to BE — only updates when the user
     //              clicks the "Tìm kiếm" button or presses Enter. Keeping
@@ -44,6 +63,10 @@ const UserManagementPage = () => {
     const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const fetchUsers = useCallback(async () => {
         // Abort any in-flight fetch — protects against out-of-order responses
@@ -54,6 +77,7 @@ const UserManagementPage = () => {
 
         try {
             setLoading(true);
+            setLoadError(null);
             const params: {
                 searchTerm?: string;
                 role?: string;
@@ -63,7 +87,7 @@ const UserManagementPage = () => {
             } = { pageNumber: page, pageSize: limit };
 
             if (searchQuery) params.searchTerm = searchQuery;
-            if (roleFilter !== 'all') params.role = roleFilter;
+            if (effectiveRole !== 'all') params.role = effectiveRole;
             // BE status is a 0/1 column — map UI selections accordingly.
             if (statusFilter === 'active') params.status = 1;
             else if (statusFilter === 'blocked') params.status = 0;
@@ -79,15 +103,23 @@ const UserManagementPage = () => {
                 fullname: u.fullname,
                 email: u.email,
                 phone: u.phone || '',
-                avatarurl: u.avatarurl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullname)}&background=random`,
+                avatarurl:
+                    u.avatarurl ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullname)}&background=random`,
                 primaryrole: u.primaryrole || 'student',
                 accountstatus: u.status === 'active' ? 'active' : u.status === 'inactive' ? 'blocked' : u.status,
                 isidentityverified: false,
-                createdat: u.createdat || new Date().toISOString(),
+                createdat: u.createdat || '',
                 lastloginat: u.lastloginat || '',
                 warningcount: u.warningsCount ?? 0,
                 suspensioncount: u.suspensionsCount ?? 0,
             }));
+
+            const maxPage = Math.max(1, Math.ceil(totalCount / limit));
+            if (page > maxPage) {
+                setPage(maxPage);
+                return;
+            }
 
             setUsers(mapped);
             setTotal(totalCount);
@@ -98,6 +130,9 @@ const UserManagementPage = () => {
                 (err as { name?: string; code?: string })?.code === 'ERR_CANCELED';
             if (isAbort) return;
             console.error('Error fetching users:', err);
+            setUsers([]);
+            setTotal(0);
+            setLoadError('Không thể tải danh sách người dùng. Vui lòng thử lại.');
             toast.error('Không thể tải danh sách người dùng');
         } finally {
             // Only clear loading if THIS request is still the active one;
@@ -106,7 +141,7 @@ const UserManagementPage = () => {
                 setLoading(false);
             }
         }
-    }, [limit, page, roleFilter, searchQuery, statusFilter]);
+    }, [limit, page, effectiveRole, searchQuery, statusFilter]);
 
     // Fetch users on mount, page change, or any committed filter change.
     useEffect(() => {
@@ -114,6 +149,12 @@ const UserManagementPage = () => {
         void fetchUsers();
         return () => fetchAbortRef.current?.abort();
     }, [fetchUsers]);
+
+    // Reset to page 1 when switching between role-scoped views (Student → Parent).
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPage(1);
+    }, [lockedRole]);
 
     // Handlers
     const handleUserClick = (user: FlatUserDetail) => {
@@ -149,12 +190,7 @@ const UserManagementPage = () => {
         }
     };
 
-    const handleIssueWarning = async (
-        userId: string,
-        reason: string,
-        severity: string,
-        relatedBookingId?: string,
-    ) => {
+    const handleIssueWarning = async (userId: string, reason: string, severity: string, relatedBookingId?: string) => {
         // BE supports only 2 warning levels: 1 = minor, 2 = major.
         // The UI exposes 3 (low / medium / high); collapse them so:
         //   low                  → 1 (gentle reminder)
@@ -180,11 +216,7 @@ const UserManagementPage = () => {
         }
     };
 
-    const handleSuspendUser = async (
-        userId: string,
-        reason: string,
-        durationDays: number,
-    ) => {
+    const handleSuspendUser = async (userId: string, reason: string, durationDays: number) => {
         try {
             await suspendTutor({
                 userid: userId,
@@ -200,6 +232,52 @@ const UserManagementPage = () => {
         } catch (err) {
             console.error('suspendTutor failed:', err);
             throw err;
+        }
+    };
+
+    const openCreateModal = () => {
+        setFormMode('create');
+        setSelectedUser(null);
+        setIsFormModalOpen(true);
+    };
+
+    const openEditModal = () => {
+        // Opened from the detail modal — keep selectedUser, swap to the form.
+        setFormMode('edit');
+        setIsDetailModalOpen(false);
+        setIsFormModalOpen(true);
+    };
+
+    const openUserActionModal = (open: (value: boolean) => void) => {
+        setIsDetailModalOpen(false);
+        open(true);
+    };
+
+    const closeUserActionModal = (close: (value: boolean) => void) => {
+        close(false);
+        setIsDetailModalOpen(true);
+    };
+
+    const closeDeleteModal = () => {
+        setIsDeleteModalOpen(false);
+        setIsDetailModalOpen(true);
+    };
+
+    const handleDeleteUser = async () => {
+        if (!selectedUser) return;
+        try {
+            setIsDeleting(true);
+            await deleteUser(selectedUser.userid);
+            toast.success(`Đã xóa tài khoản ${selectedUser.fullname}`);
+            setIsDeleteModalOpen(false);
+            setIsDetailModalOpen(false);
+            setSelectedUser(null);
+            await fetchUsers();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+            toast.error(msg || 'Không thể xóa tài khoản');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -220,75 +298,119 @@ const UserManagementPage = () => {
         setPage(1);
     };
 
-    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commitSearch();
+    /** Clear the box and, if a search was active, refetch the unfiltered list. */
+    const clearSearch = () => {
+        setSearchInput('');
+        if (searchQuery) {
+            setSearchQuery('');
+            setPage(1);
         }
+    };
+
+    const hasActiveFilters = Boolean(
+        searchInput || searchQuery || statusFilter !== 'all' || (!lockedRole && roleFilter !== 'all'),
+    );
+
+    const resetFilters = () => {
+        setSearchInput('');
+        setSearchQuery('');
+        setStatusFilter('all');
+        setRoleFilter('all');
+        setPage(1);
     };
 
     const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'neutral' => {
         switch (status) {
-            case 'active': return 'success';
-            case 'suspended': return 'warning';
-            case 'blocked': return 'error';
-            default: return 'neutral';
+            case 'active':
+                return 'success';
+            case 'suspended':
+                return 'warning';
+            case 'blocked':
+                return 'error';
+            default:
+                return 'neutral';
         }
     };
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'active': return 'Hoạt động';
-            case 'suspended': return 'Tạm ngưng';
-            case 'blocked': return 'Bị chặn';
-            default: return status;
+            case 'active':
+                return 'Hoạt động';
+            case 'suspended':
+                return 'Tạm ngưng';
+            case 'blocked':
+                return 'Bị chặn';
+            default:
+                return status;
         }
     };
 
-    const getRoleBadge = (role: string) => {
-        const { label, variant } = getRoleDisplay(role);
-        return <StatusBadge variant={variant} shape="tag">{label}</StatusBadge>;
+    const roleColumn: DataTableColumn<FlatUserDetail> = {
+        key: 'role',
+        title: 'Vai trò',
+        render: (user) => {
+            const { label, variant } = getRoleDisplay(user.primaryrole);
+            return <span className={`um-badge um-badge-${variant === 'dark' ? 'neutral' : variant}`}>{label}</span>;
+        },
+        hideOnMobile: true,
+        width: 110,
     };
 
     const userColumns: DataTableColumn<FlatUserDetail>[] = [
         {
             key: 'identity',
-            title: 'Thông tin người dùng',
+            title: 'Người dùng',
             render: (user) => (
-                <div className="user-mgmt-user-identity">
-                    <img className="user-mgmt-avatar" src={user.avatarurl} alt={user.fullname} />
-                    <div className="admin-ui-entity">
-                        <span className="admin-ui-entity-primary">{user.fullname}</span>
-                        <span className="admin-ui-entity-secondary">{user.email}</span>
+                <div className="um-cell-user">
+                    <img className="um-avatar" src={user.avatarurl} alt="" loading="lazy" />
+                    <div className="um-cell-text">
+                        <span className="um-cell-name" title={user.fullname}>
+                            {user.fullname}
+                        </span>
+                        <span className="um-cell-sub" title={user.email}>
+                            {user.email}
+                        </span>
+                        <span className="um-cell-mobile-meta">
+                            {!lockedRole && getRoleDisplay(user.primaryrole).label}
+                            {!lockedRole && user.phone ? ' · ' : ''}
+                            {user.phone || (lockedRole ? 'Chưa có số điện thoại' : '')}
+                        </span>
                     </div>
                 </div>
             ),
+            minWidth: 220,
         },
+        ...(!lockedRole ? [roleColumn] : []),
         {
-            key: 'role',
-            title: 'Vai trò',
-            render: (user) => getRoleBadge(user.primaryrole),
+            key: 'contact',
+            title: 'Số điện thoại',
+            render: (user) => <span className={`um-meta ${user.phone ? '' : 'um-meta-dim'}`}>{user.phone || '—'}</span>,
             hideOnMobile: true,
+            hideOnTablet: true,
+            width: 130,
         },
         {
             key: 'joinDate',
-            title: 'Ngày tham gia',
+            title: 'Tham gia',
             render: (user) => (
-                <span className="admin-ui-table-meta">
-                    {new Date(user.createdat).toLocaleDateString('vi-VN')}
+                <span className="um-meta">
+                    {user.createdat ? new Date(user.createdat).toLocaleDateString('vi-VN') : '—'}
                 </span>
             ),
             hideOnMobile: true,
+            hideOnTablet: true,
+            width: 110,
         },
         {
             key: 'lastLoginAt',
-            title: 'Lần đăng nhập cuối',
+            title: 'Đăng nhập cuối',
             render: (user) => (
-                <span className="admin-ui-table-meta">
-                    {user.lastloginat ? formatDateTime(user.lastloginat) : 'N/A'}
+                <span className={`um-meta ${user.lastloginat ? '' : 'um-meta-dim'}`}>
+                    {user.lastloginat ? formatDateTime(user.lastloginat) : 'Chưa đăng nhập'}
                 </span>
             ),
             hideOnMobile: true,
+            width: 150,
         },
         {
             key: 'history',
@@ -296,175 +418,256 @@ const UserManagementPage = () => {
             render: (user) => {
                 if (user.warningcount > 0) {
                     return (
-                        <div className="user-mgmt-performance">
-                            <span className="material-symbols-outlined user-mgmt-warning icon-filled">warning</span>
-                            <span className="user-mgmt-warning-text">{user.warningcount} Cảnh cáo</span>
-                        </div>
+                        <span className="um-flag um-flag-warn">
+                            <span className="material-symbols-outlined icon-filled">warning</span>
+                            {user.warningcount} cảnh cáo
+                        </span>
                     );
                 }
                 if (user.suspensioncount > 0) {
                     return (
-                        <div className="user-mgmt-performance">
-                            <span className="material-symbols-outlined user-mgmt-flag icon-filled">flag</span>
-                            <span className="user-mgmt-flags">{user.suspensioncount} lần tạm ngưng</span>
-                        </div>
+                        <span className="um-flag um-flag-suspend">
+                            <span className="material-symbols-outlined icon-filled">flag</span>
+                            {user.suspensioncount} lần tạm ngưng
+                        </span>
                     );
                 }
-                return <span className="user-mgmt-no-data">Tốt</span>;
+                return <span className="um-flag um-flag-ok">Tốt</span>;
             },
             hideOnMobile: true,
+            hideOnTablet: true,
+            width: 140,
         },
         {
             key: 'status',
             title: 'Trạng thái',
-            render: (user) => (
-                <StatusBadge variant={getStatusVariant(user.accountstatus)}>
-                    {getStatusLabel(user.accountstatus)}
-                </StatusBadge>
-            ),
+            render: (user) => {
+                const variant = getStatusVariant(user.accountstatus);
+                return (
+                    <span className={`um-badge um-badge-${variant === 'error' ? 'danger' : variant}`}>
+                        {getStatusLabel(user.accountstatus)}
+                    </span>
+                );
+            },
+            width: 110,
+            mobileWidth: 96,
         },
         {
             key: 'actions',
-            title: 'Hành động',
-            align: 'center',
+            title: '',
+            align: 'right',
             render: (user) => (
                 <button
                     type="button"
-                    className="admin-ui-button admin-ui-button-secondary user-mgmt-view-btn"
+                    className="um-row-btn"
                     onClick={(e) => {
                         e.stopPropagation();
                         handleUserClick(user);
                     }}
+                    aria-label={`Xem chi tiết ${user.fullname}`}
                 >
                     <span className="material-symbols-outlined">visibility</span>
-                    Xem
+                    <span className="um-row-btn-label">Xem</span>
                 </button>
             ),
-            width: 96,
+            width: 84,
+            mobileWidth: 48,
         },
     ];
+
+    const scopedRoleLabel = lockedRole ? getRoleDisplay(lockedRole).label : '';
+    const roleLabel = scopedRoleLabel.toLowerCase();
+    const pageTitle = lockedRole ? scopedRoleLabel : 'Quản lý người dùng';
+    const pageSubtitle = lockedRole
+        ? `Theo dõi hồ sơ và trạng thái tài khoản ${roleLabel} trong hệ thống.`
+        : 'Theo dõi học viên, phụ huynh và gia sư trong cùng một không gian vận hành.';
+    const addButtonLabel = lockedRole ? `Thêm ${roleLabel}` : 'Thêm người dùng';
+    const hasCommittedFilters = Boolean(searchQuery || statusFilter !== 'all' || (!lockedRole && roleFilter !== 'all'));
+    const resultSummary = loading
+        ? 'Đang cập nhật danh sách…'
+        : hasCommittedFilters
+          ? `${total.toLocaleString('vi-VN')} kết quả phù hợp`
+          : `${total.toLocaleString('vi-VN')} tài khoản`;
 
     return (
         <>
             <PageContainer
-                eyebrow="Quản trị"
-                title="Danh sách người dùng"
-                subtitle={`Quản lý ${total.toLocaleString('vi-VN')} tài khoản học viên, phụ huynh và gia sư.`}
+                eyebrow="Tài khoản"
+                title={pageTitle}
+                subtitle={pageSubtitle}
                 maxWidth="wide"
                 headerAction={
-                    <div className="admin-ui-actions">
-                        <span className="admin-ui-code-chip">Tổng {total.toLocaleString('vi-VN')}</span>
-                        <Can permission="export.data">
-                        <button
-                            type="button"
-                            className="admin-ui-button admin-ui-button-primary"
-                            onClick={() => toast.info('Chức năng xuất CSV sẽ có trong tương lai')}
-                        >
-                            <span className="material-symbols-outlined">download</span>
-                            Xuất CSV
-                        </button>
-                        </Can>
-                    </div>
-                }
-            >
-                <SectionCard
-                    title="Người dùng"
-                    subtitle="Tìm kiếm theo tên, email, số điện thoại và lọc theo vai trò hoặc trạng thái."
-                    footer={`Hiển thị ${users.length} / ${total.toLocaleString('vi-VN')} người dùng`}
-                >
-                    <div className="admin-ui-toolbar user-mgmt-admin-toolbar">
-                        {/* Search — manual trigger via button or Enter key.
-                            BE searches Fullname, Email, Phone (not userid),
-                            so the placeholder reflects the actual fields. */}
-                        <div className="user-mgmt-search-row">
-                            <div className="user-mgmt-search-wrapper">
-                                <input
-                                    className="user-mgmt-search-input"
-                                    placeholder="Tìm kiếm tên, email, hoặc số điện thoại..."
-                                    type="text"
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    onKeyDown={handleSearchKeyDown}
-                                    aria-label="Từ khoá tìm kiếm"
-                                />
-                                <span className="material-symbols-outlined user-mgmt-search-icon">search</span>
-                            </div>
+                    can('user.update') ? (
+                        <div className="admin-ui-actions um-page-actions">
                             <button
                                 type="button"
-                                className="user-mgmt-search-btn"
-                                onClick={commitSearch}
-                                disabled={loading}
-                                aria-label="Tìm kiếm"
+                                className="admin-ui-button admin-ui-button-primary"
+                                onClick={openCreateModal}
                             >
-                                <span className="material-symbols-outlined user-mgmt-search-btn-icon">search</span>
-                                <span>Tìm kiếm</span>
+                                <span className="material-symbols-outlined">person_add</span>
+                                {addButtonLabel}
                             </button>
                         </div>
-
-                        {/* Filters Group */}
-                        <div className="user-mgmt-filters">
-                            {/* Role Dropdown — chỉ các role khách hàng nền tảng.
-                                Tài khoản nội bộ (Staff/Admin) được BE loại khỏi
-                                GET /admin/users; Staff quản lý ở trang riêng
-                                "Quản lý nhân viên". */}
-                            <div className="user-mgmt-filter-group">
-                                <select
-                                    className="user-mgmt-filter-btn"
-                                    value={roleFilter}
-                                    onChange={(e) => {
-                                        setRoleFilter(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    aria-label="Lọc theo vai trò"
+                    ) : undefined
+                }
+            >
+                <SectionCard className="um-list-card">
+                    <div className="um-scope">
+                        <div className="um-toolbar">
+                            <form
+                                className="um-search-form"
+                                role="search"
+                                aria-label="Tìm người dùng"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    commitSearch();
+                                }}
+                            >
+                                <div className="um-search">
+                                    <label className="um-visually-hidden" htmlFor="user-management-search">
+                                        Tên, email hoặc số điện thoại
+                                    </label>
+                                    <span className="material-symbols-outlined um-search-icon">search</span>
+                                    <input
+                                        id="user-management-search"
+                                        className="um-search-input"
+                                        placeholder="Tìm theo tên, email hoặc số điện thoại…"
+                                        type="search"
+                                        value={searchInput}
+                                        onChange={(e) => setSearchInput(e.target.value)}
+                                        autoComplete="off"
+                                    />
+                                    {searchInput && (
+                                        <button
+                                            type="button"
+                                            className="um-search-clear"
+                                            onClick={clearSearch}
+                                            aria-label="Xoá từ khoá"
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="um-btn um-btn-primary um-search-submit"
+                                    disabled={searchInput.trim() === searchQuery}
                                 >
-                                    <option value="all">Vai trò: Tất cả</option>
-                                    <option value="Student">Vai trò: Học viên</option>
-                                    <option value="Tutor">Vai trò: Gia sư</option>
-                                    <option value="Parent">Vai trò: Phụ huynh</option>
-                                </select>
-                            </div>
+                                    <span className="material-symbols-outlined">search</span>
+                                    Tìm
+                                </button>
+                            </form>
 
-                            {/* Status Dropdown — only Active / Blocked are supported by BE
-                                (status is a 0/1 column; "Tạm ngưng" was a no-op filter that
-                                returned all users, so it has been removed). */}
-                            <div className="user-mgmt-filter-group">
-                                <select
-                                    className="user-mgmt-filter-btn"
-                                    value={statusFilter}
-                                    onChange={(e) => {
-                                        setStatusFilter(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    aria-label="Lọc theo trạng thái"
-                                >
-                                    <option value="all">Trạng thái: Tất cả</option>
-                                    <option value="active">Trạng thái: Hoạt động</option>
-                                    <option value="blocked">Trạng thái: Bị chặn</option>
-                                </select>
+                            <div className="um-filter-group" role="group" aria-label="Bộ lọc danh sách">
+                                {!lockedRole && (
+                                    <label className="um-filter-field">
+                                        <span className="um-visually-hidden">Vai trò</span>
+                                        <span className="material-symbols-outlined um-filter-icon">groups</span>
+                                        <select
+                                            className="um-select"
+                                            value={roleFilter}
+                                            onChange={(e) => {
+                                                setRoleFilter(e.target.value);
+                                                setPage(1);
+                                            }}
+                                            aria-label="Lọc theo vai trò"
+                                        >
+                                            <option value="all">Mọi vai trò</option>
+                                            <option value="Student">Học viên</option>
+                                            <option value="Parent">Phụ huynh</option>
+                                            <option value="Tutor">Gia sư</option>
+                                        </select>
+                                    </label>
+                                )}
+
+                                <label className="um-filter-field">
+                                    <span className="um-visually-hidden">Trạng thái</span>
+                                    <span className="material-symbols-outlined um-filter-icon">filter_alt</span>
+                                    <select
+                                        className="um-select"
+                                        value={statusFilter}
+                                        onChange={(e) => {
+                                            setStatusFilter(e.target.value);
+                                            setPage(1);
+                                        }}
+                                        aria-label="Lọc theo trạng thái"
+                                    >
+                                        <option value="all">Mọi trạng thái</option>
+                                        <option value="active">Hoạt động</option>
+                                        <option value="blocked">Bị chặn</option>
+                                    </select>
+                                </label>
+
+                                {hasActiveFilters && (
+                                    <button type="button" className="um-reset-btn" onClick={resetFilters}>
+                                        <span className="material-symbols-outlined">restart_alt</span>
+                                        Đặt lại
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    </div>
 
-                    <DataTable<FlatUserDetail>
-                        columns={userColumns}
-                        data={users}
-                        rowKey="userid"
-                        loading={loading}
-                        loadingText="Đang tải người dùng..."
-                        emptyText="Không tìm thấy người dùng nào"
-                        emptyIcon={
-                            <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>search_off</span>
-                        }
-                        onRowClick={handleUserClick}
-                        pagination={{
-                            current: page,
-                            pageSize: limit,
-                            total,
-                            onChange: setPage,
-                        }}
-                        minWidth={700}
-                        variant="embedded"
-                    />
+                        <div className="um-result-bar" role="status" aria-live="polite">
+                            <span className={`material-symbols-outlined ${loading ? 'um-result-icon-spin' : ''}`}>
+                                {loading ? 'progress_activity' : 'manage_accounts'}
+                            </span>
+                            <strong>{resultSummary}</strong>
+                            {!loading && users.length > 0 && (
+                                <span className="um-result-hint">Chọn một dòng để xem chi tiết</span>
+                            )}
+                        </div>
+
+                        {loadError ? (
+                            <div className="um-load-error" role="alert">
+                                <span className="material-symbols-outlined">cloud_off</span>
+                                <div className="um-load-error-copy">
+                                    <strong>Chưa thể tải dữ liệu</strong>
+                                    <span>{loadError}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="um-btn um-btn-secondary"
+                                    onClick={() => void fetchUsers()}
+                                >
+                                    <span className="material-symbols-outlined">refresh</span>
+                                    Thử lại
+                                </button>
+                            </div>
+                        ) : (
+                            <DataTable<FlatUserDetail>
+                                columns={userColumns}
+                                data={users}
+                                rowKey="userid"
+                                loading={loading}
+                                loadingText="Đang tải người dùng..."
+                                emptyText={
+                                    hasCommittedFilters
+                                        ? 'Không có người dùng nào khớp bộ lọc'
+                                        : lockedRole
+                                          ? `Chưa có ${roleLabel} nào trong danh sách`
+                                          : 'Chưa có người dùng nào'
+                                }
+                                emptyIcon={
+                                    <span className="material-symbols-outlined um-empty-icon">
+                                        {hasCommittedFilters ? 'search_off' : 'group_off'}
+                                    </span>
+                                }
+                                onRowClick={handleUserClick}
+                                focusableRows={false}
+                                tableLabel={lockedRole ? `Danh sách ${roleLabel}` : 'Danh sách người dùng'}
+                                pagination={{
+                                    current: page,
+                                    pageSize: limit,
+                                    total,
+                                    onChange: setPage,
+                                }}
+                                minWidth={lockedRole ? 820 : 930}
+                                variant="embedded"
+                                density="compact"
+                                adaptive
+                            />
+                        )}
+                    </div>
                 </SectionCard>
             </PageContainer>
 
@@ -476,34 +679,121 @@ const UserManagementPage = () => {
                     setSelectedUser(null);
                 }}
                 user={selectedUser}
-                onBlockUser={() => setIsBlockModalOpen(true)}
+                onBlockUser={() => openUserActionModal(setIsBlockModalOpen)}
                 onUnblockUser={handleUnblockUser}
-                onIssueWarning={() => setIsWarningModalOpen(true)}
-                onSuspendUser={() => setIsSuspendModalOpen(true)}
+                onIssueWarning={() => openUserActionModal(setIsWarningModalOpen)}
+                onSuspendUser={() => openUserActionModal(setIsSuspendModalOpen)}
+                onEditUser={openEditModal}
+                onDeleteUser={() => openUserActionModal(setIsDeleteModalOpen)}
                 /* onResetPassword intentionally omitted — BE has no admin
                    reset-password endpoint yet, so the button stays hidden. */
             />
 
             <BlockUserModal
                 isOpen={isBlockModalOpen}
-                onClose={() => setIsBlockModalOpen(false)}
+                onClose={() => closeUserActionModal(setIsBlockModalOpen)}
                 user={selectedUser}
                 onBlock={handleBlockUser}
             />
 
             <IssueWarningModal
                 isOpen={isWarningModalOpen}
-                onClose={() => setIsWarningModalOpen(false)}
+                onClose={() => closeUserActionModal(setIsWarningModalOpen)}
                 user={selectedUser}
                 onIssue={handleIssueWarning}
             />
 
             <SuspendUserModal
                 isOpen={isSuspendModalOpen}
-                onClose={() => setIsSuspendModalOpen(false)}
+                onClose={() => closeUserActionModal(setIsSuspendModalOpen)}
                 user={selectedUser}
                 onSuspend={handleSuspendUser}
             />
+
+            <UserFormModal
+                isOpen={isFormModalOpen}
+                mode={formMode}
+                user={formMode === 'edit' ? selectedUser : null}
+                lockedRole={lockedRole}
+                onClose={() => setIsFormModalOpen(false)}
+                onSaved={fetchUsers}
+            />
+
+            {/* Delete confirmation — hard delete is irreversible (Admin only). */}
+            {isDeleteModalOpen && selectedUser && (
+                <div
+                    className="um-overlay"
+                    onClick={() => !isDeleting && closeDeleteModal()}
+                    onKeyDown={(event) => event.key === 'Escape' && !isDeleting && closeDeleteModal()}
+                >
+                    <div
+                        className="um-modal um-modal-sm"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-user-dialog-title"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="um-modal-head">
+                            <div className="um-modal-head-main">
+                                <h3 id="delete-user-dialog-title" className="um-modal-title um-modal-title-danger">
+                                    <span className="material-symbols-outlined">delete_forever</span>
+                                    Xóa tài khoản
+                                </h3>
+                                <p className="um-modal-sub">Hành động này không thể hoàn tác.</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="um-modal-close"
+                                onClick={closeDeleteModal}
+                                disabled={isDeleting}
+                                aria-label="Đóng"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="um-modal-body">
+                            <div className="um-identity">
+                                <div
+                                    className="um-identity-avatar"
+                                    style={{ backgroundImage: `url('${selectedUser.avatarurl}')` }}
+                                />
+                                <div className="um-identity-main">
+                                    <p className="um-identity-name">{selectedUser.fullname}</p>
+                                    <p className="um-identity-sub">
+                                        {getRoleDisplay(selectedUser.primaryrole).label} • {selectedUser.email}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="um-callout um-callout-danger">
+                                <span className="material-symbols-outlined">error</span>
+                                <div>
+                                    <p className="um-callout-title">Xoá vĩnh viễn khỏi hệ thống</p>
+                                    <p className="um-callout-text">
+                                        Toàn bộ dữ liệu liên quan sẽ bị gỡ bỏ. Nếu chỉ muốn tạm thời ngăn đăng nhập, hãy
+                                        dùng “Chặn tài khoản” thay vì xoá.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="um-modal-foot">
+                            <button
+                                className="um-btn um-btn-secondary"
+                                onClick={closeDeleteModal}
+                                disabled={isDeleting}
+                            >
+                                Hủy
+                            </button>
+                            <button className="um-btn um-btn-danger" onClick={handleDeleteUser} disabled={isDeleting}>
+                                <span className="material-symbols-outlined">delete_forever</span>
+                                {isDeleting ? 'Đang xóa…' : 'Xóa vĩnh viễn'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

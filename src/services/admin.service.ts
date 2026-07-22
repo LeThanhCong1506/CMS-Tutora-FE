@@ -541,7 +541,11 @@ export const getAllUsers = async (
   try {
     const response = await api.get('/admin/users', { params, signal });
     const data = response.data;
-    // Backend: APIResponse<PagedList<UserResponse>> - content is array, total from X-Pagination header
+    // Backend: APIResponse<PagedList<UserResponse>> - content is array, total from X-Pagination header.
+    // NOTE: X-Pagination is a custom response header, so the browser only exposes it
+    // to JS when the API sends `Access-Control-Expose-Headers: X-Pagination`. If that
+    // is missing, `total` silently collapses to the current page length and the
+    // pagination bar disappears — warn loudly instead of failing quietly.
     const paginationHeader = response.headers['x-pagination'];
     let total = data.content?.length ?? 0;
     if (paginationHeader) {
@@ -551,6 +555,11 @@ export const getAllUsers = async (
       } catch {
         /* ignore */
       }
+    } else {
+      console.warn(
+        '[getAllUsers] Thiếu header X-Pagination — tổng số bản ghi đang lấy tạm theo số dòng của trang hiện tại, ' +
+        'nên phân trang sẽ không hiển thị. Kiểm tra Access-Control-Expose-Headers ở CORS của backend.',
+      );
     }
     const users: UserListItem[] = (data.content || []).map((u: any) => ({
       userid: u.userid,
@@ -621,6 +630,39 @@ export const reactivateUser = async (userId: string): Promise<void> => {
     await api.put(`/admin/users/${userId}/reactivate`);
   } catch (error) {
     console.error('reactivateUser error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new customer account (Student / Parent / Tutor).
+ * Backend: POST /api/admin/users → 201 with the created UserResponse.
+ * Only customer roles are accepted; Staff/Admin have a separate flow.
+ */
+export const createUser = async (request: {
+  fullname: string;
+  email?: string;
+  phone: string;
+  password: string;
+  role: string;
+}): Promise<void> => {
+  try {
+    await api.post('/admin/users', request);
+  } catch (error) {
+    console.error('createUser error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Permanently delete a user (Admin only).
+ * Backend: DELETE /api/admin/users/{id}
+ */
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    await api.delete(`/admin/users/${userId}`);
+  } catch (error) {
+    console.error('deleteUser error:', error);
     throw error;
   }
 };

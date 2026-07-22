@@ -42,6 +42,7 @@
     gap: 10.5px;
     min-height: 68px;
     box-sizing: border-box;
+    /* Ghim trên cùng: chỉ vùng nav ở giữa được cuộn. */
     flex-shrink: 0;
 }
 
@@ -76,9 +77,14 @@
     padding: 12px;
     gap: 4px;
     flex: 1;
+    /* min-height:0 là bắt buộc: flex item mặc định min-height:auto nên không co
+       xuống dưới chiều cao nội dung → overflow không bao giờ kích hoạt và các
+       mục cuối bị .sidebar{overflow:hidden} cắt mất. */
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Cuộn hết danh sách thì dừng, không kéo lây trang nội dung phía sau. */
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 240, 228, 0.25) transparent;
 }
@@ -91,9 +97,12 @@
     background: transparent;
 }
 
+/* Rail thu gọn chỉ rộng 68px — thanh cuộn ở đó vừa chật vừa xấu, nên thumb để
+   trong suốt (vẫn cuộn được bằng chuột/trackpad) và chỉ hiện khi hover giãn
+   sidebar ra. Bản drawer mobile bật lại thumb trong media query bên dưới. */
 .sidebarNav::-webkit-scrollbar-thumb {
     background-color: transparent;
-    border-radius: 3px;
+    border-radius: 999px;
 }
 
 .sidebar:hover .sidebarNav::-webkit-scrollbar-thumb {
@@ -442,6 +451,7 @@
 .sidebarUser {
     border-top: 1.2px solid rgba(255, 255, 255, 0.1);
     padding: 12px 8px;
+    /* Ghim đáy: thẻ người dùng + nút đăng xuất luôn thấy được. */
     flex-shrink: 0;
 }
 
