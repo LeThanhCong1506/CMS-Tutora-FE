@@ -158,11 +158,15 @@ const AdminDisputeDetailPageExpanded = () => {
     }, [disputeId]);
 
     useEffect(() => {
-        if (activeTab === 'recordings' && !recording && !recordingLoading) {
+        // KHÔNG gate theo recordingLoading: nó tự chuyển true→false khi fetch xong (kể cả
+        // lỗi), nằm trong dependency sẽ khiến effect tự chạy lại liên tục nếu API cứ lỗi
+        // (vòng lặp gọi vô hạn, không có backoff). Gate theo recordingError thay vào đó —
+        // khớp với cách tab "chat" bên trên xử lý (không tự retry khi đã có lỗi/dữ liệu).
+        if (activeTab === 'recordings' && !recording && !recordingError) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             void fetchRecording();
         }
-    }, [activeTab, recording, recordingLoading, fetchRecording]);
+    }, [activeTab, recording, recordingError, fetchRecording]);
 
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
@@ -685,6 +689,9 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 src={resolveRecordingStreamUrl(recording.recordingUrl)}
                                                 controls
                                                 style={{ width: '100%', maxHeight: '480px', borderRadius: '12px', background: '#111827', display: 'block' }}
+                                                // BE báo "available" theo dữ liệu ClassSession, nhưng file trên Drive có thể đã
+                                                // hỏng/token hết hạn — không có onError thì video treo spinner mặc định mãi mãi.
+                                                onError={() => setRecordingError(true)}
                                             />
                                         ) : recording?.status === 'recording' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
