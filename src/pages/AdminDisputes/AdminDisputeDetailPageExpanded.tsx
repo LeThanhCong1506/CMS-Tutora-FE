@@ -9,9 +9,12 @@ import {
     resolveDispute,
     investigateDispute,
     getDisputeChatHistory,
+    getDisputeRecording,
+    resolveRecordingStreamUrl,
     issueWarning,
     suspendTutor,
     lockAccount,
+    type DisputeRecording,
 } from '../../services/admin.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
@@ -77,6 +80,11 @@ const AdminDisputeDetailPageExpanded = () => {
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
 
+    // Recording (video buổi học)
+    const [recording, setRecording] = useState<DisputeRecording | null>(null);
+    const [recordingLoading, setRecordingLoading] = useState(false);
+    const [recordingError, setRecordingError] = useState(false);
+
     // Modal states
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
@@ -128,6 +136,32 @@ const AdminDisputeDetailPageExpanded = () => {
             void fetchChatHistory();
         }
     }, [activeTab, chatMessages.length, fetchChatHistory]);
+
+    // Fetch recording info when switching to the recordings tab — token ngắn hạn nên
+    // luôn gọi lại (không cache) mỗi lần vào lại tab, giống cách "recordings" không
+    // đọc lại được sau khi vào tab khác rồi quay lại.
+    const fetchRecording = useCallback(async () => {
+        if (!disputeId) return;
+        try {
+            setRecordingLoading(true);
+            setRecordingError(false);
+            const data = await getDisputeRecording(disputeId);
+            setRecording(data);
+        } catch (err) {
+            console.error('Error fetching dispute recording:', err);
+            setRecording(null);
+            setRecordingError(true);
+        } finally {
+            setRecordingLoading(false);
+        }
+    }, [disputeId]);
+
+    useEffect(() => {
+        if (activeTab === 'recordings' && !recording && !recordingLoading) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            void fetchRecording();
+        }
+    }, [activeTab, recording, recordingLoading, fetchRecording]);
 
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
@@ -486,6 +520,13 @@ const AdminDisputeDetailPageExpanded = () => {
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">chat</span>
                                         Nhật ký chat
                                     </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'recordings' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('recordings')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">videocam</span>
+                                        Ghi hình buổi học
+                                    </button>
                                 </div>
 
                                 {/* Evidence Gallery */}
@@ -604,6 +645,77 @@ const AdminDisputeDetailPageExpanded = () => {
                                                         </p>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Recording (video buổi học) */}
+                                {activeTab === 'recordings' && (
+                                    <div className="dispute-chat-area">
+                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
+                                            🎥 Ghi hình buổi học
+                                        </h3>
+
+                                        {recordingLoading ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                Đang tải video...
+                                            </p>
+                                        ) : recordingError ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block', color: '#dc2626' }}>
+                                                    error
+                                                </span>
+                                                <p>Không thể tải video. Đường truyền có thể đang gián đoạn.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void fetchRecording()}
+                                                    style={{
+                                                        marginTop: '12px', padding: '8px 16px', background: 'var(--color-navy)',
+                                                        color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px',
+                                                        fontWeight: 600, cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Thử lại
+                                                </button>
+                                            </div>
+                                        ) : recording?.status === 'available' && recording.recordingUrl ? (
+                                            <video
+                                                src={resolveRecordingStreamUrl(recording.recordingUrl)}
+                                                controls
+                                                style={{ width: '100%', maxHeight: '480px', borderRadius: '12px', background: '#111827', display: 'block' }}
+                                            />
+                                        ) : recording?.status === 'recording' ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    schedule
+                                                </span>
+                                                <p>Buổi học đang diễn ra — video sẽ có sau khi kết thúc.</p>
+                                            </div>
+                                        ) : recording?.status === 'processing' ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    schedule
+                                                </span>
+                                                <p>Video vừa ghi xong đang được xử lý, quay lại sau ít phút nhé.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void fetchRecording()}
+                                                    style={{
+                                                        marginTop: '12px', padding: '8px 16px', background: 'var(--color-navy)',
+                                                        color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px',
+                                                        fontWeight: 600, cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Kiểm tra lại
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    videocam_off
+                                                </span>
+                                                <p>Buổi học này chưa được ghi hình.</p>
                                             </div>
                                         )}
                                     </div>
