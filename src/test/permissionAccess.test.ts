@@ -5,7 +5,7 @@ import {
   canAccess,
   removePermissionsWithDependents,
   selectionState,
-} from './permissionAccess';
+} from '../utils/permissionAccess';
 
 const permission = (key: string, requires: string[] = []): PermissionDefinition => ({
   key,

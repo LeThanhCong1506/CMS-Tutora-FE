@@ -25,17 +25,17 @@ import type {
   DisputeListItem,
   // Financials
   FinancialMetrics,
-  WithdrawalRequest,
-  Transaction,
+  TransactionListResponse,
+  AdminTransactionListResponse,
+  AdminTransactionQueryParams,
   // User Management
   UserListItem,
-  UserDetail,
+  AdminUserDetail,
   // Settings
   Subject,
   PlatformConfig,
   // Common
   ApiResponse,
-  PaginationParams,
   FilterParams,
 } from '../types/admin.types';
 
@@ -471,13 +471,15 @@ export const lockAccount = async (userId: string, reason: string): Promise<ApiRe
 // ============================================
 
 /**
- * Get financial metrics
- * Total GMV, Net Revenue, Escrow Balance, Total Refunds, Pending Withdrawals
+ * Get financial metrics: revenue, bookings, class sessions, users, withdrawals, escrow.
+ * Backend: GET /api/admin/financials/metrics -> APIResponse<AdminFinancialMetricsResponse>
  */
-export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
+export const getFinancialMetrics = async (
+  params?: { from?: string; to?: string; period?: 'month' | 'week' | 'year' },
+): Promise<FinancialMetrics> => {
   try {
-    const { data } = await api.get('/admin/financials/metrics');
-    return data;
+    const { data } = await api.get('/admin/financials/metrics', { params });
+    return data.content;
   } catch (error) {
     console.error('getFinancialMetrics error:', error);
     throw error;
@@ -485,63 +487,36 @@ export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
 };
 
 /**
- * Get list of withdrawal requests
- * @param status - Filter by status (pending, approved, rejected, completed)
- */
-export const getWithdrawalRequests = async (status?: string): Promise<WithdrawalRequest[]> => {
-  try {
-    const { data } = await api.get('/admin/financials/withdrawals', {
-      params: status ? { status } : {},
-    });
-    return data;
-  } catch (error) {
-    console.error('getWithdrawalRequests error:', error);
-    throw error;
-  }
-};
-
-/**
- * Approve withdrawal request
- * Creates transaction, updates withdrawal status
- */
-export const approveWithdrawal = async (withdrawalId: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/approve`);
-    return data;
-  } catch (error) {
-    console.error('approveWithdrawal error:', error);
-    throw error;
-  }
-};
-
-/**
- * Reject withdrawal request
- * @param withdrawalId - Withdrawal ID
- * @param reason - Rejection reason
- */
-export const rejectWithdrawal = async (withdrawalId: string, reason: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/financials/withdrawals/${withdrawalId}/reject`, { reason });
-    return data;
-  } catch (error) {
-    console.error('rejectWithdrawal error:', error);
-    throw error;
-  }
-};
-
-/**
- * Get transaction history with pagination and filters
+ * Get wallet transaction ledger with pagination and filters.
+ * Backend: GET /api/admin/financials/transactions -> APIResponse<AdminTransactionListResponse>
  */
 export const getTransactions = async (
-  params?: PaginationParams & FilterParams,
-): Promise<{ transactions: Transaction[]; total: number }> => {
+  params?: AdminTransactionQueryParams,
+): Promise<TransactionListResponse> => {
   try {
     const { data } = await api.get('/admin/financials/transactions', { params });
-    return data;
+    return data.content;
   } catch (error) {
     console.error('getTransactions error:', error);
     throw error;
   }
+};
+
+/**
+ * Get platform-wide wallet transaction ledger.
+ * GET /admin/financials/transactions → AdminTransactionListResponse (unwrapped từ data.content).
+ */
+export const getAdminTransactions = async (params?: {
+  page?: number;
+  pageSize?: number;
+  type?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}): Promise<AdminTransactionListResponse> => {
+  const { data } = await api.get('/admin/financials/transactions', { params });
+  return data.content;
 };
 
 // ============================================
@@ -566,7 +541,11 @@ export const getAllUsers = async (
   try {
     const response = await api.get('/admin/users', { params, signal });
     const data = response.data;
-    // Backend: APIResponse<PagedList<UserResponse>> - content is array, total from X-Pagination header
+    // Backend: APIResponse<PagedList<UserResponse>> - content is array, total from X-Pagination header.
+    // NOTE: X-Pagination is a custom response header, so the browser only exposes it
+    // to JS when the API sends `Access-Control-Expose-Headers: X-Pagination`. If that
+    // is missing, `total` silently collapses to the current page length and the
+    // pagination bar disappears — warn loudly instead of failing quietly.
     const paginationHeader = response.headers['x-pagination'];
     let total = data.content?.length ?? 0;
     if (paginationHeader) {
@@ -576,6 +555,11 @@ export const getAllUsers = async (
       } catch {
         /* ignore */
       }
+    } else {
+      console.warn(
+        '[getAllUsers] Thiếu header X-Pagination — tổng số bản ghi đang lấy tạm theo số dòng của trang hiện tại, ' +
+        'nên phân trang sẽ không hiển thị. Kiểm tra Access-Control-Expose-Headers ở CORS của backend.',
+      );
     }
     const users: UserListItem[] = (data.content || []).map((u: any) => ({
       userid: u.userid,
@@ -651,15 +635,50 @@ export const reactivateUser = async (userId: string): Promise<void> => {
 };
 
 /**
- * Get detailed user information
- * Includes: user info, wallet, warnings, suspensions, stats
+ * Create a new customer account (Student / Parent / Tutor).
+ * Backend: POST /api/admin/users → 201 with the created UserResponse.
+ * Only customer roles are accepted; Staff/Admin have a separate flow.
  */
-export const getUserDetail = async (userId: string): Promise<UserDetail> => {
+export const createUser = async (request: {
+  fullname: string;
+  email?: string;
+  phone: string;
+  password: string;
+  role: string;
+}): Promise<void> => {
   try {
-    const { data } = await api.get(`/admin/users/${userId}`);
-    return data;
+    await api.post('/admin/users', request);
   } catch (error) {
-    console.error('getUserDetail error:', error);
+    console.error('createUser error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Permanently delete a user (Admin only).
+ * Backend: DELETE /api/admin/users/{id}
+ */
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    await api.delete(`/admin/users/${userId}`);
+  } catch (error) {
+    console.error('deleteUser error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get admin-only user detail with Parent/Student relationships.
+ */
+export const getUserDetail = async (userId: string, signal?: AbortSignal): Promise<AdminUserDetail> => {
+  try {
+    const { data } = await api.get<{ content?: AdminUserDetail }>(`/admin/users/${userId}`, { signal });
+    if (!data.content) throw new Error('Phản hồi chi tiết người dùng không có dữ liệu.');
+    return data.content;
+  } catch (error) {
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserDetail error:', error);
+    }
     throw error;
   }
 };

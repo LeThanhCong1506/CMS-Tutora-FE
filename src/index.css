@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 
-/* Variables (custom properties)
+/* Variables (custom properties) */
 @import "./styles/base/variables.css";
 
 /* CSS admin cũ import vào @layer base -> nhường cho @layer utilities của Tailwind/shadcn.
@@ -20,8 +20,10 @@
   @import "./styles/pages/admin-dispute-detail.css";
   @import "./styles/pages/admin-financial.css";
   @import "./styles/pages/admin-payout.css";
-  @import "./styles/pages/admin-user-management.css";
   @import "./styles/pages/admin-vetting-modal.css";
+  /* Nạp SAU admin-vetting-modal.css: khu Quản lý người dùng có bộ style riêng
+     (um-*) và cần đè các rule user-detail-* cũ nằm trong file modal dùng chung. */
+  @import "./styles/pages/admin-user-management.css";
 
   /* login.css của repo gốc dùng grid 2-col (hero+form) cho marketing — admin redesign inline trong LoginPage.tsx */
   @import "./styles/pages/error-pages.css";

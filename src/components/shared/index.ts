@@ -27,6 +27,11 @@ export type { PageContainerProps } from './PageContainer';
 export { DataTable } from './DataTable';
 export type { DataTableProps, DataTableColumn, PaginationConfig } from './DataTable';
 
+export { SortableDataTable } from './SortableDataTable';
+export type { RowAction } from './SortableDataTable';
+
+export { ConfirmDialog } from './ConfirmDialog';
+
 export { PortalLayout } from './PortalLayout';
 export type { PortalLayoutProps, NavItem } from './PortalLayout';
 
