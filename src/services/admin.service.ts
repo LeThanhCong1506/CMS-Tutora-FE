@@ -388,6 +388,31 @@ export const resolveDispute = async (
   }
 };
 
+export interface RefundPreviewDto {
+  classSessionId: number;
+  percentage: number;
+  parentRefundAmount: number;
+  tutorPayoutAmount: number;
+  /** Đã đóng đợt 1 (deposit — đúng 1 buổi đầu) chưa. */
+  isDepositPaid: boolean;
+  /** Đã đóng đợt 2 (remaining — các buổi còn lại) chưa. */
+  isRemainingPaid: boolean;
+  tutorFrozenBalance: number;
+  warnings: string[];
+}
+
+/**
+ * Preview parent refund / tutor payout amounts for a candidate percentage before resolving.
+ * Backend: GET /api/admin/disputes/{disputeId}/refund-preview?percentage=
+ */
+export const getRefundPreview = async (
+  disputeId: string | number,
+  percentage: number,
+): Promise<RefundPreviewDto> => {
+  const { data } = await api.get(`/admin/disputes/${disputeId}/refund-preview`, { params: { percentage } });
+  return data.content;
+};
+
 /**
  * Issue a warning to a user.
  * Backend: POST /api/admin/warnings/users/{userId}

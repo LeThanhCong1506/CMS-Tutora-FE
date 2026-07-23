@@ -15,8 +15,9 @@ import {
     lockAccount,
     getDisputeThread,
     sendDisputeThreadMessage,
+    getRefundPreview,
 } from '../../services/admin.service';
-import type { DisputeRecordingDto, DisputeMessageDto } from '../../services/admin.service';
+import type { DisputeRecordingDto, DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
 import { signalRService } from '../../services/signalr.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
@@ -78,6 +79,9 @@ const AdminDisputeDetailPageExpanded = () => {
     const [activeTab, setActiveTab] = useState('evidence');
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
     const [adminNotes, setAdminNotes] = useState('');
+    const [customPercentage, setCustomPercentage] = useState(50);
+    const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     // Chat history
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
@@ -131,6 +135,25 @@ const AdminDisputeDetailPageExpanded = () => {
             void fetchDisputeDetail(disputeId);
         }
     }, [disputeId, fetchDisputeDetail]);
+
+    // Preview parent refund / tutor payout amounts as admin adjusts the custom percentage
+    useEffect(() => {
+        if (verdict !== 'custom' || !disputeId) {
+            setRefundPreview(null);
+            return;
+        }
+        setPreviewLoading(true);
+        const timer = setTimeout(() => {
+            getRefundPreview(disputeId, customPercentage)
+                .then((data) => setRefundPreview(data))
+                .catch((err) => {
+                    console.error('Error fetching refund preview:', err);
+                    setRefundPreview(null);
+                })
+                .finally(() => setPreviewLoading(false));
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [verdict, customPercentage, disputeId]);
 
     // Fetch chat history when switching to chat tab
     const fetchChatHistory = useCallback(async () => {
@@ -256,6 +279,11 @@ const AdminDisputeDetailPageExpanded = () => {
             return;
         }
 
+        if (verdict === 'custom' && (customPercentage < 0 || customPercentage > 100)) {
+            toast.error('Phần trăm hoàn tiền tùy chỉnh phải từ 0 đến 100');
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             await resolveDispute(disputeDetail.disputeId, {
@@ -263,6 +291,7 @@ const AdminDisputeDetailPageExpanded = () => {
                 resolutionNote: adminNotes,
                 createTutorWarning: createWarning,
                 warningLevel: createWarning ? warningLevel : undefined,
+                customRefundPercentage: verdict === 'custom' ? customPercentage : undefined,
             });
             toast.success('Đã giải quyết khiếu nại thành công!');
             // Refresh data
@@ -1116,7 +1145,87 @@ const AdminDisputeDetailPageExpanded = () => {
                                                         <span className="dispute-radio-desc">Chuyển {formatCurrency(classSessionPrice)} cho {tutor?.fullName || 'Gia sư'}</span>
                                                     </div>
                                                 </label>
+
+                                                <label className="dispute-radio-label">
+                                                    <input
+                                                        type="radio"
+                                                        name="verdict"
+                                                        className="dispute-radio-input"
+                                                        checked={verdict === 'custom'}
+                                                        onChange={() => setVerdict('custom')}
+                                                    />
+                                                    <div className="dispute-radio-content">
+                                                        <span className="dispute-radio-title">Tùy chỉnh % hoàn tiền</span>
+                                                        <span className="dispute-radio-desc">Admin tự nhập tỷ lệ hoàn tiền cho học viên</span>
+                                                    </div>
+                                                </label>
                                             </div>
+
+                                            {verdict === 'custom' && (
+                                                <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                                                        Phần trăm hoàn tiền cho học viên/phụ huynh (0-100%)
+                                                    </label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            max={100}
+                                                            value={customPercentage}
+                                                            onChange={(e) => {
+                                                                const raw = Number(e.target.value);
+                                                                const clamped = Number.isNaN(raw) ? 0 : Math.max(0, Math.min(100, raw));
+                                                                setCustomPercentage(clamped);
+                                                            }}
+                                                            style={{ width: '90px', padding: '8px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                                                        />
+                                                        <span style={{ fontSize: '14px', color: '#6b7280' }}>%</span>
+                                                    </div>
+
+                                                    {previewLoading && (
+                                                        <p style={{ marginTop: '10px', fontSize: '13px', color: '#6b7280' }}>Đang tính toán số tiền hoàn...</p>
+                                                    )}
+
+                                                    {!previewLoading && refundPreview && (
+                                                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Hoàn cho học viên/phụ huynh:</span>
+                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(refundPreview.parentRefundAmount)}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Chuyển cho gia sư:</span>
+                                                                <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{formatCurrency(refundPreview.tutorPayoutAmount)}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                                                <span style={{
+                                                                    fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
+                                                                    background: refundPreview.isDepositPaid ? '#dcfce7' : '#f3f4f6',
+                                                                    color: refundPreview.isDepositPaid ? '#166534' : '#6b7280',
+                                                                }}>
+                                                                    Đợt 1 (đặt cọc): {refundPreview.isDepositPaid ? 'Đã thu' : 'Chưa thu'}
+                                                                </span>
+                                                                <span style={{
+                                                                    fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
+                                                                    background: refundPreview.isRemainingPaid ? '#dcfce7' : '#f3f4f6',
+                                                                    color: refundPreview.isRemainingPaid ? '#166534' : '#6b7280',
+                                                                }}>
+                                                                    Đợt 2 (còn lại): {refundPreview.isRemainingPaid ? 'Đã thu' : 'Chưa thu'}
+                                                                </span>
+                                                            </div>
+                                                            {refundPreview.warnings.length > 0 && (
+                                                                <div style={{ marginTop: '6px' }}>
+                                                                    {refundPreview.warnings.map((w, i) => (
+                                                                        <p key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontSize: '12px', margin: '2px 0' }}>
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                                                                            {w}
+                                                                        </p>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             <div className="dispute-reasoning-group">
                                                 <span className="dispute-label">Ghi chú của Admin (tối thiểu 10 ký tự)</span>
@@ -1170,7 +1279,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                             <button
                                                 className="dispute-submit-btn"
                                                 onClick={handleResolveDispute}
-                                                disabled={isSubmitting || adminNotes.trim().length < 10}
+                                                disabled={isSubmitting || adminNotes.trim().length < 10 || (verdict === 'custom' && previewLoading)}
                                                 style={{ opacity: adminNotes.trim().length < 10 ? 0.5 : 1 }}
                                             >
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>

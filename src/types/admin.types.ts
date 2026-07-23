@@ -584,10 +584,12 @@ export interface DisputeEvidenceItemDto {
   createdAt: string | null;
 }
 
-export type ResolutionType = 'refund_100' | 'refund_50' | 'release';
+export type ResolutionType = 'refund_100' | 'refund_50' | 'release' | 'custom';
 
 export interface ResolveDisputeRequest {
   resolutionType: ResolutionType;
+  /** Required when resolutionType = 'custom' (0-100). Ignored otherwise. */
+  customRefundPercentage?: number;
   resolutionNote: string;
   createTutorWarning?: boolean;
   warningLevel?: number;
