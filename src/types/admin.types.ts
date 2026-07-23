@@ -566,7 +566,7 @@ export interface DisputeDetail {
   refundPercentage: number | null;
   tutorResponse: string | null;
   tutorRespondedAt: string | null;
-  tutorEvidence: DisputeEvidenceItemDto[] | null;
+  additionalEvidence: DisputeEvidenceItemDto[] | null;
   createdBy: DisputeUserDto | null;
   resolvedBy: DisputeUserDto | null;
   classSession: DisputeClassSessionDto | null;

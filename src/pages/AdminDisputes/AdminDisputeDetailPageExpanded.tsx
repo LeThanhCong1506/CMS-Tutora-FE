@@ -637,13 +637,13 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <p style={{ color: '#94a3b8', fontSize: '14px' }}>Gia sư chưa phản hồi khiếu nại này.</p>
                                             )}
 
-                                            {disputeDetail.tutorEvidence && disputeDetail.tutorEvidence.length > 0 && (
+                                            {disputeDetail.additionalEvidence && disputeDetail.additionalEvidence.length > 0 && (
                                                 <div style={{ marginTop: '16px' }}>
                                                     <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
-                                                        Bằng chứng gia sư nộp ({disputeDetail.tutorEvidence.length})
+                                                        Bằng chứng bổ sung ({disputeDetail.additionalEvidence.length})
                                                     </h4>
                                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                                                        {disputeDetail.tutorEvidence.map((item) => {
+                                                        {disputeDetail.additionalEvidence.map((item) => {
                                                             const url = item.fileUrl || '';
                                                             const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
                                                             return isImage ? (
