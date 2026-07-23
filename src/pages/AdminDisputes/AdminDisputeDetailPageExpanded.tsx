@@ -300,7 +300,9 @@ const AdminDisputeDetailPageExpanded = () => {
                             </div>
                         </div>
 
-                        {/* Admin Action Buttons */}
+                        {/* Admin Action Buttons — chỉ hành động cấp-dispute ở đây. 3 nút xử lý gia sư
+                            (cảnh báo/đình chỉ/khóa) đã chuyển xuống card "Bị đơn (Gia sư)" bên dưới
+                            để rõ đối tượng tác động, tránh nhầm là áp dụng cho nguyên đơn. */}
                         <div className="admin-ui-actions dispute-admin-actions">
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
@@ -315,36 +317,6 @@ const AdminDisputeDetailPageExpanded = () => {
                                 </button>
                                 </Can>
                             )}
-                            <Can permission="warning.create">
-                            <button
-                                type="button"
-                                className="admin-ui-button admin-ui-button-secondary"
-                                onClick={() => setIsWarningModalOpen(true)}
-                            >
-                                <span className="material-symbols-outlined">warning</span>
-                                Gửi cảnh báo
-                            </button>
-                            </Can>
-                            <Can permission="suspension.manage">
-                            <button
-                                type="button"
-                                className="admin-ui-button admin-ui-button-secondary"
-                                onClick={() => setIsSuspendModalOpen(true)}
-                            >
-                                <span className="material-symbols-outlined">block</span>
-                                Đình chỉ hồ sơ
-                            </button>
-                            </Can>
-                            <Can permission="user.deactivate">
-                            <button
-                                type="button"
-                                className="admin-ui-button admin-ui-button-danger"
-                                onClick={() => setIsLockModalOpen(true)}
-                            >
-                                <span className="material-symbols-outlined">lock</span>
-                                Khóa tài khoản
-                            </button>
-                            </Can>
                         </div>
                     </div>
                 </header>
@@ -418,6 +390,46 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <span className="dispute-stat-bold">{tutor.phone}</span>
                                             </div>
                                         )}
+                                    </div>
+
+                                    {/* Hành động với gia sư — đặt ngay trong card này để rõ đối tượng
+                                        tác động là gia sư, không phải nguyên đơn (parent/student). */}
+                                    <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                            Hành động với gia sư
+                                        </p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            <Can permission="warning.create">
+                                            <button
+                                                type="button"
+                                                className="admin-ui-button admin-ui-button-secondary"
+                                                onClick={() => setIsWarningModalOpen(true)}
+                                            >
+                                                <span className="material-symbols-outlined">warning</span>
+                                                Cảnh báo gia sư
+                                            </button>
+                                            </Can>
+                                            <Can permission="suspension.manage">
+                                            <button
+                                                type="button"
+                                                className="admin-ui-button admin-ui-button-secondary"
+                                                onClick={() => setIsSuspendModalOpen(true)}
+                                            >
+                                                <span className="material-symbols-outlined">block</span>
+                                                Đình chỉ gia sư
+                                            </button>
+                                            </Can>
+                                            <Can permission="user.deactivate">
+                                            <button
+                                                type="button"
+                                                className="admin-ui-button admin-ui-button-danger"
+                                                onClick={() => setIsLockModalOpen(true)}
+                                            >
+                                                <span className="material-symbols-outlined">lock</span>
+                                                Khóa TK gia sư
+                                            </button>
+                                            </Can>
+                                        </div>
                                     </div>
                                 </div>
 
