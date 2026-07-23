@@ -17,6 +17,7 @@ import {
     sendDisputeThreadMessage,
 } from '../../services/admin.service';
 import type { DisputeRecordingDto, DisputeMessageDto } from '../../services/admin.service';
+import { signalRService } from '../../services/signalr.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
@@ -204,6 +205,18 @@ const AdminDisputeDetailPageExpanded = () => {
         if (activeTab === 'chat-tutor') void fetchTutorThread();
         if (activeTab === 'chat-parent') void fetchParentThread();
     }, [activeTab, fetchTutorThread, fetchParentThread]);
+
+    // Real-time: chèn tin nhắn mới trực tiếp vào đúng thread thay vì phải refetch.
+    useEffect(() => {
+        if (!disputeDetail) return;
+        const unsubscribe = signalRService.subscribeToDisputeMessages((message: DisputeMessageDto) => {
+            if (message.disputeId !== disputeDetail.disputeId) return;
+            const setter = message.threadType === 'tutor' ? setTutorThread : setParentThread;
+            setter((prev) => (prev.some((m) => m.disputeMessageId === message.disputeMessageId) ? prev : [...prev, message]));
+            toast.info(`${message.senderName || (message.threadType === 'tutor' ? 'Gia sư' : 'Phụ huynh/Học sinh')}: ${message.message}`);
+        });
+        return unsubscribe;
+    }, [disputeDetail]);
 
     const handleSendTutorThreadMessage = async () => {
         if (!disputeId || tutorThreadInput.trim().length === 0) return;
