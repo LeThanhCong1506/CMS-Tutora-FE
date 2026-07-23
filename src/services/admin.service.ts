@@ -835,17 +835,54 @@ export const uploadDisputeEvidence = async (disputeId: string, file: File): Prom
 
 /**
  * Start investigating a dispute
- * Backend: PUT /api/admin/disputes/{disputeId}/investigate
+ * Backend: PUT /api/admin/disputes/{disputeId}/investigate?forceEarly=
  * Returns APIResponse<DisputeDetailDto>
+ * forceEarly bypasses the 48h grace period given to the tutor to respond first.
  */
-export const investigateDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
+export const investigateDispute = async (disputeId: string | number, forceEarly = false): Promise<DisputeDetail> => {
   try {
-    const { data } = await api.put(`/admin/disputes/${disputeId}/investigate`);
+    const { data } = await api.put(`/admin/disputes/${disputeId}/investigate`, null, { params: { forceEarly } });
     return data.content;
   } catch (error) {
     console.error('investigateDispute error:', error);
     throw error;
   }
+};
+
+export interface DisputeMessageDto {
+  disputeMessageId: number;
+  disputeId: number;
+  threadType: 'tutor' | 'parent';
+  senderId: string | null;
+  senderName: string | null;
+  senderRole: string | null;
+  message: string;
+  createdAt: string | null;
+}
+
+/**
+ * Get one of the two private threads (tutor or parent/student) for a dispute.
+ * Backend: GET /api/admin/disputes/{disputeId}/thread/{threadType}
+ */
+export const getDisputeThread = async (
+  disputeId: string | number,
+  threadType: 'tutor' | 'parent',
+): Promise<DisputeMessageDto[]> => {
+  const { data } = await api.get(`/admin/disputes/${disputeId}/thread/${threadType}`);
+  return data.content || [];
+};
+
+/**
+ * Send a message into one of the two private threads for a dispute.
+ * Backend: POST /api/admin/disputes/{disputeId}/thread/{threadType}/messages
+ */
+export const sendDisputeThreadMessage = async (
+  disputeId: string | number,
+  threadType: 'tutor' | 'parent',
+  message: string,
+): Promise<DisputeMessageDto> => {
+  const { data } = await api.post(`/admin/disputes/${disputeId}/thread/${threadType}/messages`, { message });
+  return data.content;
 };
 
 /**

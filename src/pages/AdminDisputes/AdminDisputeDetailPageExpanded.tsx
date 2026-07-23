@@ -13,8 +13,10 @@ import {
     issueWarning,
     suspendTutor,
     lockAccount,
+    getDisputeThread,
+    sendDisputeThreadMessage,
 } from '../../services/admin.service';
-import type { DisputeRecordingDto } from '../../services/admin.service';
+import type { DisputeRecordingDto, DisputeMessageDto } from '../../services/admin.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
@@ -83,6 +85,17 @@ const AdminDisputeDetailPageExpanded = () => {
     // Recording state
     const [recording, setRecording] = useState<DisputeRecordingDto | null>(null);
     const [recordingLoading, setRecordingLoading] = useState(false);
+
+    // Private dispute chat threads (admin<->tutor, admin<->parent/student)
+    const [tutorThread, setTutorThread] = useState<DisputeMessageDto[]>([]);
+    const [tutorThreadLoading, setTutorThreadLoading] = useState(false);
+    const [tutorThreadInput, setTutorThreadInput] = useState('');
+    const [tutorThreadSending, setTutorThreadSending] = useState(false);
+
+    const [parentThread, setParentThread] = useState<DisputeMessageDto[]>([]);
+    const [parentThreadLoading, setParentThreadLoading] = useState(false);
+    const [parentThreadInput, setParentThreadInput] = useState('');
+    const [parentThreadSending, setParentThreadSending] = useState(false);
 
     // Warning state for resolve
     const [createWarning, setCreateWarning] = useState(false);
@@ -162,6 +175,66 @@ const AdminDisputeDetailPageExpanded = () => {
         }
     }, [activeTab, recording, fetchRecording]);
 
+    // Private threads: fetch when switching to either chat tab
+    const fetchTutorThread = useCallback(async () => {
+        if (!disputeId) return;
+        try {
+            setTutorThreadLoading(true);
+            setTutorThread(await getDisputeThread(disputeId, 'tutor'));
+        } catch (err) {
+            console.error('Error fetching tutor thread:', err);
+        } finally {
+            setTutorThreadLoading(false);
+        }
+    }, [disputeId]);
+
+    const fetchParentThread = useCallback(async () => {
+        if (!disputeId) return;
+        try {
+            setParentThreadLoading(true);
+            setParentThread(await getDisputeThread(disputeId, 'parent'));
+        } catch (err) {
+            console.error('Error fetching parent thread:', err);
+        } finally {
+            setParentThreadLoading(false);
+        }
+    }, [disputeId]);
+
+    useEffect(() => {
+        if (activeTab === 'chat-tutor') void fetchTutorThread();
+        if (activeTab === 'chat-parent') void fetchParentThread();
+    }, [activeTab, fetchTutorThread, fetchParentThread]);
+
+    const handleSendTutorThreadMessage = async () => {
+        if (!disputeId || tutorThreadInput.trim().length === 0) return;
+        try {
+            setTutorThreadSending(true);
+            await sendDisputeThreadMessage(disputeId, 'tutor', tutorThreadInput.trim());
+            setTutorThreadInput('');
+            await fetchTutorThread();
+        } catch (err) {
+            console.error('Error sending tutor thread message:', err);
+            toast.error('Không thể gửi tin nhắn');
+        } finally {
+            setTutorThreadSending(false);
+        }
+    };
+
+    const handleSendParentThreadMessage = async () => {
+        if (!disputeId || parentThreadInput.trim().length === 0) return;
+        try {
+            setParentThreadSending(true);
+            await sendDisputeThreadMessage(disputeId, 'parent', parentThreadInput.trim());
+            setParentThreadInput('');
+            await fetchParentThread();
+        } catch (err) {
+            console.error('Error sending parent thread message:', err);
+            toast.error('Không thể gửi tin nhắn');
+        } finally {
+            setParentThreadSending(false);
+        }
+    };
+
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
 
@@ -191,9 +264,19 @@ const AdminDisputeDetailPageExpanded = () => {
 
     const handleInvestigate = async () => {
         if (!disputeDetail || !disputeId) return;
+
+        const deadline = disputeDetail.tutorResponseDeadline ? new Date(disputeDetail.tutorResponseDeadline) : null;
+        const beforeDeadline = deadline ? Date.now() < deadline.getTime() : false;
+        if (beforeDeadline) {
+            const confirmed = window.confirm(
+                `Gia sư còn thời gian đến ${deadline!.toLocaleString('vi-VN')} để phản hồi trước khi bị điều tra. Bạn có chắc muốn bắt đầu điều tra sớm không?`,
+            );
+            if (!confirmed) return;
+        }
+
         try {
             setIsSubmitting(true);
-            await investigateDispute(disputeDetail.disputeId);
+            await investigateDispute(disputeDetail.disputeId, beforeDeadline);
             toast.success('Đã bắt đầu điều tra khiếu nại');
             await fetchDisputeDetail(disputeId);
         } catch (err) {
@@ -306,15 +389,22 @@ const AdminDisputeDetailPageExpanded = () => {
                         <div className="admin-ui-actions dispute-admin-actions">
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
-                                <button
-                                    type="button"
-                                    className="admin-ui-button admin-ui-button-secondary"
-                                    onClick={handleInvestigate}
-                                    disabled={isSubmitting}
-                                >
-                                    <span className="material-symbols-outlined">search</span>
-                                    Bắt đầu điều tra
-                                </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                    <button
+                                        type="button"
+                                        className="admin-ui-button admin-ui-button-secondary"
+                                        onClick={handleInvestigate}
+                                        disabled={isSubmitting}
+                                    >
+                                        <span className="material-symbols-outlined">search</span>
+                                        Bắt đầu điều tra
+                                    </button>
+                                    {disputeDetail.tutorResponseDeadline && new Date(disputeDetail.tutorResponseDeadline).getTime() > Date.now() && (
+                                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                            Gia sư còn hạn phản hồi đến {new Date(disputeDetail.tutorResponseDeadline).toLocaleString('vi-VN')}
+                                        </span>
+                                    )}
+                                </div>
                                 </Can>
                             )}
                         </div>
@@ -539,6 +629,20 @@ const AdminDisputeDetailPageExpanded = () => {
                                     >
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">videocam</span>
                                         Ghi hình buổi học
+                                    </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'chat-tutor' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('chat-tutor')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">support_agent</span>
+                                        Chat với gia sư
+                                    </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'chat-parent' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('chat-parent')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">support_agent</span>
+                                        Chat với phụ huynh/HS
                                     </button>
                                 </div>
 
@@ -822,6 +926,116 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <p>Không có ghi hình cho buổi học này</p>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Private chat with tutor */}
+                                {activeTab === 'chat-tutor' && (
+                                    <div className="dispute-chat-area">
+                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
+                                            🛡️ Chat riêng với gia sư
+                                        </h3>
+                                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px' }}>
+                                            Chỉ admin và gia sư thấy được cuộc trò chuyện này.
+                                        </p>
+                                        {tutorThreadLoading ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
+                                        ) : tutorThread.length === 0 ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                                                {tutorThread.map((msg) => (
+                                                    <div
+                                                        key={msg.disputeMessageId}
+                                                        style={{
+                                                            alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
+                                                            maxWidth: '75%',
+                                                            padding: '10px 14px',
+                                                            borderRadius: '10px',
+                                                            background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
+                                                            color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
+                                                        }}
+                                                    >
+                                                        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
+                                                            {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Gia sư')}
+                                                        </p>
+                                                        <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <textarea
+                                                value={tutorThreadInput}
+                                                onChange={(e) => setTutorThreadInput(e.target.value)}
+                                                placeholder="Nhắn cho gia sư..."
+                                                rows={2}
+                                                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="admin-ui-button admin-ui-button-secondary"
+                                                disabled={tutorThreadSending || tutorThreadInput.trim().length === 0}
+                                                onClick={() => void handleSendTutorThreadMessage()}
+                                            >
+                                                Gửi
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Private chat with parent/student */}
+                                {activeTab === 'chat-parent' && (
+                                    <div className="dispute-chat-area">
+                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
+                                            🛡️ Chat riêng với phụ huynh/học sinh
+                                        </h3>
+                                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px' }}>
+                                            Chỉ admin và phụ huynh/học sinh thấy được cuộc trò chuyện này.
+                                        </p>
+                                        {parentThreadLoading ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
+                                        ) : parentThread.length === 0 ? (
+                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                                                {parentThread.map((msg) => (
+                                                    <div
+                                                        key={msg.disputeMessageId}
+                                                        style={{
+                                                            alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
+                                                            maxWidth: '75%',
+                                                            padding: '10px 14px',
+                                                            borderRadius: '10px',
+                                                            background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
+                                                            color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
+                                                        }}
+                                                    >
+                                                        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
+                                                            {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Phụ huynh/Học sinh')}
+                                                        </p>
+                                                        <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <textarea
+                                                value={parentThreadInput}
+                                                onChange={(e) => setParentThreadInput(e.target.value)}
+                                                placeholder="Nhắn cho phụ huynh/học sinh..."
+                                                rows={2}
+                                                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="admin-ui-button admin-ui-button-secondary"
+                                                disabled={parentThreadSending || parentThreadInput.trim().length === 0}
+                                                onClick={() => void handleSendParentThreadMessage()}
+                                            >
+                                                Gửi
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

@@ -572,6 +572,8 @@ export interface DisputeDetail {
   classSession: DisputeClassSessionDto | null;
   tutor: DisputeTutorDto | null;
   timeSinceCreation: string | null;
+  /** Earliest time admin can Investigate without forceEarly (createdAt + 48h). */
+  tutorResponseDeadline: string | null;
 }
 
 export interface DisputeEvidenceItemDto {
