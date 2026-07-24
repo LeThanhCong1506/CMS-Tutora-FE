@@ -482,7 +482,7 @@ export interface TutorAvailability {
 
 export type DisputeType = 'no_show' | 'quality' | 'payment' | 'other';
 
-export type DisputeStatus = 'pending' | 'investigating' | 'resolved' | 'closed';
+export type DisputeStatus = 'pending' | 'investigating' | 'confirmed_no_show' | 'resolved' | 'closed';
 
 export type DisputePriority = 'low' | 'medium' | 'high';
 
@@ -530,6 +530,22 @@ export interface DisputeUserDto {
   avatarUrl: string | null;
 }
 
+export interface DisputeScheduleChangeAuditDto {
+  scheduleChangeId: number;
+  status: 'pending' | 'approved' | 'applied' | 'rejected' | 'expired';
+  originalScheduledStart: string;
+  originalScheduledEnd: string;
+  adjustedScheduledStart: string | null;
+  adjustedScheduledEnd: string | null;
+  learnerApproverRole: 'Student' | 'Parent';
+  tutorConfirmedByName: string | null;
+  tutorConfirmedAt: string | null;
+  learnerConfirmedByName: string | null;
+  learnerConfirmedAt: string | null;
+  requestedAt: string | null;
+  approvedAt: string | null;
+  appliedAt: string | null;
+}
 export interface DisputeClassSessionDto {
   classSessionId: number;
   scheduledStart: string;
@@ -540,6 +556,7 @@ export interface DisputeClassSessionDto {
   homework: string | null;
   isTutorPresent: boolean | null;
   isStudentPresent: boolean | null;
+  scheduleChanges?: DisputeScheduleChangeAuditDto[];
 }
 
 export interface DisputeTutorDto {
@@ -567,6 +584,8 @@ export interface DisputeDetail {
   tutorResponse: string | null;
   tutorRespondedAt: string | null;
   additionalEvidence: DisputeEvidenceItemDto[] | null;
+  noShowConfirmedAt: string | null;
+  noShowConfirmedBy: string | null;
   createdBy: DisputeUserDto | null;
   resolvedBy: DisputeUserDto | null;
   classSession: DisputeClassSessionDto | null;

@@ -370,6 +370,16 @@ export const getDisputeDetail = async (disputeId: string | number): Promise<Disp
   }
 };
 
+/** Confirm a tutor no-show after admin review without moving money or closing the dispute. */
+export const confirmTutorNoShow = async (disputeId: string | number): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/confirm-no-show`);
+    return data.content;
+  } catch (error) {
+    console.error('confirmTutorNoShow error:', error);
+    throw error;
+  }
+};
 /**
  * Resolve dispute with admin decision
  * Backend: PUT /api/admin/disputes/{disputeId}/resolve

@@ -8,6 +8,7 @@ import {
     getDisputeDetail,
     resolveDispute,
     investigateDispute,
+    confirmTutorNoShow,
     getDisputeChatHistory,
     getDisputeRecording,
     issueWarning,
@@ -42,6 +43,8 @@ const getDisputeStatusVariant = (status?: string | null): StatusVariant => {
             return 'warning';
         case 'investigating':
             return 'info';
+        case 'confirmed_no_show':
+            return 'success';
         case 'resolved':
             return 'success';
         case 'closed':
@@ -57,6 +60,8 @@ const getDisputeStatusLabel = (status?: string | null) => {
             return 'Cần xử lý';
         case 'investigating':
             return 'Đang điều tra';
+        case 'confirmed_no_show':
+            return 'Đã xác nhận vắng mặt';
         case 'resolved':
             return 'Đã giải quyết';
         case 'closed':
@@ -149,6 +154,7 @@ const AdminDisputeDetailPageExpanded = () => {
                 .catch((err) => {
                     console.error('Error fetching refund preview:', err);
                     setRefundPreview(null);
+                    toast.error('Không thể tính toán số tiền hoàn (kiểm tra lại backend đã cập nhật endpoint /refund-preview chưa)');
                 })
                 .finally(() => setPreviewLoading(false));
         }, 400);
@@ -329,6 +335,25 @@ const AdminDisputeDetailPageExpanded = () => {
         }
     };
 
+    const handleConfirmNoShow = async () => {
+        if (!disputeDetail || !disputeId) return;
+        const confirmed = window.confirm(
+            'Xác nhận gia sư thực sự vắng mặt? Sau bước này, phụ huynh/học sinh có thể tự chọn phương án hoàn tiền, học bù hoặc hủy khóa học.',
+        );
+        if (!confirmed) return;
+
+        try {
+            setIsSubmitting(true);
+            await confirmTutorNoShow(disputeDetail.disputeId);
+            toast.success('Đã xác nhận gia sư vắng mặt. Người học có thể chọn phương án xử lý.');
+            await fetchDisputeDetail(disputeId);
+        } catch (err) {
+            console.error('Error confirming tutor no-show:', err);
+            toast.error('Không thể xác nhận vắng mặt');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
     // Wrapper functions for modal callbacks
     const handleIssueWarning = async (_disputeId: string, _tutorId: string, reason: string, severity: 'low' | 'medium' | 'high') => {
         const warninglevel = severity === 'high' ? 2 : 1;
@@ -448,6 +473,26 @@ const AdminDisputeDetailPageExpanded = () => {
                                     )}
                                 </div>
                                 </Can>
+                            )}
+                            {disputeDetail.disputeType === 'no_show'
+                                && classSession?.status === 'no_show'
+                                && ['pending', 'investigating'].includes(disputeDetail.status || '') && (
+                                <Can permission="dispute.resolve">
+                                    <button
+                                        type="button"
+                                        className="admin-ui-button admin-ui-button-primary"
+                                        onClick={handleConfirmNoShow}
+                                        disabled={isSubmitting}
+                                    >
+                                        <span className="material-symbols-outlined">verified</span>
+                                        Xác nhận gia sư vắng mặt
+                                    </button>
+                                </Can>
+                            )}
+                            {disputeDetail.status === 'confirmed_no_show' && (
+                                <div style={{ maxWidth: '320px', padding: '10px 14px', borderRadius: '10px', background: '#ecfdf5', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
+                                    Đã xác nhận no-show. Đang chờ phụ huynh/học sinh chọn phương án xử lý.
+                                </div>
                             )}
                         </div>
                     </div>
@@ -582,7 +627,55 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     {formatDateTime(classSession.scheduledStart)} - {formatDateTime(classSession.scheduledEnd)}
                                                 </span>
                                             </div>
-                                            <div className="dispute-stat-row">
+                                            {classSession.scheduleChanges && classSession.scheduleChanges.length > 0 && (
+                                                <div style={{ margin: '4px 0 8px', padding: '14px', borderRadius: '12px', background: '#f8f4ec', border: '1px solid #e8dcc8' }}>
+                                                    <div style={{ marginBottom: '10px', color: 'var(--color-navy)', fontWeight: 700 }}>
+                                                        🕒 Xác nhận học ngoài lịch
+                                                    </div>
+                                                    {classSession.scheduleChanges.map((change) => (
+                                                        <div key={change.scheduleChangeId} style={{ display: 'grid', gap: '8px', paddingTop: '10px', borderTop: '1px solid #e6dccd' }}>
+                                                            <div className="dispute-stat-row">
+                                                                <span style={{ color: '#81786a' }}>Lịch ban đầu</span>
+                                                                <span className="dispute-stat-bold" style={{ fontSize: '12px' }}>
+                                                                    {formatDateTime(change.originalScheduledStart)} - {formatDateTime(change.originalScheduledEnd)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="dispute-stat-row">
+                                                                <span style={{ color: '#81786a' }}>Lịch sau khi dời</span>
+                                                                <span className="dispute-stat-bold" style={{ fontSize: '12px' }}>
+                                                                    {change.adjustedScheduledStart && change.adjustedScheduledEnd
+                                                                        ? `${formatDateTime(change.adjustedScheduledStart)} - ${formatDateTime(change.adjustedScheduledEnd)}`
+                                                                        : 'Chưa áp dụng'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="dispute-stat-row">
+                                                                <span style={{ color: '#81786a' }}>Gia sư xác nhận</span>
+                                                                <span style={{ fontSize: '12px', color: change.tutorConfirmedAt ? '#166534' : '#b45309', fontWeight: 600 }}>
+                                                                    {change.tutorConfirmedAt
+                                                                        ? `${change.tutorConfirmedByName || 'Gia sư'} · ${formatDateTime(change.tutorConfirmedAt)}`
+                                                                        : 'Chưa xác nhận'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="dispute-stat-row">
+                                                                <span style={{ color: '#81786a' }}>
+                                                                    {change.learnerApproverRole === 'Parent' ? 'Phụ huynh xác nhận' : 'Học sinh xác nhận'}
+                                                                </span>
+                                                                <span style={{ fontSize: '12px', color: change.learnerConfirmedAt ? '#166534' : '#b45309', fontWeight: 600 }}>
+                                                                    {change.learnerConfirmedAt
+                                                                        ? `${change.learnerConfirmedByName || change.learnerApproverRole} · ${formatDateTime(change.learnerConfirmedAt)}`
+                                                                        : 'Chưa xác nhận'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="dispute-stat-row">
+                                                                <span style={{ color: '#81786a' }}>Trạng thái audit</span>
+                                                                <StatusBadge variant={change.status === 'applied' ? 'success' : change.status === 'rejected' ? 'error' : 'warning'} shape="tag">
+                                                                    {change.status}
+                                                                </StatusBadge>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}                                            <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
                                                 <StatusBadge variant="info" shape="tag">{classSession.status || 'N/A'}</StatusBadge>
                                             </div>
