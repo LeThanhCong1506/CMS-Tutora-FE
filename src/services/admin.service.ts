@@ -852,6 +852,44 @@ export const getDisputeChatHistory = async (disputeId: string | number): Promise
 };
 
 /**
+ * Trạng thái + link stream tạm của bản ghi video buổi học gắn với tranh chấp.
+ * Backend: GET /api/admin/disputes/{disputeId}/recording
+ * Returns APIResponse<DisputeRecordingResponse>
+ *
+ * `recordingUrl` là đường dẫn tương đối tới endpoint proxy (token ngắn hạn, hết hạn sau ít
+ * phút) — KHÔNG phải link Drive trực tiếp (file trên Drive luôn ở chế độ private). Ghép với
+ * gốc backend thật (VITE_BACKEND_URL) trước khi gán vào `<video src>`.
+ */
+export interface DisputeRecording {
+  disputeId: number;
+  classSessionId?: number;
+  /** available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) | none. */
+  status: 'available' | 'processing' | 'recording' | 'none';
+  recordingUrl?: string;
+  available: boolean;
+}
+
+export const getDisputeRecording = async (disputeId: string | number): Promise<DisputeRecording> => {
+  try {
+    const { data } = await api.get(`/admin/disputes/${disputeId}/recording`);
+    return data.content;
+  } catch (error) {
+    console.error('getDisputeRecording error:', error);
+    throw error;
+  }
+};
+
+/**
+ * `recordingUrl` là đường dẫn tương đối — ghép với gốc backend thật trước khi gán vào
+ * `<video src>`. Thẻ video không đi qua axios/proxy nên phải tự resolve.
+ */
+export const resolveRecordingStreamUrl = (recordingUrl: string): string => {
+  if (/^https?:\/\//i.test(recordingUrl)) return recordingUrl;
+  const backendUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined) || 'http://localhost:5166';
+  return `${backendUrl.replace(/\/$/, '')}${recordingUrl}`;
+};
+
+/**
  * Upload evidence file for dispute
  * @param disputeId - Dispute ID
  * @param file - File to upload
