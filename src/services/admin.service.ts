@@ -380,6 +380,17 @@ export const confirmTutorNoShow = async (disputeId: string | number): Promise<Di
     throw error;
   }
 };
+
+/** (Re)run AI priority classification for a dispute — backfills older disputes or retries a failed run. */
+export const classifyDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/classify`);
+    return data.content;
+  } catch (error) {
+    console.error('classifyDispute error:', error);
+    throw error;
+  }
+};
 /**
  * Resolve dispute with admin decision
  * Backend: PUT /api/admin/disputes/{disputeId}/resolve

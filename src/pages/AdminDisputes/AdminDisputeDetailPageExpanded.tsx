@@ -17,6 +17,7 @@ import {
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
+    classifyDispute,
 } from '../../services/admin.service';
 import type { DisputeRecordingDto, DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
 import { signalRService } from '../../services/signalr.service';
@@ -68,6 +69,19 @@ const getDisputeStatusLabel = (status?: string | null) => {
             return 'Đã đóng';
         default:
             return status || 'N/A';
+    }
+};
+
+const getPriorityVariant = (priority?: string | null): StatusVariant => {
+    switch (priority) {
+        case 'high':
+            return 'error';
+        case 'medium':
+            return 'warning';
+        case 'low':
+            return 'success';
+        default:
+            return 'neutral';
     }
 };
 
@@ -317,7 +331,7 @@ const AdminDisputeDetailPageExpanded = () => {
         const beforeDeadline = deadline ? Date.now() < deadline.getTime() : false;
         if (beforeDeadline) {
             const confirmed = window.confirm(
-                `Gia sư còn thời gian đến ${deadline!.toLocaleString('vi-VN')} để phản hồi trước khi bị điều tra. Bạn có chắc muốn bắt đầu điều tra sớm không?`,
+                `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi trước khi bị điều tra. Bạn có chắc muốn bắt đầu điều tra sớm không?`,
             );
             if (!confirmed) return;
         }
@@ -350,6 +364,22 @@ const AdminDisputeDetailPageExpanded = () => {
         } catch (err) {
             console.error('Error confirming tutor no-show:', err);
             toast.error('Không thể xác nhận vắng mặt');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleClassify = async () => {
+        if (!disputeDetail || !disputeId) return;
+
+        try {
+            setIsSubmitting(true);
+            await classifyDispute(disputeDetail.disputeId);
+            toast.success('Đã phân loại mức độ ưu tiên tranh chấp.');
+            await fetchDisputeDetail(disputeId);
+        } catch (err) {
+            console.error('Error classifying dispute:', err);
+            toast.error('Không thể phân loại tranh chấp');
         } finally {
             setIsSubmitting(false);
         }
@@ -437,6 +467,12 @@ const AdminDisputeDetailPageExpanded = () => {
                                     <StatusBadge variant={getDisputeStatusVariant(disputeDetail.status)} shape="tag">
                                         {getDisputeStatusLabel(disputeDetail.status)}
                                     </StatusBadge>
+                                    <span>•</span>
+                                    <span title={disputeDetail.priorityReason || undefined}>
+                                        <StatusBadge variant={getPriorityVariant(disputeDetail.priority)} shape="tag">
+                                            {disputeDetail.priorityDisplay || 'Chưa phân loại'}
+                                        </StatusBadge>
+                                    </span>
                                 </div>
                             </div>
                             <div className="dispute-detail-actions">
@@ -454,6 +490,17 @@ const AdminDisputeDetailPageExpanded = () => {
                             (cảnh báo/đình chỉ/khóa) đã chuyển xuống card "Bị đơn (Gia sư)" bên dưới
                             để rõ đối tượng tác động, tránh nhầm là áp dụng cho nguyên đơn. */}
                         <div className="admin-ui-actions dispute-admin-actions">
+                            <Can permission="dispute.investigate">
+                                <button
+                                    type="button"
+                                    className="admin-ui-button admin-ui-button-secondary"
+                                    onClick={handleClassify}
+                                    disabled={isSubmitting}
+                                >
+                                    <span className="material-symbols-outlined">smart_toy</span>
+                                    Phân loại lại
+                                </button>
+                            </Can>
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -468,7 +515,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                     </button>
                                     {disputeDetail.tutorResponseDeadline && new Date(disputeDetail.tutorResponseDeadline).getTime() > Date.now() && (
                                         <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                            Gia sư còn hạn phản hồi đến {new Date(disputeDetail.tutorResponseDeadline).toLocaleString('vi-VN')}
+                                            Gia sư còn hạn phản hồi đến {formatDateTime(disputeDetail.tutorResponseDeadline)}
                                         </span>
                                     )}
                                 </div>

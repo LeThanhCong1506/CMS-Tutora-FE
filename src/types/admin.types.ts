@@ -502,6 +502,10 @@ export interface DisputeForAdmin {
   disputeTypeDisplay: string;
   statusDisplay: string;
   statusColor: string;
+  /** AI-classified priority — null until the background classification job has run. */
+  priority: DisputePriority | null;
+  priorityReason: string | null;
+  priorityDisplay: string;
 }
 
 export interface DisputeQueryParams {
@@ -593,6 +597,10 @@ export interface DisputeDetail {
   timeSinceCreation: string | null;
   /** Earliest time admin can Investigate without forceEarly (createdAt + 48h). */
   tutorResponseDeadline: string | null;
+  /** AI-classified priority — null until the background classification job has run. */
+  priority: DisputePriority | null;
+  priorityReason: string | null;
+  priorityDisplay: string;
 }
 
 export interface DisputeEvidenceItemDto {
