@@ -32,6 +32,7 @@ class SignalRService {
   // ở `messageHandlers` (ChatArea) lẫn mọi subscriber ở đây đều được gọi.
   private chatMessageSubscribers: Set<(message: any) => void> = new Set();
   private notificationSubscribers: Set<(notification: any) => void> = new Set();
+  private disputeMessageSubscribers: Set<(message: any) => void> = new Set();
 
   // ==================== CONNECT / DISCONNECT ====================
 
@@ -260,6 +261,15 @@ class SignalRService {
     return () => { this.notificationSubscribers.delete(handler); };
   }
 
+  /**
+   * Multi-subscriber cho tin nhắn dispute-thread mới ("disputeMessageReceived") — dùng ở
+   * trang chi tiết dispute để chèn tin nhắn trực tiếp vào state thay vì phải refetch.
+   */
+  subscribeToDisputeMessages(handler: (message: any) => void): () => void {
+    this.disputeMessageSubscribers.add(handler);
+    return () => { this.disputeMessageSubscribers.delete(handler); };
+  }
+
   onNotificationCountUpdated(handler: (count: number) => void): void {
     this.notificationHandlers.set('NotificationCountUpdated', handler);
     if (this.notificationConnection) {
@@ -412,6 +422,13 @@ class SignalRService {
       // Notify multi-subscribers (page-level lesson listener, ...)
       this.notificationSubscribers.forEach((fn) => {
         try { fn(notification); } catch (err) { console.error('notification subscriber failed:', err); }
+      });
+    });
+
+    this.notificationConnection.on('disputeMessageReceived', (message: any) => {
+      console.log('💬 Dispute message received:', message);
+      this.disputeMessageSubscribers.forEach((fn) => {
+        try { fn(message); } catch (err) { console.error('dispute message subscriber failed:', err); }
       });
     });
 

@@ -370,6 +370,27 @@ export const getDisputeDetail = async (disputeId: string | number): Promise<Disp
   }
 };
 
+/** Confirm a tutor no-show after admin review without moving money or closing the dispute. */
+export const confirmTutorNoShow = async (disputeId: string | number): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/confirm-no-show`);
+    return data.content;
+  } catch (error) {
+    console.error('confirmTutorNoShow error:', error);
+    throw error;
+  }
+};
+
+/** (Re)run AI priority classification for a dispute — backfills older disputes or retries a failed run. */
+export const classifyDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/classify`);
+    return data.content;
+  } catch (error) {
+    console.error('classifyDispute error:', error);
+    throw error;
+  }
+};
 /**
  * Resolve dispute with admin decision
  * Backend: PUT /api/admin/disputes/{disputeId}/resolve
@@ -386,6 +407,31 @@ export const resolveDispute = async (
     console.error('resolveDispute error:', error);
     throw error;
   }
+};
+
+export interface RefundPreviewDto {
+  classSessionId: number;
+  percentage: number;
+  parentRefundAmount: number;
+  tutorPayoutAmount: number;
+  /** Đã đóng đợt 1 (deposit — đúng 1 buổi đầu) chưa. */
+  isDepositPaid: boolean;
+  /** Đã đóng đợt 2 (remaining — các buổi còn lại) chưa. */
+  isRemainingPaid: boolean;
+  tutorFrozenBalance: number;
+  warnings: string[];
+}
+
+/**
+ * Preview parent refund / tutor payout amounts for a candidate percentage before resolving.
+ * Backend: GET /api/admin/disputes/{disputeId}/refund-preview?percentage=
+ */
+export const getRefundPreview = async (
+  disputeId: string | number,
+  percentage: number,
+): Promise<RefundPreviewDto> => {
+  const { data } = await api.get(`/admin/disputes/${disputeId}/refund-preview`, { params: { percentage } });
+  return data.content;
 };
 
 /**
@@ -917,17 +963,54 @@ export const uploadDisputeEvidence = async (disputeId: string, file: File): Prom
 
 /**
  * Start investigating a dispute
- * Backend: PUT /api/admin/disputes/{disputeId}/investigate
+ * Backend: PUT /api/admin/disputes/{disputeId}/investigate?forceEarly=
  * Returns APIResponse<DisputeDetailDto>
+ * forceEarly bypasses the 48h grace period given to the tutor to respond first.
  */
-export const investigateDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
+export const investigateDispute = async (disputeId: string | number, forceEarly = false): Promise<DisputeDetail> => {
   try {
-    const { data } = await api.put(`/admin/disputes/${disputeId}/investigate`);
+    const { data } = await api.put(`/admin/disputes/${disputeId}/investigate`, null, { params: { forceEarly } });
     return data.content;
   } catch (error) {
     console.error('investigateDispute error:', error);
     throw error;
   }
+};
+
+export interface DisputeMessageDto {
+  disputeMessageId: number;
+  disputeId: number;
+  threadType: 'tutor' | 'parent';
+  senderId: string | null;
+  senderName: string | null;
+  senderRole: string | null;
+  message: string;
+  createdAt: string | null;
+}
+
+/**
+ * Get one of the two private threads (tutor or parent/student) for a dispute.
+ * Backend: GET /api/admin/disputes/{disputeId}/thread/{threadType}
+ */
+export const getDisputeThread = async (
+  disputeId: string | number,
+  threadType: 'tutor' | 'parent',
+): Promise<DisputeMessageDto[]> => {
+  const { data } = await api.get(`/admin/disputes/${disputeId}/thread/${threadType}`);
+  return data.content || [];
+};
+
+/**
+ * Send a message into one of the two private threads for a dispute.
+ * Backend: POST /api/admin/disputes/{disputeId}/thread/{threadType}/messages
+ */
+export const sendDisputeThreadMessage = async (
+  disputeId: string | number,
+  threadType: 'tutor' | 'parent',
+  message: string,
+): Promise<DisputeMessageDto> => {
+  const { data } = await api.post(`/admin/disputes/${disputeId}/thread/${threadType}/messages`, { message });
+  return data.content;
 };
 
 /**

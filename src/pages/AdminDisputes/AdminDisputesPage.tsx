@@ -23,6 +23,19 @@ const getStatusVariant = (status?: string | null): StatusVariant => {
     }
 };
 
+const getPriorityVariant = (priority?: string | null): StatusVariant => {
+    switch (priority) {
+        case 'high':
+            return 'error';
+        case 'medium':
+            return 'warning';
+        case 'low':
+            return 'success';
+        default:
+            return 'neutral';
+    }
+};
+
 const AdminDisputesPage = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<DisputeTab>('all');
@@ -157,6 +170,18 @@ const AdminDisputesPage = () => {
                     {dispute.statusDisplay || dispute.status || 'N/A'}
                 </StatusBadge>
             ),
+        },
+        {
+            key: 'priority',
+            title: 'Mức độ ưu tiên',
+            render: (dispute) => (
+                <span title={dispute.priorityReason || undefined}>
+                    <StatusBadge variant={getPriorityVariant(dispute.priority)} shape="tag">
+                        {dispute.priorityDisplay || 'Chưa phân loại'}
+                    </StatusBadge>
+                </span>
+            ),
+            hideOnMobile: true,
         },
         {
             key: 'createdAt',
