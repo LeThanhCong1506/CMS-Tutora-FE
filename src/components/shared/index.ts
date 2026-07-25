@@ -40,3 +40,7 @@ export type { BreadcrumbItem } from './Breadcrumb';
 
 export { ErrorBoundary, ErrorFallback } from './ErrorBoundary';
 export type { ErrorFallbackProps } from './ErrorBoundary';
+
+export { SessionLogPanel } from './SessionLogPanel';
+
+export { TutorReliabilityCard } from './TutorReliabilityCard';

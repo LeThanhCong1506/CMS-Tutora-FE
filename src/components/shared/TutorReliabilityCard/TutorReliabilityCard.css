@@ -1,0 +1,153 @@
+/* Self-contained so the card looks the same wherever a tutor is being assessed. */
+.tutor-reliability {
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    min-width: 0;
+}
+
+.tutor-reliability__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.tutor-reliability__title {
+    margin: 0;
+    color: var(--color-navy);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.tutor-reliability__range {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.tutor-reliability__basis {
+    margin: 0 0 16px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.tutor-reliability__muted {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tutor-reliability__error {
+    margin: 0;
+    color: #b91c1c;
+    font-size: 13px;
+}
+
+.tutor-reliability__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.tutor-reliability__metric {
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.tutor-reliability__metric--danger {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.tutor-reliability__metric-label {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.tutor-reliability__metric-value {
+    margin: 4px 0 0;
+    color: var(--color-navy);
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.tutor-reliability__metric-hint {
+    margin: 2px 0 0;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.tutor-reliability__signals {
+    margin: 16px 0 0;
+    padding: 12px 14px 12px 30px;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.tutor-reliability__toggle {
+    margin-top: 16px;
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tutor-reliability__scroll {
+    margin-top: 12px;
+    overflow-x: auto;
+}
+
+.tutor-reliability__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.tutor-reliability__table th {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #64748b;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.tutor-reliability__table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Lessons excluded from every rate are dimmed rather than hidden, so the gap in the evidence is
+   visible instead of quietly disappearing from the table. */
+.tutor-reliability__row--muted td {
+    color: #94a3b8;
+}
+
+.tutor-reliability__badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 11px;
+    font-weight: 600;
+}

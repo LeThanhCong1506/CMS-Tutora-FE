@@ -351,6 +351,8 @@
 .dispute-evidence-tabs {
     display: flex;
     align-items: center;
+    overflow-x: auto;
+    scrollbar-width: thin;
     border-bottom: 1px solid #e3e1dd;
     background-color: var(--color-cream);
 }
@@ -365,8 +367,10 @@
     border-right: 1px solid #e3e1dd;
     cursor: pointer;
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;
     transition: background-color 0.2s ease;
 }
 
@@ -584,6 +588,46 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+}
+
+/* Suggested verdict from the attendance evidence. Styled as a hint above the options rather than
+   as a preselected answer — the log proposes, the admin decides. */
+.dispute-suggestion {
+    padding: 12px 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #eff6ff;
+}
+
+.dispute-suggestion__title {
+    margin: 0;
+    color: #1e40af;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dispute-suggestion__detail {
+    margin: 4px 0 10px;
+    color: #1e40af;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.dispute-suggestion__apply {
+    padding: 6px 12px;
+    border: 1px solid #1e40af;
+    border-radius: 6px;
+    background: #fff;
+    color: #1e40af;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dispute-suggestion__apply:disabled {
+    border-color: #bfdbfe;
+    color: #93a8d4;
+    cursor: default;
 }
 
 .dispute-options-group {
