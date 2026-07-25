@@ -45,6 +45,7 @@ const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/Pay
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
+const AdminAiCreditPage = lazy(() => import('./pages/AdminAiCredit/AdminAiCreditPage'));
 
 const guard = (element: ReactNode, permission?: string, adminOnly = false) => (
   <PermissionRoute permission={permission} adminOnly={adminOnly}>{element}</PermissionRoute>
@@ -181,6 +182,8 @@ function App() {
               <Route path="disputes/:id" element={guard(<AdminDisputeDetailPage />, 'dispute.view')} />
               <Route path="settings" element={guard(<AdminSettingsPage />, 'lookup.view')} />
               <Route path="notifications" element={guard(<NotificationsPage />, 'notification.view')} />
+              <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
+              <Route path="ai-credit/settings" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />
               <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
               <Route path="payouts/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />

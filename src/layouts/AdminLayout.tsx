@@ -70,6 +70,7 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/resources/subjects', label: 'Môn & Lớp', materialIcon: 'category', sectionLabel: 'Tài nguyên', permission: 'lookup.view' },
       { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
+      { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
       { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính', permission: 'financial.view' },
       { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
@@ -124,6 +125,7 @@ const AdminLayout: React.FC = () => {
         || pathname.startsWith('/admin-portal/resources/question-types');
     }
     if (path === '/admin-portal/question-bank') return pathname.startsWith('/admin-portal/question-bank');
+    if (path === '/admin-portal/ai-credit/packages') return pathname.startsWith('/admin-portal/ai-credit');
     return pathname === path;
   };
 
