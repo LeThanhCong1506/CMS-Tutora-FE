@@ -11,6 +11,7 @@ import {
     confirmTutorNoShow,
     getDisputeChatHistory,
     getDisputeRecording,
+    resolveRecordingStreamUrl,
     issueWarning,
     suspendTutor,
     lockAccount,
@@ -18,8 +19,9 @@ import {
     sendDisputeThreadMessage,
     getRefundPreview,
     classifyDispute,
+    type DisputeRecording,
 } from '../../services/admin.service';
-import type { DisputeRecordingDto, DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
+import type { DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
 import { signalRService } from '../../services/signalr.service';
 import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
 import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
@@ -106,9 +108,10 @@ const AdminDisputeDetailPageExpanded = () => {
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
 
-    // Recording state
-    const [recording, setRecording] = useState<DisputeRecordingDto | null>(null);
+    // Recording (video buổi học)
+    const [recording, setRecording] = useState<DisputeRecording | null>(null);
     const [recordingLoading, setRecordingLoading] = useState(false);
+    const [recordingError, setRecordingError] = useState(false);
 
     // Private dispute chat threads (admin<->tutor, admin<->parent/student)
     const [tutorThread, setTutorThread] = useState<DisputeMessageDto[]>([]);
@@ -197,27 +200,35 @@ const AdminDisputeDetailPageExpanded = () => {
         }
     }, [activeTab, chatMessages.length, fetchChatHistory]);
 
-    // Fetch recording when switching to recording tab
+    // Fetch recording info when switching to the recordings tab — token ngắn hạn nên
+    // luôn gọi lại (không cache) mỗi lần vào lại tab, giống cách "recordings" không
+    // đọc lại được sau khi vào tab khác rồi quay lại.
     const fetchRecording = useCallback(async () => {
         if (!disputeId) return;
         try {
             setRecordingLoading(true);
+            setRecordingError(false);
             const data = await getDisputeRecording(disputeId);
             setRecording(data);
         } catch (err) {
-            console.error('Error fetching recording:', err);
+            console.error('Error fetching dispute recording:', err);
             setRecording(null);
+            setRecordingError(true);
         } finally {
             setRecordingLoading(false);
         }
     }, [disputeId]);
 
     useEffect(() => {
-        if (activeTab === 'recording' && !recording) {
+        // KHÔNG gate theo recordingLoading: nó tự chuyển true→false khi fetch xong (kể cả
+        // lỗi), nằm trong dependency sẽ khiến effect tự chạy lại liên tục nếu API cứ lỗi
+        // (vòng lặp gọi vô hạn, không có backoff). Gate theo recordingError thay vào đó —
+        // khớp với cách tab "chat" bên trên xử lý (không tự retry khi đã có lỗi/dữ liệu).
+        if (activeTab === 'recordings' && !recording && !recordingError) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             void fetchRecording();
         }
-    }, [activeTab, recording, fetchRecording]);
+    }, [activeTab, recording, recordingError, fetchRecording]);
 
     // Private threads: fetch when switching to either chat tab
     const fetchTutorThread = useCallback(async () => {
@@ -806,8 +817,8 @@ const AdminDisputeDetailPageExpanded = () => {
                                         Nhật ký chat
                                     </button>
                                     <button
-                                        className={`dispute-evidence-tab ${activeTab === 'recording' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('recording')}
+                                        className={`dispute-evidence-tab ${activeTab === 'recordings' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('recordings')}
                                     >
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">videocam</span>
                                         Ghi hình buổi học
@@ -1032,80 +1043,75 @@ const AdminDisputeDetailPageExpanded = () => {
                                     </div>
                                 )}
 
-                                {/* Recording Tab */}
-                                {activeTab === 'recording' && (
+                                {/* Recording (video buổi học) */}
+                                {activeTab === 'recordings' && (
                                     <div className="dispute-chat-area">
                                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
                                             🎥 Ghi hình buổi học
                                         </h3>
+
                                         {recordingLoading ? (
                                             <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                                Đang tải thông tin ghi hình...
+                                                Đang tải video...
                                             </p>
-                                        ) : !recording ? (
+                                        ) : recordingError ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block', color: '#dc2626' }}>
+                                                    error
+                                                </span>
+                                                <p>Không thể tải video. Đường truyền có thể đang gián đoạn.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void fetchRecording()}
+                                                    style={{
+                                                        marginTop: '12px', padding: '8px 16px', background: 'var(--color-navy)',
+                                                        color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px',
+                                                        fontWeight: 600, cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Thử lại
+                                                </button>
+                                            </div>
+                                        ) : recording?.status === 'available' && recording.recordingUrl ? (
+                                            <video
+                                                src={resolveRecordingStreamUrl(recording.recordingUrl)}
+                                                controls
+                                                style={{ width: '100%', maxHeight: '480px', borderRadius: '12px', background: '#111827', display: 'block' }}
+                                                // BE báo "available" theo dữ liệu ClassSession, nhưng file trên Drive có thể đã
+                                                // hỏng/token hết hạn — không có onError thì video treo spinner mặc định mãi mãi.
+                                                onError={() => setRecordingError(true)}
+                                            />
+                                        ) : recording?.status === 'recording' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
-                                                    videocam_off
+                                                    schedule
                                                 </span>
-                                                <p>Không có thông tin ghi hình</p>
+                                                <p>Buổi học đang diễn ra — video sẽ có sau khi kết thúc.</p>
                                             </div>
-                                        ) : recording.status === 'available' && recording.recordingUrl ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                                <div style={{
-                                                    padding: '16px 20px',
-                                                    background: '#f0fdf4',
-                                                    borderRadius: '10px',
-                                                    border: '1px solid #bbf7d0',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '12px',
-                                                }}>
-                                                    <span className="material-symbols-outlined" style={{ color: '#16a34a', fontSize: '24px' }}>check_circle</span>
-                                                    <div style={{ flex: 1 }}>
-                                                        <p style={{ margin: 0, fontWeight: 600, color: '#166534', fontSize: '14px' }}>Video buổi học đã sẵn sàng</p>
-                                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#15803d' }}>Buổi học #{recording.classSessionId}</p>
-                                                    </div>
-                                                    <a
-                                                        href={recording.recordingUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            padding: '10px 20px',
-                                                            background: '#16a34a',
-                                                            color: '#fff',
-                                                            borderRadius: '8px',
-                                                            textDecoration: 'none',
-                                                            fontSize: '14px',
-                                                            fontWeight: 600,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '6px',
-                                                        }}
-                                                    >
-                                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>play_arrow</span>
-                                                        Xem video
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        ) : recording.status === 'processing' || recording.status === 'recording' ? (
-                                            <div style={{
-                                                textAlign: 'center', padding: '40px',
-                                                background: '#fffbeb', borderRadius: '10px', border: '1px solid #fed7aa',
-                                            }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#f59e0b', marginBottom: '12px', display: 'block' }}>
-                                                    hourglass_top
+                                        ) : recording?.status === 'processing' ? (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                                    schedule
                                                 </span>
-                                                <p style={{ color: '#92400e', fontWeight: 600 }}>
-                                                    {recording.status === 'recording' ? 'Đang ghi hình...' : 'Video đang được xử lý'}
-                                                </p>
-                                                <p style={{ color: '#b45309', fontSize: '13px' }}>Vui lòng kiểm tra lại sau.</p>
+                                                <p>Video vừa ghi xong đang được xử lý, quay lại sau ít phút nhé.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void fetchRecording()}
+                                                    style={{
+                                                        marginTop: '12px', padding: '8px 16px', background: 'var(--color-navy)',
+                                                        color: '#fff', border: 'none', borderRadius: '6px', fontSize: '13px',
+                                                        fontWeight: 600, cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Kiểm tra lại
+                                                </button>
                                             </div>
                                         ) : (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
                                                     videocam_off
                                                 </span>
-                                                <p>Không có ghi hình cho buổi học này</p>
+                                                <p>Buổi học này chưa được ghi hình.</p>
                                             </div>
                                         )}
                                     </div>
