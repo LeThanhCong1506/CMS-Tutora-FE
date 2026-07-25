@@ -571,6 +571,229 @@ export interface DisputeDetail {
   timeSinceCreation: string | null;
 }
 
+// ── Session log (Agora attendance evidence) ─────────────────────────────────
+// Independent, server-side record of who was in the lesson room and when. Backend:
+// GET /api/admin/class-sessions/{classSessionId}/session-log
+
+export interface SessionLogInterval {
+  start: string;
+  end: string;
+}
+
+export interface SessionLogDisconnect {
+  at: string;
+  reason: number | null;
+  reasonLabel: string;
+  /** True when the connection failed on them rather than them choosing to leave. */
+  involuntary: boolean;
+  sessionDurationSeconds: number | null;
+}
+
+export type SessionLogRole = 'tutor' | 'student' | 'parent' | 'recorder' | 'unknown';
+
+export interface SessionLogParticipant {
+  appUserId: string | null;
+  role: SessionLogRole;
+  displayName: string | null;
+  agoraUid: string | null;
+  /** 'exact' matched our account id, 'correlated' matched by admission time, 'unmatched' failed. */
+  identityConfidence: 'exact' | 'correlated' | 'unmatched';
+  firstJoinAt: string | null;
+  lastLeaveAt: string | null;
+  totalSeconds: number;
+  joinCount: number;
+  dropCount: number;
+  platform: string | null;
+  /** True only for an interval that is still open at summary.snapshotAt. */
+  isCurrentlyPresent: boolean;
+  intervals: SessionLogInterval[];
+  disconnects: SessionLogDisconnect[];
+}
+
+export interface SessionLogEvent {
+  eventAt: string;
+  receivedAt: string;
+  eventType: number;
+  eventLabel: string;
+  agoraUid: string | null;
+  agoraAccount: string | null;
+  appUserId: string | null;
+  role: SessionLogRole | null;
+  displayName: string | null;
+  platform: number | null;
+  platformLabel: string | null;
+  reason: number | null;
+  reasonLabel: string | null;
+  durationSeconds: number | null;
+  clientSequence: number | null;
+  clientType: number | null;
+}
+
+export interface SessionLogSummary {
+  /** UTC timestamp at which this snapshot was calculated. */
+  snapshotAt: string;
+  isOngoing: boolean;
+  /** False when identity or event gaps make an attendance/refund conclusion unsafe. */
+  isEvidenceConclusive: boolean;
+  scheduledStart: string;
+  scheduledEnd: string;
+  scheduledSeconds: number;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  firstEventAt: string | null;
+  lastEventAt: string | null;
+  tutorSeconds: number;
+  studentSeconds: number;
+  /** Time both sides were in the room together — the figure most disputes turn on. */
+  overlapSeconds: number;
+  overlapRatio: number;
+  suggestedRefundPercentage: number | null;
+  eventCount: number;
+  maxIngestLagSeconds: number;
+
+  // Cross-check against our own classroom heartbeat, reported separately from the Agora figures
+  // above so a disagreement between the two sources stays visible.
+  tutorHeartbeatSeconds: number;
+  studentHeartbeatSeconds: number;
+  heartbeatOverlapSeconds: number;
+  heartbeatOverlapRatio: number;
+  heartbeatCount: number;
+
+  /** Seconds late past the grace period. Null when no arrival could be established. */
+  tutorLateSeconds: number | null;
+  /** Seconds the tutor left before the scheduled end, past the grace period. */
+  tutorEarlyLeaveSeconds: number | null;
+  /** Which source the two numbers above came from. */
+  punctualitySource: 'agora' | 'heartbeat' | null;
+}
+
+/** One run of consecutive heartbeats, with no silence longer than the presence window. */
+export interface SessionLogHeartbeatRun {
+  startedAt: string;
+  lastBeatAt: string;
+  beatCount: number;
+  reportedBeats: number;
+  micOnBeats: number;
+  cameraOnBeats: number;
+  idleBeats: number;
+  closedReason: string | null;
+  closedReasonLabel: string | null;
+}
+
+/**
+ * The heartbeat chain for one user. Weaker than Agora's own events — the client reports it — but
+ * it is the only source that separates a lesson being taught from a room left open.
+ */
+export interface SessionLogHeartbeat {
+  appUserId: string;
+  role: SessionLogRole;
+  displayName: string | null;
+  firstBeatAt: string | null;
+  lastBeatAt: string | null;
+  totalSeconds: number;
+  beatCount: number;
+  runCount: number;
+  gapCount: number;
+  isCurrentlyBeating: boolean;
+  /** Beats that carried activity fields. 0 means unknown activity, never "was idle". */
+  reportedBeats: number;
+  micOnBeats: number;
+  cameraOnBeats: number;
+  idleBeats: number;
+  /** Null when nothing was reported, so unknown never renders as 0%. */
+  idleRatio: number | null;
+  runs: SessionLogHeartbeatRun[];
+}
+
+/** A network and device one participant was admitted from during the lesson. */
+export interface SessionLogDeviceUse {
+  appUserId: string;
+  role: SessionLogRole;
+  displayName: string | null;
+  ipAddress: string;
+  deviceLabel: string;
+  userAgent: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  admissionCount: number;
+}
+
+export interface SessionLog {
+  classSessionId: number;
+  summary: SessionLogSummary;
+  participants: SessionLogParticipant[];
+  timeline: SessionLogEvent[];
+  heartbeats: SessionLogHeartbeat[];
+  devices: SessionLogDeviceUse[];
+  flags: string[];
+}
+
+// ── Tutor reliability ───────────────────────────────────────────────────────
+// Backend: GET /api/admin/tutors/{tutorUserId}/reliability?from=&to=
+
+export interface TutorReliabilitySession {
+  classSessionId: number;
+  scheduledStart: string;
+  scheduledEnd: string;
+  status: string | null;
+  lateSeconds: number | null;
+  earlyLeaveSeconds: number | null;
+  overlapSeconds: number;
+  overlapRatio: number;
+  isNoShow: boolean;
+  /** False when this lesson was excluded from every rate for lack of usable evidence. */
+  isMeasured: boolean;
+  punctualitySource: 'agora' | 'heartbeat' | null;
+  flags: string[];
+}
+
+export interface TutorReliability {
+  tutorUserId: string;
+  tutorName: string | null;
+  fromDate: string;
+  toDate: string;
+  sessionsInRange: number;
+  /** Denominator of every rate below — never the whole range. */
+  sessionsMeasured: number;
+  sessionsWithoutEvidence: number;
+  lateCount: number;
+  lateRate: number | null;
+  averageLateSeconds: number | null;
+  worstLateSeconds: number | null;
+  earlyLeaveCount: number;
+  earlyLeaveRate: number | null;
+  averageEarlyLeaveSeconds: number | null;
+  worstEarlyLeaveSeconds: number | null;
+  noShowCount: number;
+  noShowRate: number | null;
+  idlePresenceCount: number;
+  multipleNetworkCount: number;
+  multipleDeviceCount: number;
+  averageOverlapRatio: number | null;
+  sessions: TutorReliabilitySession[];
+}
+
+// ── Agora webhook diagnostics ───────────────────────────────────────────────
+// Backend: GET /api/admin/agora/ncs-diagnostics
+
+export interface AgoraNcsDiagnostics {
+  sampledEvents: number;
+  sampleLimit: number;
+  distinctSessions: number;
+  participantEvents: number;
+  /** The number that decides whether identities bind exactly or only by timing. */
+  eventsWithAccount: number;
+  eventsWithUid: number;
+  numericUidEvents: number;
+  stringUidEvents: number;
+  unreadablePayloads: number;
+  payloadKeys: string[];
+  firstEventAt: string | null;
+  lastEventAt: string | null;
+  lastReceivedAt: string | null;
+  verdict: string;
+}
+
 export type ResolutionType = 'refund_100' | 'refund_50' | 'release';
 
 export interface ResolveDisputeRequest {

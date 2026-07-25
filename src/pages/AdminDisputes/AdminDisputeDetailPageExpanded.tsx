@@ -13,8 +13,14 @@ import {
     suspendTutor,
     lockAccount,
 } from '../../services/admin.service';
-import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
-import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
+import type { DisputeDetail, ResolutionType, SessionLogSummary } from '../../types/admin.types';
+import {
+    PageContainer,
+    SectionCard,
+    SessionLogPanel,
+    StatusBadge,
+    TutorReliabilityCard,
+} from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
 import { formatCurrency, formatDateTime, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { Can } from '../../contexts/AccessContext';
@@ -60,6 +66,50 @@ const getDisputeStatusLabel = (status?: string | null) => {
     }
 };
 
+type VerdictSuggestion = {
+    resolution: ResolutionType;
+    label: string;
+    detail: string;
+};
+
+/**
+ * Turns the attendance evidence into a starting point for the verdict.
+ *
+ * Returns null whenever the log itself refuses to conclude — an ongoing lesson, missing Agora data,
+ * an uncertain identity. Offering "chuyển tiền cho gia sư" off evidence that admits it is incomplete
+ * would be worse than offering nothing, because it looks like the system agrees.
+ */
+const getVerdictSuggestion = (summary: SessionLogSummary | null): VerdictSuggestion | null => {
+    if (!summary || summary.suggestedRefundPercentage === null) return null;
+
+    const attended = `Hai bên cùng có mặt ${Math.round(summary.overlapSeconds / 60)} phút — ${
+        Math.round(summary.overlapRatio * 1000) / 10
+    }% so với lịch hẹn.`;
+
+    switch (summary.suggestedRefundPercentage) {
+        case 100:
+            return {
+                resolution: 'refund_100',
+                label: 'hoàn 100%',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        case 50:
+            return {
+                resolution: 'refund_50',
+                label: 'hoàn 50%',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        case 0:
+            return {
+                resolution: 'release',
+                label: 'chuyển tiền cho gia sư',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        default:
+            return null;
+    }
+};
+
 const AdminDisputeDetailPageExpanded = () => {
     // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
     const { id: disputeId } = useParams<{ id: string }>();
@@ -73,6 +123,12 @@ const AdminDisputeDetailPageExpanded = () => {
     const [activeTab, setActiveTab] = useState('evidence');
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
     const [adminNotes, setAdminNotes] = useState('');
+
+    /**
+     * Latest attendance summary from the session log panel. Only used to offer a starting point for
+     * the verdict — it never changes the selection on its own, because the decision is the admin's.
+     */
+    const [sessionLogSummary, setSessionLogSummary] = useState<SessionLogSummary | null>(null);
 
     // Chat history
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
@@ -230,6 +286,7 @@ const AdminDisputeDetailPageExpanded = () => {
     const tutor = disputeDetail.tutor;
     const createdBy = disputeDetail.createdBy;
     const classSessionPrice = classSession?.classSessionPrice || 0;
+    const suggestion = getVerdictSuggestion(sessionLogSummary);
 
     return (
         <>
@@ -487,6 +544,43 @@ const AdminDisputeDetailPageExpanded = () => {
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">chat</span>
                                         Nhật ký chat
                                     </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'sessionLog' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('sessionLog')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">satellite_alt</span>
+                                        Nhật ký buổi học
+                                    </button>
+                                    <button
+                                        className={`dispute-evidence-tab ${activeTab === 'reliability' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('reliability')}
+                                    >
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">query_stats</span>
+                                        Lịch sử gia sư
+                                    </button>
+                                </div>
+
+                                {/* The same evidence across this tutor's other lessons: one late arrival is an
+                                    incident, a pattern of them is a different conversation. */}
+                                {activeTab === 'reliability' && (
+                                    <div className="dispute-chat-area">
+                                        <TutorReliabilityCard tutorUserId={tutor?.tutorId} />
+                                    </div>
+                                )}
+
+                                {/* Attendance evidence straight from Agora, independent of our own heartbeat.
+                                    Mounted from the start rather than on tab click, so the verdict form can
+                                    offer the suggested refund without the admin having to open this tab first —
+                                    and hidden instead of unmounted so switching tabs does not refetch it. */}
+                                <div
+                                    className="dispute-chat-area"
+                                    hidden={activeTab !== 'sessionLog'}
+                                    style={activeTab === 'sessionLog' ? undefined : { display: 'none' }}
+                                >
+                                    <SessionLogPanel
+                                        classSessionId={disputeDetail.classSessionId}
+                                        onSummaryChange={setSessionLogSummary}
+                                    />
                                 </div>
 
                                 {/* Evidence Gallery */}
@@ -631,6 +725,25 @@ const AdminDisputeDetailPageExpanded = () => {
                                         </div>
                                     ) : (
                                         <div className="dispute-verdict-form">
+                                            {suggestion && (
+                                                <div className="dispute-suggestion">
+                                                    <p className="dispute-suggestion__title">
+                                                        Nhật ký buổi học gợi ý: {suggestion.label}
+                                                    </p>
+                                                    <p className="dispute-suggestion__detail">{suggestion.detail}</p>
+                                                    <button
+                                                        type="button"
+                                                        className="dispute-suggestion__apply"
+                                                        onClick={() => setVerdict(suggestion.resolution)}
+                                                        disabled={verdict === suggestion.resolution}
+                                                    >
+                                                        {verdict === suggestion.resolution
+                                                            ? 'Đã chọn mức gợi ý'
+                                                            : 'Chọn mức gợi ý'}
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             <div className="dispute-options-group">
                                                 {/* 3 Resolution Options matching backend */}
                                                 <label className="dispute-radio-label">
