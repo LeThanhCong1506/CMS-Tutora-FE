@@ -26,7 +26,7 @@ export const getRefundDisplay = (
     if (!summary.isEvidenceConclusive || summary.suggestedRefundPercentage === null) {
         return {
             value: 'Chưa thể kết luận',
-            hint: 'Dữ liệu hiện có chưa đủ chắc chắn để đưa ra gợi ý hoàn tiền.',
+            hint: 'Chưa có đề xuất hoàn tiền.',
         };
     }
 

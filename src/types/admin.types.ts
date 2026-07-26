@@ -718,6 +718,42 @@ export interface SessionLogDeviceUse {
   admissionCount: number;
 }
 
+export interface SessionLogLobbyVisit {
+  enteredAt: string;
+  lastSeenAt: string;
+  leftAt: string | null;
+  beatCount: number;
+  closedReason: string | null;
+  closedReasonLabel: string | null;
+}
+
+/** Authenticated lobby visits made by one application account. */
+export interface SessionLogLobbyParticipant {
+  appUserId: string;
+  role: SessionLogRole;
+  displayName: string | null;
+  firstEnteredAt: string;
+  lastSeenAt: string;
+  lastLeftAt: string | null;
+  totalSeconds: number;
+  visitCount: number;
+  beatCount: number;
+  disconnectCount: number;
+  isCurrentlyWaiting: boolean;
+  /** True when the account later appears in Tutora's room-admission registry. */
+  wasAdmittedToRoom: boolean;
+  visits: SessionLogLobbyVisit[];
+}
+
+/** Server-side evidence captured before either side is allowed into the media room. */
+export interface SessionLogLobbyEvidence {
+  hasAnyRecord: boolean;
+  tutorRecorded: boolean;
+  studentSideRecorded: boolean;
+  bothSidesRecorded: boolean;
+  participants: SessionLogLobbyParticipant[];
+}
+
 export interface SessionLog {
   classSessionId: number;
   summary: SessionLogSummary;
@@ -725,6 +761,7 @@ export interface SessionLog {
   timeline: SessionLogEvent[];
   heartbeats: SessionLogHeartbeat[];
   devices: SessionLogDeviceUse[];
+  lobby: SessionLogLobbyEvidence;
   flags: string[];
 }
 

@@ -56,63 +56,8 @@
 
 /* Shown only when the log looks like the Agora feed failed it — answers "why is there no data"
    without the admin having to go ask an engineer. */
-.session-log-panel__diagnostics {
-    margin-bottom: 20px;
-    padding: 12px 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background: #f8fafc;
-}
-
-.session-log-panel__diagnostics-title {
-    margin: 0;
-    color: var(--color-navy);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.session-log-panel__diagnostics-verdict {
-    margin: 6px 0 0;
-    color: #334155;
-    font-size: 13px;
-    line-height: 1.6;
-}
-
-.session-log-panel__diagnostics-detail {
-    margin: 4px 0 0;
-    color: #94a3b8;
-    font-size: 11px;
-    line-height: 1.6;
-    word-break: break-word;
-}
-
 /* Punctuality sits above the numbers because it is usually the first thing staff look for, and it
    always carries the source of its timing so a weaker measurement is never read as a strong one. */
-.session-log-panel__punctuality {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 10px;
-    margin-bottom: 20px;
-    padding: 10px 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #f8fafc;
-}
-
-.session-log-panel__punctuality-text {
-    color: var(--color-navy);
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.session-log-panel__punctuality-source {
-    color: #94a3b8;
-    font-size: 12px;
-}
-
 .session-log-panel__event-meta {
     display: block;
     margin-top: 2px;

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getAgoraNcsDiagnostics, getSessionLog } from '../../../services/admin.service';
+import { getSessionLog } from '../../../services/admin.service';
 import type {
-    AgoraNcsDiagnostics,
     SessionLog,
     SessionLogDeviceUse,
     SessionLogHeartbeat,
+    SessionLogLobbyEvidence,
+    SessionLogLobbyParticipant,
     SessionLogParticipant,
     SessionLogSummary,
 } from '../../../types/admin.types';
@@ -18,11 +19,8 @@ import {
 import './SessionLogPanel.css';
 
 /**
- * Attendance evidence for a lesson, rebuilt from Agora's own channel notifications.
- *
- * The panel is written to keep staff from over-reading the data: warnings appear above the
- * numbers, an identity matched by timing is labelled as such, and "we received nothing" is shown
- * as missing data rather than as proof that nobody attended.
+ * Attendance evidence for a lesson, focused on facts an administrator can use in a dispute:
+ * lobby access, room participation, devices, and the event timeline.
  */
 
 type SessionLogPanelProps = {
@@ -44,83 +42,6 @@ const ROLE_LABELS: Record<string, string> = {
     recorder: 'Bộ ghi hình',
     unknown: 'Không xác định',
 };
-
-const FLAG_MESSAGES: Record<string, { text: string; tone: 'danger' | 'warning' | 'info' }> = {
-    no_agora_data: {
-        text: 'Không nhận được dữ liệu nào từ Agora cho buổi này. Đây là THIẾU DỮ LIỆU, không phải bằng chứng cho thấy không ai vào phòng.',
-        tone: 'info',
-    },
-    no_participant_registry: {
-        text: 'Buổi học diễn ra trước khi hệ thống ghi nhận thời điểm cấp quyền vào phòng, nên chỉ ghép được danh tính khi mã trùng khớp tuyệt đối.',
-        tone: 'info',
-    },
-    identity_uncertain: {
-        text: 'Một số danh tính được suy ra từ thời điểm vào phòng chứ không phải khớp mã trực tiếp. Cần cân nhắc trước khi dùng làm bằng chứng quyết định.',
-        tone: 'warning',
-    },
-    ongoing_session: {
-        text: 'Buổi học đang diễn ra. Đây là ảnh chụp tạm thời và số liệu sẽ tự cập nhật mỗi 10 giây.',
-        tone: 'info',
-    },
-    insufficient_evidence: {
-        text: 'Dữ liệu hiện có chưa đủ để kết luận ai vắng mặt hoặc đề xuất mức hoàn tiền.',
-        tone: 'warning',
-    },
-    recorder_present: {
-        text: 'Agora ghi nhận bộ ghi hình trong phòng. Tài khoản này không được tính là gia sư hoặc học viên.',
-        tone: 'info',
-    },
-    unclosed_interval: {
-        text: 'Có phiên vào phòng chưa nhận được sự kiện rời phòng tương ứng. Thời lượng của phiên này vẫn đang mở hoặc được ước tính theo snapshot.',
-        tone: 'warning',
-    },
-    zero_overlap: { text: 'Chưa xác minh được khoảng thời gian gia sư và học viên cùng ở trong phòng.', tone: 'danger' },
-    tutor_never_joined: { text: 'Chưa xác minh được lượt vào phòng nào thuộc về gia sư.', tone: 'danger' },
-    student_never_joined: { text: 'Chưa xác minh được lượt vào phòng nào thuộc về học viên.', tone: 'danger' },
-    network_drop: {
-        text: 'Có người bị mất kết nối ngoài ý muốn — khác với chủ động rời buổi học.',
-        tone: 'warning',
-    },
-    token_error: {
-        text: 'Có kết nối bị ngắt do lỗi token của hệ thống. Đây là lỗi từ phía nền tảng, không nên quy trách nhiệm cho người dùng.',
-        tone: 'danger',
-    },
-    unusual_activity: { text: 'Agora ghi nhận hành vi vào/ra bất thường.', tone: 'danger' },
-    check_in_mismatch: {
-        text: 'Hệ thống đã điểm danh buổi học nhưng Agora không ghi nhận thời gian hai bên cùng có mặt. Hai nguồn dữ liệu mâu thuẫn.',
-        tone: 'danger',
-    },
-    presence_without_agora: {
-        text: 'Client vẫn gửi nhịp heartbeat nhưng Agora không ghi nhận lượt vào phòng nào tương ứng. Đây là LỖ HỔNG dữ liệu phía Agora — không được đọc thành vắng mặt.',
-        tone: 'warning',
-    },
-    idle_presence: {
-        text: 'Có người ở trong phòng nhưng client báo tắt mic, tắt camera và không thao tác trong phần lớn buổi — dấu hiệu "mở phòng rồi bỏ đó". Do client tự khai, cần đối chiếu thêm.',
-        tone: 'danger',
-    },
-    no_activity_reports: {
-        text: 'Không nhịp nào gửi kèm trạng thái mic/camera, nên chưa trả lời được "có ai đang thực sự dạy không".',
-        tone: 'info',
-    },
-    multiple_devices: {
-        text: 'Một tài khoản được cấp quyền vào phòng từ nhiều hơn một thiết bị trong buổi này.',
-        tone: 'warning',
-    },
-    multiple_networks: {
-        text: 'Một tài khoản vào phòng từ nhiều địa chỉ mạng khác nhau. Đáng nghi cho việc dùng chung tài khoản, nhưng mạng di động đổi IP giữa buổi cũng cho kết quả y hệt.',
-        tone: 'warning',
-    },
-    no_device_record: {
-        text: 'Buổi học diễn ra trước khi hệ thống ghi nhận thiết bị/địa chỉ mạng, nên không đối chiếu được dấu hiệu dùng chung tài khoản.',
-        tone: 'info',
-    },
-};
-
-/**
- * Flags that mean "the Agora feed itself may be the problem". Seeing one is the moment staff ask
- * why the data is missing, so that is when the feed diagnostics are worth fetching.
- */
-const FEED_PROBLEM_FLAGS = ['no_agora_data', 'presence_without_agora', 'identity_uncertain'];
 
 const CONFIDENCE_LABELS: Record<string, string> = {
     exact: 'Khớp mã chính xác',
@@ -148,12 +69,6 @@ const formatClock = (value: string | null): string => {
     const date = new Date(hasOffset ? value : `${value}Z`);
     if (Number.isNaN(date.getTime())) return '—';
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-};
-
-const toneStyles: Record<'danger' | 'warning' | 'info', { background: string; border: string; color: string }> = {
-    danger: { background: '#fef2f2', border: '#fecaca', color: '#991b1b' },
-    warning: { background: '#fffbeb', border: '#fde68a', color: '#92400e' },
-    info: { background: '#eff6ff', border: '#bfdbfe', color: '#1e40af' },
 };
 
 type FetchMode = 'initial' | 'manual' | 'poll';
@@ -284,7 +199,15 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
 
     if (!activeLog) return null;
 
-    const { summary, participants, timeline, heartbeats, devices, flags } = activeLog;
+    const { summary, participants, timeline, heartbeats, devices } = activeLog;
+    // Keep the CMS usable during a rolling deployment where it may briefly talk to an older API.
+    const lobby: SessionLogLobbyEvidence = activeLog.lobby ?? {
+        hasAnyRecord: false,
+        tutorRecorded: false,
+        studentSideRecorded: false,
+        bothSidesRecorded: false,
+        participants: [],
+    };
     const overlapPercent = Math.round(summary.overlapRatio * 1000) / 10;
     const refundDisplay = getRefundDisplay(summary);
     const punctuality = formatPunctuality(
@@ -292,23 +215,12 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
         summary.tutorEarlyLeaveSeconds,
         summary.punctualitySource,
     );
-    // Only ask about the feed's health when this log actually looks like the feed let it down.
-    // In a normal lesson the extra request would be pure noise.
-    const needsFeedDiagnostics = FEED_PROBLEM_FLAGS.some((flag) => flags.includes(flag));
-    const displayFlags = [...flags];
-    if (summary.isOngoing && !displayFlags.includes('ongoing_session')) {
-        displayFlags.unshift('ongoing_session');
-    }
-    if (!summary.isEvidenceConclusive && !displayFlags.includes('insufficient_evidence')) {
-        displayFlags.unshift('insufficient_evidence');
-    }
-
     return (
         <div className="session-log-panel">
             <div className="session-log-panel__heading">
                 <div>
                     <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 6px' }}>
-                        🛰️ Nhật ký buổi học từ Agora
+                        🛰️ Nhật ký bằng chứng buổi học
                     </h3>
                     <p className="session-log-panel__snapshot">
                         Snapshot lúc {formatClock(summary.snapshotAt)}
@@ -325,7 +237,7 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                 </button>
             </div>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px' }}>
-                Dữ liệu do máy chủ Agora ghi nhận, độc lập với hệ thống điểm danh của Tutora.
+                Thông tin tham gia lobby, phòng học và các mốc thời gian liên quan.
             </p>
 
             {error && (
@@ -334,37 +246,26 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                 </div>
             )}
 
-            {displayFlags.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                    {displayFlags.map((flag) => {
-                        const message = FLAG_MESSAGES[flag] ?? { text: flag, tone: 'info' as const };
-                        const tone = toneStyles[message.tone];
-                        return (
-                            <div
-                                key={flag}
-                                style={{
-                                    padding: '10px 14px',
-                                    borderRadius: 8,
-                                    background: tone.background,
-                                    border: `1px solid ${tone.border}`,
-                                    color: tone.color,
-                                    fontSize: 13,
-                                    lineHeight: 1.5,
-                                }}
-                            >
-                                {message.text}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {needsFeedDiagnostics && <AgoraFeedDiagnostics />}
-
+            {/* Vào trễ / rời sớm — luôn kèm nguồn đo, vì số đo từ heartbeat yếu hơn số đo từ Agora
+                và người đọc phải thấy được điều đó ngay cạnh con số. */}
             {punctuality.sourceNote && (
-                <div className="session-log-panel__punctuality">
-                    <span className="session-log-panel__punctuality-text">{punctuality.text}</span>
-                    <span className="session-log-panel__punctuality-source">{punctuality.sourceNote}</span>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'baseline',
+                        gap: '4px 10px',
+                        marginBottom: 20,
+                        padding: '10px 14px',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        background: '#f8fafc',
+                    }}
+                >
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-navy)' }}>
+                        {punctuality.text}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{punctuality.sourceNote}</span>
                 </div>
             )}
 
@@ -393,14 +294,7 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                 </div>
             )}
 
-            {/* Bảng đối soát nằm ngoài điều kiện có dữ liệu Agora: khi Agora im lặng mà heartbeat
-                vẫn chạy thì chính sự lệch nhau đó mới là thứ cần nhìn thấy. */}
-            <ComparisonTable
-                summary={summary}
-                hasCurrentParticipant={participants.some(
-                    (participant) => participant.role !== 'recorder' && participant.isCurrentlyPresent,
-                )}
-            />
+            <LobbyEvidencePanel lobby={lobby} />
 
             {summary.eventCount > 0 && (
                 <>
@@ -421,14 +315,16 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                 </>
             )}
 
+            {/* KHÔNG gate theo summary.eventCount: chuỗi heartbeat là nguồn độc lập với Agora và
+                chính là bằng chứng còn lại khi Agora không gửi gì — đó là lúc cần nó nhất. */}
             {heartbeats.length > 0 && (
                 <>
                     <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 4px' }}>
-                        Chuỗi heartbeat (client tự báo)
+                        Chuỗi heartbeat trong phòng học (client tự báo)
                     </h4>
                     <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
-                        Do trình duyệt của người dùng gửi mỗi ~20 giây. Yếu hơn dữ liệu Agora, nhưng là nguồn duy nhất
-                        phân biệt được "đang dạy" với "mở phòng rồi bỏ đó", và vẫn còn khi Agora không gửi gì.
+                        Trình duyệt của người dùng gửi mỗi ~20 giây khi đang trong phòng. Cho biết ai rời chủ động,
+                        ai bị đứt kết nối, và mic/camera có bật hay không.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {heartbeats.map((heartbeat) => (
@@ -553,110 +449,14 @@ const StatTile = ({
     </div>
 );
 
-/** Puts Agora's record next to our own heartbeat check-in so a mismatch is visible, not buried. */
-const ComparisonTable = ({
-    summary,
-    hasCurrentParticipant,
-}: {
-    summary: SessionLog['summary'];
-    hasCurrentParticipant: boolean;
-}) => (
-    <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <tbody>
-                <ComparisonRow
-                    label="Theo lịch hẹn"
-                    value={`${formatClock(summary.scheduledStart)} → ${formatClock(summary.scheduledEnd)}`}
-                />
-                <ComparisonRow
-                    label="Hệ thống Tutora điểm danh"
-                    value={
-                        summary.checkInTime
-                            ? `${formatClock(summary.checkInTime)} → ${
-                                summary.isOngoing && !summary.checkOutTime
-                                    ? 'Đang diễn ra'
-                                    : formatClock(summary.checkOutTime)
-                            }`
-                            : 'Chưa điểm danh'
-                    }
-                />
-                <ComparisonRow
-                    label="Agora ghi nhận"
-                    value={
-                        summary.firstEventAt
-                            ? `${formatClock(summary.firstEventAt)} → ${
-                                hasCurrentParticipant
-                                    ? 'Đang có người trong phòng'
-                                    : formatClock(summary.lastEventAt)
-                            }`
-                            : 'Không có dữ liệu'
-                    }
-                />
-                <ComparisonRow
-                    label="Heartbeat client ghi nhận"
-                    value={
-                        summary.heartbeatCount > 0
-                            ? `Hai bên cùng có mặt ${formatDuration(summary.heartbeatOverlapSeconds)} (${
-                                Math.round(summary.heartbeatOverlapRatio * 1000) / 10
-                            }% lịch hẹn)`
-                            : 'Không có dữ liệu'
-                    }
-                />
-            </tbody>
-        </table>
-    </div>
-);
-
+/** Evidence captured before room admission, while one side may still be waiting for the other. */
 /**
- * Sức khoẻ của luồng thông báo Agora, hiện ra đúng lúc nhật ký thiếu dữ liệu.
+ * Chuỗi heartbeat của một người: tổng thời lượng, các đoạn liên tục, và cách từng đoạn kết thúc.
  *
- * Trả lời câu hỏi "tại sao buổi này không có dữ liệu" ngay tại chỗ, thay vì để admin phải đoán —
- * và quan trọng nhất là cho biết payload thật có mang trường `account` hay không, thứ quyết định
- * danh tính ghép được chính xác hay chỉ ghép được theo thời điểm.
+ * Lý do kết thúc của đoạn CUỐI được hiển thị ngay trên dòng tóm tắt — kể cả khi chỉ có một đoạn.
+ * "Rời chủ động lúc mấy giờ" là đúng câu hỏi admin cần trả lời trong tranh chấp, nên nó không
+ * được phép chỉ xuất hiện khi có nhiều đoạn.
  */
-const AgoraFeedDiagnostics = () => {
-    const [diagnostics, setDiagnostics] = useState<AgoraNcsDiagnostics | null>(null);
-    const [failed, setFailed] = useState(false);
-
-    useEffect(() => {
-        let cancelled = false;
-        getAgoraNcsDiagnostics()
-            .then((data) => {
-                if (!cancelled) setDiagnostics(data);
-            })
-            .catch((err) => {
-                console.error('Error fetching Agora feed diagnostics:', err);
-                if (!cancelled) setFailed(true);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    // Im lặng khi không lấy được: đây là thông tin phụ trợ, không nên chen thêm một lỗi nữa
-    // vào giữa lúc admin đang đọc bằng chứng.
-    if (failed || !diagnostics) return null;
-
-    return (
-        <div className="session-log-panel__diagnostics">
-            <p className="session-log-panel__diagnostics-title">Tình trạng luồng dữ liệu Agora</p>
-            <p className="session-log-panel__diagnostics-verdict">{diagnostics.verdict}</p>
-            <p className="session-log-panel__diagnostics-detail">
-                {diagnostics.sampledEvents} sự kiện gần nhất · {diagnostics.participantEvents} sự kiện vào/rời ·{' '}
-                {diagnostics.eventsWithAccount} có trường account · {diagnostics.distinctSessions} buổi học
-                {diagnostics.lastReceivedAt && ` · nhận gần nhất ${formatClock(diagnostics.lastReceivedAt)}`}
-            </p>
-            {diagnostics.payloadKeys.length > 0 && (
-                <p className="session-log-panel__diagnostics-detail">
-                    Các trường Agora đang gửi: {diagnostics.payloadKeys.join(', ')}
-                </p>
-            )}
-        </div>
-    );
-};
-
-/** Nhịp heartbeat của một người: các đoạn liên tục, chỗ đứt quãng, và client báo đang làm gì. */
 const HeartbeatCard = ({ heartbeat }: { heartbeat: SessionLogHeartbeat }) => {
     const roleLabel = ROLE_LABELS[heartbeat.role] ?? heartbeat.role;
     const activity = getActivityDisplay(heartbeat);
@@ -665,6 +465,14 @@ const HeartbeatCard = ({ heartbeat }: { heartbeat: SessionLogHeartbeat }) => {
         : activity.tone === 'unknown'
             ? '#64748b'
             : '#15803d';
+    const lastRun = heartbeat.runs.at(-1);
+    const ending = heartbeat.isCurrentlyBeating
+        ? 'Đang gửi nhịp'
+        : lastRun?.closedReasonLabel
+            ? `${lastRun.closedReasonLabel} · nhịp cuối ${formatClock(lastRun.lastBeatAt)}`
+            : lastRun
+                ? `Ngừng gửi nhịp lúc ${formatClock(lastRun.lastBeatAt)} (không có tín hiệu rời)`
+                : null;
 
     return (
         <div
@@ -685,16 +493,25 @@ const HeartbeatCard = ({ heartbeat }: { heartbeat: SessionLogHeartbeat }) => {
                     <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>{activity.detail}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-navy)' }}>
-                        {heartbeat.isCurrentlyBeating ? 'Đang gửi nhịp' : formatDuration(heartbeat.totalSeconds)}
+                    <p style={{ margin: 0, fontWeight: 700, color: heartbeat.isCurrentlyBeating ? '#15803d' : 'var(--color-navy)' }}>
+                        {heartbeat.isCurrentlyBeating
+                            ? 'Đang trong phòng'
+                            : formatDuration(heartbeat.totalSeconds)}
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
-                        {heartbeat.beatCount} nhịp · {heartbeat.runCount} đoạn
+                        {formatClock(heartbeat.firstBeatAt)} → {formatClock(heartbeat.lastBeatAt)}
+                        {' · '}{heartbeat.beatCount} nhịp
                         {heartbeat.gapCount > 0 && ` · ${heartbeat.gapCount} lần đứt quãng`}
                     </p>
+                    {ending && (
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+                            {ending}
+                        </p>
+                    )}
                 </div>
             </div>
 
+            {/* Từng đoạn chỉ cần liệt kê khi có nhiều hơn một — lúc đó thứ tự vào/ra mới là câu chuyện. */}
             {heartbeat.runs.length > 1 && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {heartbeat.runs.map((run, index) => (
@@ -708,6 +525,120 @@ const HeartbeatCard = ({ heartbeat }: { heartbeat: SessionLogHeartbeat }) => {
                     ))}
                 </div>
             )}
+        </div>
+    );
+};
+
+const LobbyEvidencePanel = ({ lobby }: { lobby: SessionLogLobbyEvidence }) => {
+    const sideStatus = (label: string, recorded: boolean) => (
+        <div
+            style={{
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: `1px solid ${recorded ? '#bbf7d0' : '#fde68a'}`,
+                background: recorded ? '#f0fdf4' : '#fffbeb',
+            }}
+        >
+            <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>{label}</p>
+            <p style={{ margin: '3px 0 0', fontWeight: 700, color: recorded ? '#166534' : '#92400e' }}>
+                {recorded ? 'Đã ghi nhận vào lobby' : 'Không có bản ghi vào lobby'}
+            </p>
+        </div>
+    );
+
+    return (
+        <section style={{ marginTop: 24 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 4px' }}>
+                Phòng chờ trước buổi học
+            </h4>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Ghi nhận tài khoản đã xác thực chờ vào lớp. Việc có mặt tại lobby không đồng nghĩa đã vào phòng học.
+            </p>
+
+            {!lobby.hasAnyRecord ? (
+                <div
+                    style={{
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        color: '#1e40af',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                    }}
+                >
+                    Chưa có dữ liệu lobby cho buổi này.
+                </div>
+            ) : (
+                <>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                            gap: 10,
+                            marginBottom: 12,
+                        }}
+                    >
+                        {sideStatus('Gia sư', lobby.tutorRecorded)}
+                        {sideStatus('Phía học viên/phụ huynh', lobby.studentSideRecorded)}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {lobby.participants.map((participant) => (
+                            <LobbyParticipantCard key={participant.appUserId} participant={participant} />
+                        ))}
+                    </div>
+                </>
+            )}
+        </section>
+    );
+};
+
+const LobbyParticipantCard = ({ participant }: { participant: SessionLogLobbyParticipant }) => {
+    const roomStatusColor = participant.wasAdmittedToRoom ? '#166534' : '#92400e';
+    const roomStatusText = participant.wasAdmittedToRoom
+        ? 'Sau đó đã được cấp quyền vào phòng học'
+        : 'Bằng chứng dừng ở lobby — chưa ghi nhận cấp quyền vào phòng học';
+
+    return (
+        <div
+            style={{
+                padding: '13px 15px',
+                borderRadius: 10,
+                border: `1px solid ${participant.wasAdmittedToRoom ? '#e2e8f0' : '#fde68a'}`,
+                background: participant.wasAdmittedToRoom ? '#fff' : '#fffbeb',
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-navy)' }}>
+                        {participant.displayName ?? participant.appUserId}
+                        <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: '#64748b' }}>
+                            {ROLE_LABELS[participant.role] ?? participant.role}
+                        </span>
+                    </p>
+                    <p style={{ margin: '3px 0 0', fontSize: 12, color: roomStatusColor }}>
+                        {roomStatusText}
+                    </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-navy)' }}>
+                        {participant.isCurrentlyWaiting ? 'Đang chờ trong lobby' : formatDuration(participant.totalSeconds)}
+                    </p>
+                </div>
+            </div>
+
+            <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {participant.visits.map((visit, index) => (
+                    <p
+                        key={`${visit.enteredAt}-${index}`}
+                        style={{ margin: 0, fontSize: 12, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                        {formatClock(visit.enteredAt)} → {formatClock(visit.leftAt ?? visit.lastSeenAt)}
+                        {visit.closedReasonLabel && ` · ${visit.closedReasonLabel}`}
+                    </p>
+                ))}
+            </div>
         </div>
     );
 };
@@ -757,13 +688,6 @@ const DeviceTable = ({ devices }: { devices: SessionLogDeviceUse[] }) => (
             </tbody>
         </table>
     </div>
-);
-
-const ComparisonRow = ({ label, value }: { label: string; value: string }) => (
-    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-        <td style={{ padding: '10px 14px', color: '#64748b', width: '45%' }}>{label}</td>
-        <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-navy)' }}>{value}</td>
-    </tr>
 );
 
 const ParticipantCard = ({
