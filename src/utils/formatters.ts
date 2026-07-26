@@ -136,6 +136,15 @@ export const formatDayOfWeek = (day: number): string => {
 // ============================================
 
 /**
+ * Format a VND amount with comma thousand separators.
+ * Example: 100000 -> "100,000".
+ */
+export const formatVNDNumber = (amount: number): string =>
+  new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+/**
  * Format number to Vietnamese currency (VND)
  * @param amount - Amount in VND
  * @returns Formatted currency string
@@ -143,7 +152,7 @@ export const formatDayOfWeek = (day: number): string => {
 export const formatCurrency = (amount: number | null): string => {
   if (amount === null || amount === undefined) return 'N/A';
 
-  return amount.toLocaleString('vi-VN') + ' VND';
+  return formatVNDNumber(amount) + ' VND';
 };
 
 /**
