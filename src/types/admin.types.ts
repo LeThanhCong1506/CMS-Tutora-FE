@@ -568,6 +568,7 @@ export interface DisputeTutorDto {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  avatarUrl: string | null;
   warningCount: number;
   averageRating: number | null;
 }
@@ -869,6 +870,8 @@ export interface DisputeEvidenceItemDto {
   fileType: string | null;
   description: string | null;
   createdAt: string | null;
+  source: 'learner' | 'tutor' | 'unknown';
+  uploadedByName: string | null;
 }
 
 export type ResolutionType = 'refund_100' | 'refund_50' | 'release' | 'custom';
