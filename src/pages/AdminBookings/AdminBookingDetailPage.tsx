@@ -307,7 +307,7 @@ export default function AdminBookingDetailPage() {
                 <BookingTimelineCard events={data.timeline} />
 
                 {/* Danh sách buổi học — full row */}
-                <LessonsListCard lessons={data.lessons} />
+                <LessonsListCard lessons={data.classSessions} />
 
                 {/* Cancellation — chỉ hiện khi booking đã hủy */}
                 {data.cancellation?.isCancelled && (

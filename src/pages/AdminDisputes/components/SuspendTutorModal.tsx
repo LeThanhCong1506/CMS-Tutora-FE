@@ -29,7 +29,7 @@ const SuspendTutorModal = ({
         }
 
         if (durationDays < 1 || durationDays > 365) {
-            setError('Thời gian đình chỉ phải từ 1-365 ngày');
+            setError('Thời gian tạm ngưng phải từ 1-365 ngày');
             return;
         }
 
@@ -37,14 +37,14 @@ const SuspendTutorModal = ({
             setIsSubmitting(true);
             setError('');
             await onSuspend(tutorId, reason, durationDays);
-            toast.success(`Đã đình chỉ tài khoản ${tutorName} trong ${durationDays} ngày`);
+            toast.success(`Đã tạm ngưng hoạt động của ${tutorName} trong ${durationDays} ngày`);
             onClose();
             // Reset form
             setReason('');
             setDurationDays(7);
         } catch (err) {
             console.error('Error suspending tutor:', err);
-            toast.error('Không thể đình chỉ tài khoản. Vui lòng thử lại.');
+            toast.error('Không thể tạm ngưng hoạt động. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
         }
@@ -55,10 +55,10 @@ const SuspendTutorModal = ({
     return (
         <div className="vetting-modal-overlay" onClick={onClose}>
             <div className="vetting-rejection-modal" onClick={(e) => e.stopPropagation()}>
-                <h3>Đình chỉ hồ sơ gia sư</h3>
-                <p style={{ marginBottom: '20px', color: '#dc2626' }}>
-                    ⚠️ Hành động này sẽ tạm dừng toàn bộ hoạt động của gia sư <strong>{tutorName}</strong>.
-                    Tất cả buổi học đã đặt sẽ bị hủy và học viên sẽ được hoàn tiền.
+                <h3>Tạm ngưng hoạt động của gia sư</h3>
+                <p style={{ marginBottom: '20px', color: '#64748b' }}>
+                    Trong thời gian tạm ngưng, <strong>{tutorName}</strong> sẽ không thể tiếp tục hoạt động.
+                    Các buổi học đã đặt sẽ được cập nhật và hoàn tiền theo chính sách.
                 </p>
 
                 <div style={{ marginBottom: '20px' }}>
@@ -71,7 +71,7 @@ const SuspendTutorModal = ({
                             marginBottom: '8px',
                         }}
                     >
-                        Thời gian đình chỉ (ngày)
+                        Thời gian tạm ngưng (ngày)
                     </label>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <input
@@ -121,7 +121,7 @@ const SuspendTutorModal = ({
                             marginBottom: '8px',
                         }}
                     >
-                        Lý do đình chỉ (tối thiểu 20 ký tự)
+                        Lý do tạm ngưng (tối thiểu 20 ký tự)
                     </label>
                     <textarea
                         className="vetting-rejection-textarea"
@@ -131,7 +131,7 @@ const SuspendTutorModal = ({
                             setReason(e.target.value);
                             setError('');
                         }}
-                        placeholder="Mô tả chi tiết lý do đình chỉ hồ sơ gia sư..."
+                        placeholder="Mô tả lý do và thông tin cần lưu ý..."
                     />
                     {error && <p className="vetting-error-message">{error}</p>}
                 </div>
@@ -149,7 +149,7 @@ const SuspendTutorModal = ({
                         onClick={handleSubmit}
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? 'Đang xử lý...' : 'Xác nhận đình chỉ'}
+                        {isSubmitting ? 'Đang xử lý...' : 'Xác nhận tạm ngưng'}
                     </button>
                 </div>
             </div>

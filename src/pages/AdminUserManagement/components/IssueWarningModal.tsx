@@ -26,9 +26,17 @@ interface IssueWarningModalProps {
     onClose: () => void;
     user: FlatUserDetail | null;
     onIssue: (userId: string, reason: string, severity: string, relatedBookingId?: string) => Promise<void>;
+    /** Optional booking context supplied by callers such as the dispute detail page. */
+    defaultRelatedBookingId?: string;
 }
 
-const IssueWarningModal = ({ isOpen, onClose, user, onIssue }: IssueWarningModalProps) => {
+const IssueWarningModal = ({
+    isOpen,
+    onClose,
+    user,
+    onIssue,
+    defaultRelatedBookingId = '',
+}: IssueWarningModalProps) => {
     const [reason, setReason] = useState('');
     const [severity, setSeverity] = useState<Severity>('medium');
     const [relatedBookingId, setRelatedBookingId] = useState('');
@@ -40,9 +48,9 @@ const IssueWarningModal = ({ isOpen, onClose, user, onIssue }: IssueWarningModal
         if (!isOpen) return;
         setReason('');
         setSeverity('medium');
-        setRelatedBookingId('');
+        setRelatedBookingId(defaultRelatedBookingId);
         setError('');
-    }, [isOpen]);
+    }, [defaultRelatedBookingId, isOpen]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
     if (!isOpen || !user) return null;

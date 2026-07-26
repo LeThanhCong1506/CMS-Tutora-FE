@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import IssueWarningModal from './components/IssueWarningModal';
-import SuspendTutorModal from './components/SuspendTutorModal';
-import LockAccountConfirmDialog from './components/LockAccountConfirmDialog';
+import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
+import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
+import TutorAccessModal from '../AdminUserManagement/components/BlockUserModal';
+import type { FlatUserDetail } from '../AdminUserManagement/mockData';
 import {
     getDisputeDetail,
     resolveDispute,
@@ -14,19 +15,30 @@ import {
     resolveRecordingStreamUrl,
     issueWarning,
     suspendTutor,
-    lockAccount,
+    deactivateUser,
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
     classifyDispute,
     type DisputeRecording,
 } from '../../services/admin.service';
+import type {
+    DisputeDetail,
+    DisputeEvidenceItemDto,
+    ResolutionType,
+    SessionLogSummary,
+} from '../../types/admin.types';
+import {
+    PageContainer,
+    SectionCard,
+    SessionLogPanel,
+    StatusBadge,
+    TutorReliabilityCard,
+} from '../../components/shared';
 import type { DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
 import { signalRService } from '../../services/signalr.service';
-import type { DisputeDetail, ResolutionType } from '../../types/admin.types';
-import { PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { StatusVariant } from '../../components/shared';
-import { formatCurrency, formatDateTime, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
+import { formatCurrency, formatDateTime, formatRelativeTime } from '../../utils/formatters';
 import { Can } from '../../contexts/AccessContext';
 
 import '../../styles/pages/admin-dashboard.css';
@@ -60,18 +72,110 @@ const getDisputeStatusVariant = (status?: string | null): StatusVariant => {
 const getDisputeStatusLabel = (status?: string | null) => {
     switch (status) {
         case 'pending':
-            return 'Cần xử lý';
+            return 'Chờ tiếp nhận';
         case 'investigating':
-            return 'Đang điều tra';
+            return 'Đang xem xét';
         case 'confirmed_no_show':
             return 'Đã xác nhận vắng mặt';
         case 'resolved':
-            return 'Đã giải quyết';
+            return 'Đã hoàn tất';
         case 'closed':
             return 'Đã đóng';
         default:
             return status || 'N/A';
     }
+};
+
+type VerdictSuggestion = {
+    resolution: ResolutionType;
+    label: string;
+    detail: string;
+};
+
+/**
+ * Turns the attendance evidence into a starting point for the verdict.
+ *
+ * Returns null whenever the log itself refuses to conclude — an ongoing lesson, missing Agora data,
+ * an uncertain identity. Offering "chuyển tiền cho gia sư" off evidence that admits it is incomplete
+ * would be worse than offering nothing, because it looks like the system agrees.
+ */
+const getVerdictSuggestion = (summary: SessionLogSummary | null): VerdictSuggestion | null => {
+    if (!summary || summary.suggestedRefundPercentage === null) return null;
+
+    const attended = `Hai bên cùng có mặt ${Math.round(summary.overlapSeconds / 60)} phút — ${
+        Math.round(summary.overlapRatio * 1000) / 10
+    }% so với lịch hẹn.`;
+
+    switch (summary.suggestedRefundPercentage) {
+        case 100:
+            return {
+                resolution: 'refund_100',
+                label: 'hoàn 100%',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        case 50:
+            return {
+                resolution: 'refund_50',
+                label: 'chia 50% cho mỗi bên',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        case 0:
+            return {
+                resolution: 'release',
+                label: 'chuyển tiền cho gia sư',
+                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
+            };
+        default:
+            return null;
+    }
+};
+
+type EvidenceTab = 'evidence' | 'sessionLog' | 'recordings' | 'communication' | 'reliability';
+type CommunicationTab = 'lesson' | 'tutor' | 'parent';
+
+type EvidenceFileCardProps = {
+    url: string;
+    label: string;
+    description?: string | null;
+    tone: 'learner' | 'tutor';
+};
+
+const EvidenceFileCard = ({ url, label, description, tone }: EvidenceFileCardProps) => {
+    const isImage = /\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url);
+
+    if (isImage) {
+        return (
+            <a
+                className={`dispute-evidence-file dispute-evidence-file--${tone}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Mở ${label}`}
+            >
+                <img src={url} alt={description || label} />
+                <span className="dispute-evidence-file__overlay">
+                    <span className="material-symbols-outlined">open_in_new</span>
+                    Mở ảnh
+                </span>
+            </a>
+        );
+    }
+
+    return (
+        <a
+            className={`dispute-evidence-file dispute-evidence-file--document dispute-evidence-file--${tone}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            <span className="material-symbols-outlined">description</span>
+            <span className="dispute-evidence-file__text">
+                <strong>{description || label}</strong>
+                <small>Mở trong thẻ mới</small>
+            </span>
+            <span className="material-symbols-outlined dispute-evidence-file__open">open_in_new</span>
+        </a>
+    );
 };
 
 const getPriorityVariant = (priority?: string | null): StatusVariant => {
@@ -88,6 +192,7 @@ const getPriorityVariant = (priority?: string | null): StatusVariant => {
 };
 
 const AdminDisputeDetailPageExpanded = () => {
+    const navigate = useNavigate();
     // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
     const { id: disputeId } = useParams<{ id: string }>();
 
@@ -97,12 +202,19 @@ const AdminDisputeDetailPageExpanded = () => {
     const [error, setError] = useState<string | null>(null);
 
     // Tab states
-    const [activeTab, setActiveTab] = useState('evidence');
+    const [activeTab, setActiveTab] = useState<EvidenceTab>('evidence');
+    const [communicationTab, setCommunicationTab] = useState<CommunicationTab>('lesson');
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
     const [adminNotes, setAdminNotes] = useState('');
     const [customPercentage, setCustomPercentage] = useState(50);
     const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+
+    /**
+     * Latest attendance summary from the session log panel. Only used to offer a starting point for
+     * the verdict — it never changes the selection on its own, because the decision is the admin's.
+     */
+    const [sessionLogSummary, setSessionLogSummary] = useState<SessionLogSummary | null>(null);
 
     // Chat history
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
@@ -144,7 +256,7 @@ const AdminDisputeDetailPageExpanded = () => {
             setDisputeDetail(data);
         } catch (err) {
             console.error('Error fetching dispute detail:', err);
-            setError('Không thể tải chi tiết khiếu nại');
+            setError('Không thể tải chi tiết phản ánh');
         } finally {
             setLoading(false);
         }
@@ -160,12 +272,10 @@ const AdminDisputeDetailPageExpanded = () => {
 
     // Preview parent refund / tutor payout amounts as admin adjusts the custom percentage
     useEffect(() => {
-        if (verdict !== 'custom' || !disputeId) {
-            setRefundPreview(null);
-            return;
-        }
-        setPreviewLoading(true);
+        if (verdict !== 'custom' || !disputeId) return;
         const timer = setTimeout(() => {
+            setPreviewLoading(true);
+            setRefundPreview(null);
             getRefundPreview(disputeId, customPercentage)
                 .then((data) => setRefundPreview(data))
                 .catch((err) => {
@@ -194,11 +304,11 @@ const AdminDisputeDetailPageExpanded = () => {
     }, [disputeId]);
 
     useEffect(() => {
-        if (activeTab === 'chat' && chatMessages.length === 0) {
+        if (activeTab === 'communication' && communicationTab === 'lesson' && chatMessages.length === 0) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             void fetchChatHistory();
         }
-    }, [activeTab, chatMessages.length, fetchChatHistory]);
+    }, [activeTab, communicationTab, chatMessages.length, fetchChatHistory]);
 
     // Fetch recording info when switching to the recordings tab — token ngắn hạn nên
     // luôn gọi lại (không cache) mỗi lần vào lại tab, giống cách "recordings" không
@@ -255,10 +365,13 @@ const AdminDisputeDetailPageExpanded = () => {
         }
     }, [disputeId]);
 
+    /* eslint-disable react-hooks/set-state-in-effect -- tab changes intentionally trigger lazy thread loading */
     useEffect(() => {
-        if (activeTab === 'chat-tutor') void fetchTutorThread();
-        if (activeTab === 'chat-parent') void fetchParentThread();
-    }, [activeTab, fetchTutorThread, fetchParentThread]);
+        if (activeTab !== 'communication') return;
+        if (communicationTab === 'tutor') void fetchTutorThread();
+        if (communicationTab === 'parent') void fetchParentThread();
+    }, [activeTab, communicationTab, fetchTutorThread, fetchParentThread]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Real-time: chèn tin nhắn mới trực tiếp vào đúng thread thay vì phải refetch.
     useEffect(() => {
@@ -324,12 +437,12 @@ const AdminDisputeDetailPageExpanded = () => {
                 warningLevel: createWarning ? warningLevel : undefined,
                 customRefundPercentage: verdict === 'custom' ? customPercentage : undefined,
             });
-            toast.success('Đã giải quyết khiếu nại thành công!');
+            toast.success('Đã hoàn tất xử lý hồ sơ.');
             // Refresh data
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error resolving dispute:', err);
-            toast.error('Không thể giải quyết khiếu nại');
+            toast.error('Không thể hoàn tất xử lý hồ sơ');
         } finally {
             setIsSubmitting(false);
         }
@@ -342,7 +455,7 @@ const AdminDisputeDetailPageExpanded = () => {
         const beforeDeadline = deadline ? Date.now() < deadline.getTime() : false;
         if (beforeDeadline) {
             const confirmed = window.confirm(
-                `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi trước khi bị điều tra. Bạn có chắc muốn bắt đầu điều tra sớm không?`,
+                `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi. Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?`,
             );
             if (!confirmed) return;
         }
@@ -350,11 +463,11 @@ const AdminDisputeDetailPageExpanded = () => {
         try {
             setIsSubmitting(true);
             await investigateDispute(disputeDetail.disputeId, beforeDeadline);
-            toast.success('Đã bắt đầu điều tra khiếu nại');
+            toast.success('Đã chuyển hồ sơ sang bước xem xét');
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error investigating dispute:', err);
-            toast.error('Không thể bắt đầu điều tra');
+            toast.error('Không thể bắt đầu xem xét hồ sơ');
         } finally {
             setIsSubmitting(false);
         }
@@ -386,49 +499,61 @@ const AdminDisputeDetailPageExpanded = () => {
         try {
             setIsSubmitting(true);
             await classifyDispute(disputeDetail.disputeId);
-            toast.success('Đã phân loại mức độ ưu tiên tranh chấp.');
+            toast.success('Đã cập nhật mức độ ưu tiên của hồ sơ.');
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error classifying dispute:', err);
-            toast.error('Không thể phân loại tranh chấp');
+            toast.error('Không thể cập nhật mức độ ưu tiên');
         } finally {
             setIsSubmitting(false);
         }
     };
     // Wrapper functions for modal callbacks
-    const handleIssueWarning = async (_disputeId: string, _tutorId: string, reason: string, severity: 'low' | 'medium' | 'high') => {
-        const warninglevel = severity === 'high' ? 2 : 1;
+    const handleIssueWarning = async (tutorId: string, reason: string, severity: string, relatedBookingId?: string) => {
+        if (!disputeId) return;
+
+        const warninglevel = severity === 'low' ? 1 : 2;
         await issueWarning({
-            userid: _tutorId,
+            userid: tutorId,
             reason,
             warninglevel,
-            relatedbookingid: _disputeId,
+            relatedbookingid: relatedBookingId,
         });
+        await fetchDisputeDetail(disputeId);
     };
 
     const handleSuspendTutor = async (tutorId: string, reason: string, durationDays: number) => {
+        if (!disputeId) return;
+
         await suspendTutor({
             userid: tutorId,
             reason,
             suspensiontype: durationDays > 30 ? 'account_locked' : 'hidden_1_week',
             durationDays,
         });
+        await fetchDisputeDetail(disputeId);
     };
 
-    const handleLockAccount = async (userId: string, reason: string) => {
-        await lockAccount(userId, reason);
+    const handleDeactivateTutor = async (userId: string, reason: string) => {
+        if (!disputeId) return;
+
+        // The tutor-management page uses this same endpoint. It does not persist a reason yet,
+        // but the shared modal still collects one consistently for the admin's confirmation flow.
+        void reason;
+        await deactivateUser(userId);
+        await fetchDisputeDetail(disputeId);
     };
 
     if (loading) {
         return (
             <PageContainer
                 eyebrow="Vận hành"
-                title="Chi tiết khiếu nại"
-                subtitle="Đang tải hồ sơ tranh chấp."
+                title="Chi tiết phản ánh"
+                subtitle="Đang tải thông tin hồ sơ."
                 maxWidth="wide"
             >
                 <SectionCard padded>
-                    <div className="admin-ui-muted-state">Đang tải chi tiết khiếu nại...</div>
+                    <div className="admin-ui-muted-state">Đang tải chi tiết phản ánh...</div>
                 </SectionCard>
             </PageContainer>
         );
@@ -438,12 +563,12 @@ const AdminDisputeDetailPageExpanded = () => {
         return (
             <PageContainer
                 eyebrow="Vận hành"
-                title="Không tìm thấy khiếu nại"
+                title="Không tìm thấy phản ánh"
                 subtitle={error || 'Không có dữ liệu hồ sơ để hiển thị.'}
                 maxWidth="wide"
             >
                 <SectionCard padded>
-                    <div className="admin-ui-muted-state">{error || 'Không tìm thấy khiếu nại'}</div>
+                    <div className="admin-ui-muted-state">{error || 'Không tìm thấy phản ánh'}</div>
                 </SectionCard>
             </PageContainer>
         );
@@ -451,55 +576,69 @@ const AdminDisputeDetailPageExpanded = () => {
 
     // Evidence from backend (string array of URLs)
     const evidenceUrls = disputeDetail.evidence || [];
+    const additionalEvidence: DisputeEvidenceItemDto[] = disputeDetail.additionalEvidence || [];
+    const learnerAdditionalEvidence = additionalEvidence.filter((item) => item.source === 'learner');
+    // `unknown` keeps compatibility while FE/BE deployments overlap. The updated API classifies
+    // every persisted row from uploadedBy, including historical records.
+    const tutorEvidence = additionalEvidence.filter((item) => item.source !== 'learner');
+    const learnerEvidenceCount = evidenceUrls.length + learnerAdditionalEvidence.length;
+    const totalEvidenceCount = learnerEvidenceCount + tutorEvidence.length;
     const classSession = disputeDetail.classSession;
     const tutor = disputeDetail.tutor;
     const createdBy = disputeDetail.createdBy;
+    const managementTutor: FlatUserDetail | null = tutor?.tutorId ? {
+        userid: tutor.tutorId,
+        fullname: tutor.fullName || 'Gia sư',
+        email: tutor.email || '',
+        phone: tutor.phone || '',
+        avatarurl: tutor.avatarUrl || '',
+        primaryrole: 'tutor',
+        accountstatus: 'active',
+        isidentityverified: false,
+        createdat: disputeDetail.createdAt || '',
+        lastloginat: '',
+        warningcount: tutor.warningCount || 0,
+        suspensioncount: 0,
+    } : null;
     const classSessionPrice = classSession?.classSessionPrice || 0;
+    const suggestion = getVerdictSuggestion(sessionLogSummary);
 
     return (
         <>
-            <main className="admin-main">
+            <main className="dispute-detail-page">
                 {/* Header */}
                 <header className="dispute-detail-header">
                     <div className="dispute-detail-header-inner">
                         <div className="dispute-detail-top-row">
                             <div className="dispute-header-content">
-                                <div className="dispute-breadcrumbs">
-                                    <span className="dispute-breadcrumb-item">Giải quyết khiếu nại</span>
-                                    <span style={{ color: '#81786a' }}>•</span>
-                                    <span className="dispute-breadcrumb-item">Hồ sơ #{disputeDetail.disputeId}</span>
-                                </div>
+                                <button
+                                    type="button"
+                                    className="dispute-back-button"
+                                    onClick={() => navigate('/admin-portal/disputes')}
+                                >
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                    Danh sách phản ánh
+                                </button>
                                 <h1 className="dispute-detail-title">
-                                    Hồ sơ #{disputeDetail.disputeId}: {formatDisputeType(disputeDetail.disputeType || '')}
+                                    Phản ánh #{disputeDetail.disputeId}
                                 </h1>
                                 <div className="dispute-detail-meta">
-                                    <span>{disputeDetail.timeSinceCreation || (disputeDetail.createdAt ? `Tạo ${formatRelativeTime(disputeDetail.createdAt)}` : 'N/A')}</span>
-                                    <span>•</span>
                                     <StatusBadge variant={getDisputeStatusVariant(disputeDetail.status)} shape="tag">
                                         {getDisputeStatusLabel(disputeDetail.status)}
                                     </StatusBadge>
-                                    <span>•</span>
                                     <span title={disputeDetail.priorityReason || undefined}>
                                         <StatusBadge variant={getPriorityVariant(disputeDetail.priority)} shape="tag">
                                             {disputeDetail.priorityDisplay || 'Chưa phân loại'}
                                         </StatusBadge>
                                     </span>
-                                </div>
-                            </div>
-                            <div className="dispute-detail-actions">
-                                <div className="dispute-live-status">
-                                    <div className="dispute-pulse-dot"></div>
-                                    Đang xem xét trực tiếp
-                                </div>
-                                <div className="dispute-escrow-badge">
-                                    Số tiền: {formatCurrency(classSessionPrice)}
+                                    <span className="dispute-detail-created">
+                                        {disputeDetail.timeSinceCreation
+                                            || (disputeDetail.createdAt ? `Tạo ${formatRelativeTime(disputeDetail.createdAt)}` : 'Chưa có thời gian')}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Admin Action Buttons — chỉ hành động cấp-dispute ở đây. 3 nút xử lý gia sư
-                            (cảnh báo/đình chỉ/khóa) đã chuyển xuống card "Bị đơn (Gia sư)" bên dưới
-                            để rõ đối tượng tác động, tránh nhầm là áp dụng cho nguyên đơn. */}
                         <div className="admin-ui-actions dispute-admin-actions">
                             <Can permission="dispute.investigate">
                                 <button
@@ -509,24 +648,24 @@ const AdminDisputeDetailPageExpanded = () => {
                                     disabled={isSubmitting}
                                 >
                                     <span className="material-symbols-outlined">smart_toy</span>
-                                    Phân loại lại
+                                    {disputeDetail.priority ? 'Phân loại lại' : 'Phân loại ưu tiên'}
                                 </button>
                             </Can>
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                <div className="dispute-investigate-action">
                                     <button
                                         type="button"
-                                        className="admin-ui-button admin-ui-button-secondary"
+                                        className="admin-ui-button admin-ui-button-primary"
                                         onClick={handleInvestigate}
                                         disabled={isSubmitting}
                                     >
                                         <span className="material-symbols-outlined">search</span>
-                                        Bắt đầu điều tra
+                                        Bắt đầu xem xét
                                     </button>
-                                    {disputeDetail.tutorResponseDeadline && new Date(disputeDetail.tutorResponseDeadline).getTime() > Date.now() && (
-                                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                            Gia sư còn hạn phản hồi đến {formatDateTime(disputeDetail.tutorResponseDeadline)}
+                                    {disputeDetail.tutorResponseDeadline && (
+                                        <span className="dispute-action-helper">
+                                            Hạn phản hồi: {formatDateTime(disputeDetail.tutorResponseDeadline)}
                                         </span>
                                     )}
                                 </div>
@@ -560,13 +699,24 @@ const AdminDisputeDetailPageExpanded = () => {
                 <div className="dispute-detail-content">
                     <div className="dispute-detail-container">
                         <div className="dispute-grid">
-                            {/* LEFT COLUMN: Parties + Lesson Info */}
+                            {/* Context summary */}
                             <div className="dispute-col-left">
+                                {/* Claim Summary */}
+                                {disputeDetail.reason && (
+                                    <div className="dispute-claim-summary">
+                                        <span className="material-symbols-outlined" aria-hidden="true">format_quote</span>
+                                        <div>
+                                            <h2 className="dispute-claim-label">Nội dung phản ánh</h2>
+                                            <p className="dispute-claim-text">{disputeDetail.reason}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Plaintiff Card (Created By) */}
-                                <div className="dispute-party-card">
+                                <div className="dispute-party-card dispute-party-card--complainant">
                                     <div className="dispute-border-indicator dispute-indicator-blue"></div>
                                     <div className="dispute-party-header">
-                                        <span className="dispute-role-badge dispute-role-plaintiff">Nguyên đơn</span>
+                                        <span className="dispute-role-badge dispute-role-plaintiff">Người gửi phản ánh</span>
                                         <span className="material-symbols-outlined dispute-party-icon dispute-icon-blue">person</span>
                                     </div>
                                     <div className="dispute-party-info">
@@ -575,37 +725,30 @@ const AdminDisputeDetailPageExpanded = () => {
                                             style={{ backgroundImage: createdBy?.avatarUrl ? `url('${createdBy.avatarUrl}')` : undefined, backgroundColor: '#e2e8f0' }}
                                         ></div>
                                         <div>
-                                            <h3 className="dispute-party-name">{createdBy?.fullName || 'N/A'}</h3>
-                                            <p className="dispute-party-id">{createdBy?.email || ''}</p>
+                                            <h3 className="dispute-party-name">{createdBy?.fullName || 'Chưa xác định'}</h3>
+                                            <p className="dispute-party-id">Người gửi hồ sơ</p>
                                         </div>
                                     </div>
-                                    {createdBy?.phone && (
-                                        <div className="dispute-party-stats" style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
-                                            SĐT: {createdBy.phone}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Arrow Connector */}
-                                <div className="dispute-connector">
-                                    <span className="material-symbols-outlined dispute-connector-icon">arrow_downward</span>
                                 </div>
 
                                 {/* Defendant Card (Tutor) */}
-                                <div className="dispute-party-card">
+                                <div className="dispute-party-card dispute-party-card--tutor">
                                     <div className="dispute-border-indicator dispute-indicator-orange"></div>
                                     <div className="dispute-party-header">
-                                        <span className="dispute-role-badge dispute-role-defendant">Bị đơn (Gia sư)</span>
+                                        <span className="dispute-role-badge dispute-role-defendant">Gia sư liên quan</span>
                                         <span className="material-symbols-outlined dispute-party-icon dispute-icon-orange">school</span>
                                     </div>
                                     <div className="dispute-party-info">
                                         <div
                                             className="dispute-party-avatar"
-                                            style={{ backgroundColor: '#e2e8f0' }}
+                                            style={{
+                                                backgroundImage: tutor?.avatarUrl ? `url('${tutor.avatarUrl}')` : undefined,
+                                                backgroundColor: '#e2e8f0',
+                                            }}
                                         ></div>
                                         <div>
-                                            <h3 className="dispute-party-name">{tutor?.fullName || 'N/A'}</h3>
-                                            <p className="dispute-party-id">{tutor?.email || ''}</p>
+                                            <h3 className="dispute-party-name">{tutor?.fullName || 'Chưa xác định'}</h3>
+                                            <p className="dispute-party-id">Gia sư của buổi học</p>
                                         </div>
                                     </div>
                                     <div className="dispute-party-details">
@@ -614,24 +757,17 @@ const AdminDisputeDetailPageExpanded = () => {
                                             <span className="dispute-stat-green">⭐ {tutor?.averageRating?.toFixed(1) || 'N/A'}</span>
                                         </div>
                                         <div className="dispute-stat-row">
-                                            <span style={{ color: '#81786a' }}>Cảnh báo</span>
+                                            <span style={{ color: '#81786a' }}>Lần nhắc nhở</span>
                                             <span className="dispute-stat-bold" style={{ color: (tutor?.warningCount || 0) > 0 ? '#dc2626' : '#10b981' }}>
                                                 {tutor?.warningCount || 0} lần
                                             </span>
                                         </div>
-                                        {tutor?.phone && (
-                                            <div className="dispute-stat-row">
-                                                <span style={{ color: '#81786a' }}>SĐT</span>
-                                                <span className="dispute-stat-bold">{tutor.phone}</span>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {/* Hành động với gia sư — đặt ngay trong card này để rõ đối tượng
-                                        tác động là gia sư, không phải nguyên đơn (parent/student). */}
+                                    {/* Công cụ quản lý gia sư được đặt ngay trong card để làm rõ đối tượng áp dụng. */}
                                     <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0' }}>
                                         <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                            Hành động với gia sư
+                                            Hỗ trợ quản lý gia sư
                                         </p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                             <Can permission="warning.create">
@@ -641,7 +777,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 onClick={() => setIsWarningModalOpen(true)}
                                             >
                                                 <span className="material-symbols-outlined">warning</span>
-                                                Cảnh báo gia sư
+                                                Gửi nhắc nhở
                                             </button>
                                             </Can>
                                             <Can permission="suspension.manage">
@@ -651,7 +787,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 onClick={() => setIsSuspendModalOpen(true)}
                                             >
                                                 <span className="material-symbols-outlined">block</span>
-                                                Đình chỉ gia sư
+                                                Tạm ngưng hoạt động
                                             </button>
                                             </Can>
                                             <Can permission="user.deactivate">
@@ -661,7 +797,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 onClick={() => setIsLockModalOpen(true)}
                                             >
                                                 <span className="material-symbols-outlined">lock</span>
-                                                Khóa TK gia sư
+                                                Ngừng quyền truy cập
                                             </button>
                                             </Can>
                                         </div>
@@ -670,68 +806,23 @@ const AdminDisputeDetailPageExpanded = () => {
 
                                 {/* Class Session Info Section */}
                                 {classSession && (
-                                    <div className="dispute-party-card" style={{ marginTop: '24px' }}>
-                                        <h4 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--color-navy)' }}>
-                                            🎓 Thông tin buổi học
-                                        </h4>
+                                    <div className="dispute-party-card dispute-party-card--session">
+                                        <div className="dispute-context-card-title">
+                                            <span className="material-symbols-outlined">school</span>
+                                            <h3>Buổi học #{classSession.classSessionId}</h3>
+                                            <span className="admin-ui-amount">{formatCurrency(classSession.classSessionPrice || 0)}</span>
+                                        </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
                                             <div className="dispute-stat-row">
-                                                <span style={{ color: '#81786a' }}>Mã buổi học</span>
-                                                <span className="dispute-stat-bold">{classSession.classSessionId}</span>
-                                            </div>
-                                            <div className="dispute-stat-row">
-                                                <span style={{ color: '#81786a' }}>Thời gian dự kiến</span>
+                                                <span style={{ color: '#81786a' }}>Lịch học</span>
                                                 <span className="dispute-stat-bold" style={{ fontSize: '13px' }}>
                                                     {formatDateTime(classSession.scheduledStart)} - {formatDateTime(classSession.scheduledEnd)}
                                                 </span>
                                             </div>
                                             {classSession.scheduleChanges && classSession.scheduleChanges.length > 0 && (
-                                                <div style={{ margin: '4px 0 8px', padding: '14px', borderRadius: '12px', background: '#f8f4ec', border: '1px solid #e8dcc8' }}>
-                                                    <div style={{ marginBottom: '10px', color: 'var(--color-navy)', fontWeight: 700 }}>
-                                                        🕒 Xác nhận học ngoài lịch
-                                                    </div>
-                                                    {classSession.scheduleChanges.map((change) => (
-                                                        <div key={change.scheduleChangeId} style={{ display: 'grid', gap: '8px', paddingTop: '10px', borderTop: '1px solid #e6dccd' }}>
-                                                            <div className="dispute-stat-row">
-                                                                <span style={{ color: '#81786a' }}>Lịch ban đầu</span>
-                                                                <span className="dispute-stat-bold" style={{ fontSize: '12px' }}>
-                                                                    {formatDateTime(change.originalScheduledStart)} - {formatDateTime(change.originalScheduledEnd)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="dispute-stat-row">
-                                                                <span style={{ color: '#81786a' }}>Lịch sau khi dời</span>
-                                                                <span className="dispute-stat-bold" style={{ fontSize: '12px' }}>
-                                                                    {change.adjustedScheduledStart && change.adjustedScheduledEnd
-                                                                        ? `${formatDateTime(change.adjustedScheduledStart)} - ${formatDateTime(change.adjustedScheduledEnd)}`
-                                                                        : 'Chưa áp dụng'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="dispute-stat-row">
-                                                                <span style={{ color: '#81786a' }}>Gia sư xác nhận</span>
-                                                                <span style={{ fontSize: '12px', color: change.tutorConfirmedAt ? '#166534' : '#b45309', fontWeight: 600 }}>
-                                                                    {change.tutorConfirmedAt
-                                                                        ? `${change.tutorConfirmedByName || 'Gia sư'} · ${formatDateTime(change.tutorConfirmedAt)}`
-                                                                        : 'Chưa xác nhận'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="dispute-stat-row">
-                                                                <span style={{ color: '#81786a' }}>
-                                                                    {change.learnerApproverRole === 'Parent' ? 'Phụ huynh xác nhận' : 'Học sinh xác nhận'}
-                                                                </span>
-                                                                <span style={{ fontSize: '12px', color: change.learnerConfirmedAt ? '#166534' : '#b45309', fontWeight: 600 }}>
-                                                                    {change.learnerConfirmedAt
-                                                                        ? `${change.learnerConfirmedByName || change.learnerApproverRole} · ${formatDateTime(change.learnerConfirmedAt)}`
-                                                                        : 'Chưa xác nhận'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="dispute-stat-row">
-                                                                <span style={{ color: '#81786a' }}>Trạng thái audit</span>
-                                                                <StatusBadge variant={change.status === 'applied' ? 'success' : change.status === 'rejected' ? 'error' : 'warning'} shape="tag">
-                                                                    {change.status}
-                                                                </StatusBadge>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                <div className="dispute-schedule-change-note">
+                                                    <span className="material-symbols-outlined">history</span>
+                                                    Có {classSession.scheduleChanges.length} lần điều chỉnh lịch đã được ghi nhận
                                                 </div>
                                             )}                                            <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
@@ -749,53 +840,10 @@ const AdminDisputeDetailPageExpanded = () => {
                                                     {classSession.isStudentPresent === null ? 'Không xác định' : classSession.isStudentPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
                                                 </span>
                                             </div>
-                                            <div className="dispute-stat-row">
-                                                <span style={{ color: '#81786a' }}>Học phí</span>
-                                                <span className="dispute-stat-bold" style={{ color: 'var(--color-gold)' }}>
-                                                    {formatCurrency(classSession.classSessionPrice || 0)}
-                                                </span>
-                                            </div>
-                                            {classSession.classSessionContent && (
-                                                <div className="dispute-stat-row">
-                                                    <span style={{ color: '#81786a' }}>Nội dung</span>
-                                                    <span className="dispute-stat-bold">{classSession.classSessionContent}</span>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Claim Summary */}
-                                {disputeDetail.reason && (
-                                    <div className="dispute-claim-summary">
-                                        <h4 className="dispute-claim-label">Nội dung khiếu nại</h4>
-                                        <p className="dispute-claim-text">"{disputeDetail.reason}"</p>
-                                    </div>
-                                )}
-
-                                {/* Resolution info if resolved */}
-                                {disputeDetail.status === 'resolved' && disputeDetail.resolutionNote && (
-                                    <div className="dispute-party-card" style={{ marginTop: '24px', borderLeft: '4px solid #10b981' }}>
-                                        <h4 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700, color: '#10b981' }}>
-                                            ✅ Đã giải quyết
-                                        </h4>
-                                        <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#1e293b' }}>
-                                            {disputeDetail.resolutionNote}
-                                        </p>
-                                        {disputeDetail.refundAmount !== null && disputeDetail.refundAmount !== undefined && (
-                                            <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
-                                                Hoàn tiền: {formatCurrency(disputeDetail.refundAmount)}
-                                                {disputeDetail.refundPercentage !== null && ` (${disputeDetail.refundPercentage}%)`}
-                                            </p>
-                                        )}
-                                        {disputeDetail.resolvedBy && (
-                                            <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#64748b' }}>
-                                                Bởi: {disputeDetail.resolvedBy.fullName}
-                                                {disputeDetail.resolvedAt && ` • ${formatRelativeTime(disputeDetail.resolvedAt)}`}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             {/* CENTER COLUMN: Evidence & Chat */}
@@ -803,204 +851,186 @@ const AdminDisputeDetailPageExpanded = () => {
                                 {/* Tabs */}
                                 <div className="dispute-evidence-tabs">
                                     <button
+                                        type="button"
                                         className={`dispute-evidence-tab ${activeTab === 'evidence' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('evidence')}
                                     >
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">folder</span>
-                                        Bằng chứng ({evidenceUrls.length})
+                                        Bằng chứng ({totalEvidenceCount})
                                     </button>
                                     <button
-                                        className={`dispute-evidence-tab ${activeTab === 'chat' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('chat')}
+                                        type="button"
+                                        className={`dispute-evidence-tab ${activeTab === 'sessionLog' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('sessionLog')}
                                     >
-                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">chat</span>
-                                        Nhật ký chat
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">satellite_alt</span>
+                                        Dữ liệu buổi học
                                     </button>
                                     <button
+                                        type="button"
                                         className={`dispute-evidence-tab ${activeTab === 'recordings' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('recordings')}
                                     >
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">videocam</span>
-                                        Ghi hình buổi học
+                                        Ghi hình
                                     </button>
                                     <button
-                                        className={`dispute-evidence-tab ${activeTab === 'chat-tutor' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('chat-tutor')}
+                                        type="button"
+                                        className={`dispute-evidence-tab ${activeTab === 'communication' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('communication')}
                                     >
-                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">support_agent</span>
-                                        Chat với gia sư
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">forum</span>
+                                        Trao đổi
                                     </button>
                                     <button
-                                        className={`dispute-evidence-tab ${activeTab === 'chat-parent' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('chat-parent')}
+                                        type="button"
+                                        className={`dispute-evidence-tab ${activeTab === 'reliability' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('reliability')}
                                     >
-                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">support_agent</span>
-                                        Chat với phụ huynh/HS
+                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">query_stats</span>
+                                        Lịch sử gia sư
                                     </button>
+                                </div>
+
+                                {/* The same evidence across this tutor's other lessons: one late arrival is an
+                                    incident, a pattern of them is a different conversation. */}
+                                {activeTab === 'reliability' && (
+                                    <div className="dispute-chat-area">
+                                        <TutorReliabilityCard tutorUserId={tutor?.tutorId} />
+                                    </div>
+                                )}
+
+                                {/* Attendance evidence remains mounted so its refund suggestion is available
+                                    without a refetch when an admin switches tabs. */}
+                                <div
+                                    className="dispute-chat-area"
+                                    hidden={activeTab !== 'sessionLog'}
+                                    style={activeTab === 'sessionLog' ? undefined : { display: 'none' }}
+                                >
+                                    <SessionLogPanel
+                                        classSessionId={disputeDetail.classSessionId}
+                                        onSummaryChange={setSessionLogSummary}
+                                    />
                                 </div>
 
                                 {/* Evidence Gallery */}
                                 {activeTab === 'evidence' && (
                                     <div className="dispute-chat-area">
-                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
-                                            📂 Tài liệu bằng chứng
-                                        </h3>
+                                        <div className="dispute-evidence-heading">
+                                            <h3>Tài liệu bằng chứng</h3>
+                                            <span className="dispute-evidence-total">{totalEvidenceCount} tệp</span>
+                                        </div>
 
-                                        {evidenceUrls.length > 0 ? (
-                                            <div>
-                                                <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
-                                                    Tệp tin ({evidenceUrls.length})
-                                                </h4>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                                                    {evidenceUrls.map((url, idx) => {
-                                                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                                                        return isImage ? (
-                                                            <div key={idx} style={{ position: 'relative', paddingBottom: '75%', borderRadius: '8px', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
-                                                                <img
-                                                                    src={url}
-                                                                    alt={`Evidence ${idx + 1}`}
-                                                                    style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-                                                                    onClick={() => window.open(url, '_blank')}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div
-                                                                key={idx}
-                                                                style={{
-                                                                    padding: '16px',
-                                                                    background: '#f8fafc',
-                                                                    borderRadius: '8px',
-                                                                    border: '1px solid #e2e8f0',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '12px',
-                                                                }}
-                                                            >
-                                                                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#64748b' }}>
-                                                                    description
-                                                                </span>
-                                                                <div style={{ flex: 1 }}>
-                                                                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
-                                                                        Tệp {idx + 1}
-                                                                    </p>
-                                                                </div>
-                                                                <a
-                                                                    href={url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    style={{
-                                                                        padding: '8px 16px',
-                                                                        background: 'var(--color-gold)',
-                                                                        color: 'var(--color-navy)',
-                                                                        borderRadius: '6px',
-                                                                        textDecoration: 'none',
-                                                                        fontSize: '13px',
-                                                                        fontWeight: 600,
-                                                                    }}
-                                                                >
-                                                                    Xem
-                                                                </a>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
-                                                    folder_off
-                                                </span>
-                                                <p>Không có bằng chứng nào được gửi</p>
-                                            </div>
-                                        )}
+                                        <div className="dispute-evidence-groups">
+                                            <section className="dispute-evidence-group dispute-evidence-group--learner">
+                                                <header className="dispute-evidence-group__header">
+                                                    <span className="dispute-evidence-group__icon">
+                                                        <span className="material-symbols-outlined">family_restroom</span>
+                                                    </span>
+                                                    <h4>Phụ huynh / Học sinh</h4>
+                                                    <span className="dispute-evidence-group__count">{learnerEvidenceCount}</span>
+                                                </header>
 
-                                        {/* Tutor rebuttal */}
-                                        <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                            <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
-                                                Phản hồi từ gia sư
-                                            </h4>
-                                            {disputeDetail.tutorResponse ? (
-                                                <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                                                    <p style={{ margin: '0 0 8px', fontSize: '14px', color: 'var(--color-navy)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                                        {disputeDetail.tutorResponse}
-                                                    </p>
-                                                    {disputeDetail.tutorRespondedAt && (
-                                                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                                                            Gửi lúc {formatRelativeTime(disputeDetail.tutorRespondedAt)}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <p style={{ color: '#94a3b8', fontSize: '14px' }}>Gia sư chưa phản hồi khiếu nại này.</p>
-                                            )}
-
-                                            {disputeDetail.additionalEvidence && disputeDetail.additionalEvidence.length > 0 && (
-                                                <div style={{ marginTop: '16px' }}>
-                                                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '12px' }}>
-                                                        Bằng chứng bổ sung ({disputeDetail.additionalEvidence.length})
-                                                    </h4>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                                                        {disputeDetail.additionalEvidence.map((item) => {
-                                                            const url = item.fileUrl || '';
-                                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                                                            return isImage ? (
-                                                                <div key={item.disputeEvidenceId} style={{ position: 'relative', paddingBottom: '75%', borderRadius: '8px', overflow: 'hidden', border: '2px solid #bfdbfe' }}>
-                                                                    <img
-                                                                        src={url}
-                                                                        alt={`Tutor evidence ${item.disputeEvidenceId}`}
-                                                                        style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-                                                                        onClick={() => window.open(url, '_blank')}
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <div
-                                                                    key={item.disputeEvidenceId}
-                                                                    style={{
-                                                                        padding: '16px',
-                                                                        background: '#eff6ff',
-                                                                        borderRadius: '8px',
-                                                                        border: '1px solid #bfdbfe',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '12px',
-                                                                    }}
-                                                                >
-                                                                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: '#64748b' }}>
-                                                                        description
-                                                                    </span>
-                                                                    <div style={{ flex: 1 }}>
-                                                                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
-                                                                            Tệp bằng chứng
-                                                                        </p>
-                                                                    </div>
-                                                                    <a
-                                                                        href={url}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        style={{
-                                                                            padding: '8px 16px',
-                                                                            background: 'var(--color-gold)',
-                                                                            color: 'var(--color-navy)',
-                                                                            borderRadius: '6px',
-                                                                            textDecoration: 'none',
-                                                                            fontSize: '13px',
-                                                                            fontWeight: 600,
-                                                                        }}
-                                                                    >
-                                                                        Xem
-                                                                    </a>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                {learnerEvidenceCount > 0 ? (
+                                                    <div className="dispute-evidence-files">
+                                                        {evidenceUrls.map((url, index) => (
+                                                            <EvidenceFileCard
+                                                                key={`initial-${url}-${index}`}
+                                                                url={url}
+                                                                label={`Bằng chứng từ người học ${index + 1}`}
+                                                                tone="learner"
+                                                            />
+                                                        ))}
+                                                        {learnerAdditionalEvidence.map((item, index) => item.fileUrl && (
+                                                            <EvidenceFileCard
+                                                                key={item.disputeEvidenceId}
+                                                                url={item.fileUrl}
+                                                                label={`Bằng chứng bổ sung từ người học ${index + 1}`}
+                                                                description={item.description}
+                                                                tone="learner"
+                                                            />
+                                                        ))}
                                                     </div>
-                                                </div>
-                                            )}
+                                                ) : (
+                                                    <div className="dispute-evidence-empty">
+                                                        <span className="material-symbols-outlined">folder_off</span>
+                                                        <p>Phía người học chưa gửi bằng chứng.</p>
+                                                    </div>
+                                                )}
+                                            </section>
+
+                                            <section className="dispute-evidence-group dispute-evidence-group--tutor">
+                                                <header className="dispute-evidence-group__header">
+                                                    <span className="dispute-evidence-group__icon">
+                                                        <span className="material-symbols-outlined">school</span>
+                                                    </span>
+                                                    <h4>Gia sư</h4>
+                                                    <span className="dispute-evidence-group__count">{tutorEvidence.length}</span>
+                                                </header>
+
+                                                {disputeDetail.tutorResponse && (
+                                                    <div className="dispute-evidence-response">
+                                                        <span className="dispute-evidence-response__label">Phản hồi của gia sư</span>
+                                                        <p>{disputeDetail.tutorResponse}</p>
+                                                        {disputeDetail.tutorRespondedAt && (
+                                                            <small>Gửi {formatRelativeTime(disputeDetail.tutorRespondedAt)}</small>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {tutorEvidence.length > 0 && (
+                                                    <div className="dispute-evidence-files">
+                                                        {tutorEvidence.map((item, index) => item.fileUrl && (
+                                                            <EvidenceFileCard
+                                                                key={item.disputeEvidenceId}
+                                                                url={item.fileUrl}
+                                                                label={`Bằng chứng từ gia sư ${index + 1}`}
+                                                                description={item.description}
+                                                                tone="tutor"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {!disputeDetail.tutorResponse && tutorEvidence.length === 0 && (
+                                                    <div className="dispute-evidence-empty">
+                                                        <span className="material-symbols-outlined">folder_off</span>
+                                                        <p>Gia sư chưa gửi phản hồi hoặc bằng chứng.</p>
+                                                    </div>
+                                                )}
+                                            </section>
                                         </div>
                                     </div>
                                 )}
 
+                                {activeTab === 'communication' && (
+                                    <div className="dispute-communication-tabs" role="tablist" aria-label="Kênh trao đổi">
+                                        <button
+                                            type="button"
+                                            className={communicationTab === 'lesson' ? 'active' : ''}
+                                            onClick={() => setCommunicationTab('lesson')}
+                                        >
+                                            Chat buổi học
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={communicationTab === 'tutor' ? 'active' : ''}
+                                            onClick={() => setCommunicationTab('tutor')}
+                                        >
+                                            Với gia sư
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={communicationTab === 'parent' ? 'active' : ''}
+                                            onClick={() => setCommunicationTab('parent')}
+                                        >
+                                            Với người học
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Chat Log */}
-                                {activeTab === 'chat' && (
+                                {activeTab === 'communication' && communicationTab === 'lesson' && (
                                     <div className="dispute-chat-area">
                                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
                                             💬 Nhật ký chat
@@ -1118,7 +1148,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                 )}
 
                                 {/* Private chat with tutor */}
-                                {activeTab === 'chat-tutor' && (
+                                {activeTab === 'communication' && communicationTab === 'tutor' && (
                                     <div className="dispute-chat-area">
                                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
                                             🛡️ Chat riêng với gia sư
@@ -1173,7 +1203,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                 )}
 
                                 {/* Private chat with parent/student */}
-                                {activeTab === 'chat-parent' && (
+                                {activeTab === 'communication' && communicationTab === 'parent' && (
                                     <div className="dispute-chat-area">
                                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
                                             🛡️ Chat riêng với phụ huynh/học sinh
@@ -1233,21 +1263,55 @@ const AdminDisputeDetailPageExpanded = () => {
                                 <div className="dispute-verdict-card">
                                     <div className="dispute-verdict-header">
                                         <h2 className="dispute-verdict-title">
-                                            <span className="material-symbols-outlined">gavel</span>
-                                            Phán quyết của Quản trị viên
+                                            <span className="material-symbols-outlined">fact_check</span>
+                                            Phương án xử lý
                                         </h2>
-                                        <p className="dispute-verdict-subtitle">Xem xét bằng chứng và đưa ra quyết định cuối cùng.</p>
                                     </div>
 
                                     {disputeDetail.status === 'resolved' ? (
-                                        <div style={{ padding: '20px', textAlign: 'center', color: '#10b981' }}>
-                                            <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
+                                        <div className="dispute-resolved-summary">
+                                            <span className="material-symbols-outlined">
                                                 check_circle
                                             </span>
-                                            <p style={{ fontWeight: 700, fontSize: '16px' }}>Khiếu nại đã được giải quyết</p>
+                                            <h3>Đã hoàn tất</h3>
+                                            <p>{disputeDetail.resolutionNote || 'Hồ sơ đã hoàn tất xử lý.'}</p>
+                                            {disputeDetail.refundAmount !== null && disputeDetail.refundAmount !== undefined && (
+                                                <div className="dispute-resolved-amount">
+                                                    <span>Khoản hoàn</span>
+                                                    <strong>
+                                                        {formatCurrency(disputeDetail.refundAmount)}
+                                                        {disputeDetail.refundPercentage !== null && ` · ${disputeDetail.refundPercentage}%`}
+                                                    </strong>
+                                                </div>
+                                            )}
+                                            {disputeDetail.resolvedBy && (
+                                                <small>
+                                                    {disputeDetail.resolvedBy.fullName}
+                                                    {disputeDetail.resolvedAt && ` · ${formatRelativeTime(disputeDetail.resolvedAt)}`}
+                                                </small>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="dispute-verdict-form">
+                                            {suggestion && (
+                                                <div className="dispute-suggestion">
+                                                    <p className="dispute-suggestion__title">
+                                                        Nhật ký buổi học gợi ý: {suggestion.label}
+                                                    </p>
+                                                    <p className="dispute-suggestion__detail">{suggestion.detail}</p>
+                                                    <button
+                                                        type="button"
+                                                        className="dispute-suggestion__apply"
+                                                        onClick={() => setVerdict(suggestion.resolution)}
+                                                        disabled={verdict === suggestion.resolution}
+                                                    >
+                                                        {verdict === suggestion.resolution
+                                                            ? 'Đã chọn mức gợi ý'
+                                                            : 'Chọn mức gợi ý'}
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             <div className="dispute-options-group">
                                                 {/* 3 Resolution Options matching backend */}
                                                 <label className="dispute-radio-label">
@@ -1273,8 +1337,10 @@ const AdminDisputeDetailPageExpanded = () => {
                                                         onChange={() => setVerdict('refund_50')}
                                                     />
                                                     <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Hoàn tiền 50% cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Hoàn {formatCurrency(classSessionPrice / 2)}</span>
+                                                        <span className="dispute-radio-title">Chia 50% cho mỗi bên</span>
+                                                        <span className="dispute-radio-desc">
+                                                            Hoàn 50% cho Học viên · chuyển 50% cho Gia sư
+                                                        </span>
                                                     </div>
                                                 </label>
 
@@ -1377,7 +1443,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 <span className="dispute-label">Ghi chú của Admin (tối thiểu 10 ký tự)</span>
                                                 <textarea
                                                     className="dispute-textarea"
-                                                    placeholder="Vui lòng trích dẫn bằng chứng cụ thể và giải thích quyết định..."
+                                                    placeholder="Ghi lại thông tin đã đối chiếu và lý do chọn phương án..."
                                                     value={adminNotes}
                                                     onChange={(e) => setAdminNotes(e.target.value)}
                                                     rows={5}
@@ -1393,7 +1459,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                         onChange={(e) => setCreateWarning(e.target.checked)}
                                                         style={{ width: '18px', height: '18px', accentColor: '#f59e0b' }}
                                                     />
-                                                    Gửi cảnh báo cho gia sư
+                                                    Gửi nhắc nhở cho gia sư
                                                 </label>
                                                 {createWarning && (
                                                     <div style={{ marginTop: '12px', display: 'flex', gap: '12px', paddingLeft: '28px' }}>
@@ -1405,7 +1471,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                                 onChange={() => setWarningLevel(1)}
                                                                 style={{ accentColor: '#f59e0b' }}
                                                             />
-                                                            Mức 1 (Nhẹ)
+                                                            Mức 1 (Nhắc nhở)
                                                         </label>
                                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: '#78716c' }}>
                                                             <input
@@ -1415,7 +1481,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                                 onChange={() => setWarningLevel(2)}
                                                                 style={{ accentColor: '#ef4444' }}
                                                             />
-                                                            Mức 2 (Nghiêm trọng)
+                                                            Mức 2 (Cần theo dõi)
                                                         </label>
                                                     </div>
                                                 )}
@@ -1429,7 +1495,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 style={{ opacity: adminNotes.trim().length < 10 ? 0.5 : 1 }}
                                             >
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>
-                                                {isSubmitting ? 'Đang xử lý...' : 'Thực thi quyết định'}
+                                                {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phương án'}
                                             </button>
                                             </Can>
                                         </div>
@@ -1442,29 +1508,26 @@ const AdminDisputeDetailPageExpanded = () => {
             </main>
 
             {/* Admin Action Modals */}
-            <IssueWarningModal
+            <TutorWarningModal
                 isOpen={isWarningModalOpen}
                 onClose={() => setIsWarningModalOpen(false)}
-                tutorId={tutor?.tutorId || ''}
-                tutorName={tutor?.fullName || ''}
-                disputeId={String(disputeDetail.disputeId)}
-                onIssueWarning={handleIssueWarning}
+                user={managementTutor}
+                onIssue={handleIssueWarning}
+                defaultRelatedBookingId={disputeDetail.bookingId ? String(disputeDetail.bookingId) : ''}
             />
 
-            <SuspendTutorModal
+            <TutorSuspensionModal
                 isOpen={isSuspendModalOpen}
                 onClose={() => setIsSuspendModalOpen(false)}
-                tutorId={tutor?.tutorId || ''}
-                tutorName={tutor?.fullName || ''}
+                user={managementTutor}
                 onSuspend={handleSuspendTutor}
             />
 
-            <LockAccountConfirmDialog
+            <TutorAccessModal
                 isOpen={isLockModalOpen}
                 onClose={() => setIsLockModalOpen(false)}
-                userId={tutor?.tutorId || ''}
-                userName={tutor?.fullName || ''}
-                onLockAccount={handleLockAccount}
+                user={managementTutor}
+                onBlock={handleDeactivateTutor}
             />
         </>
     );

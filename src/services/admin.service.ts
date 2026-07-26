@@ -19,6 +19,9 @@ import type {
   DisputeStatsDto,
   DisputeQueryParams,
   ResolveDisputeRequest,
+  SessionLog,
+  TutorReliability,
+  AgoraNcsDiagnostics,
   IssueWarningRequest,
   SuspendUserRequest,
   // Legacy
@@ -391,6 +394,56 @@ export const classifyDispute = async (disputeId: string | number): Promise<Dispu
     throw error;
   }
 };
+/**
+ * Attendance evidence rebuilt from Agora channel notifications.
+ * Backend: GET /api/admin/class-sessions/{classSessionId}/session-log
+ * Returns APIResponse<SessionLogResponse>. Gated behind the dispute.view permission.
+ */
+export const getSessionLog = async (classSessionId: string | number): Promise<SessionLog> => {
+  try {
+    const { data } = await api.get(`/admin/class-sessions/${classSessionId}/session-log`);
+    return data.content;
+  } catch (error) {
+    console.error('getSessionLog error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Punctuality and reliability of one tutor, aggregated from the same attendance evidence.
+ * Backend: GET /api/admin/tutors/{tutorUserId}/reliability?from=&to=
+ * Omitting the range asks the backend for its default window (last 90 days).
+ */
+export const getTutorReliability = async (
+  tutorUserId: string,
+  range?: { from?: string; to?: string },
+): Promise<TutorReliability> => {
+  try {
+    const { data } = await api.get(`/admin/tutors/${tutorUserId}/reliability`, {
+      params: { from: range?.from, to: range?.to },
+    });
+    return data.content;
+  } catch (error) {
+    console.error('getTutorReliability error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Whether Agora's notifications are actually usable as evidence — specifically whether they carry
+ * the `account` field that lets a channel uid bind to a real user.
+ * Backend: GET /api/admin/agora/ncs-diagnostics
+ */
+export const getAgoraNcsDiagnostics = async (): Promise<AgoraNcsDiagnostics> => {
+  try {
+    const { data } = await api.get('/admin/agora/ncs-diagnostics');
+    return data.content;
+  } catch (error) {
+    console.error('getAgoraNcsDiagnostics error:', error);
+    throw error;
+  }
+};
+
 /**
  * Resolve dispute with admin decision
  * Backend: PUT /api/admin/disputes/{disputeId}/resolve
