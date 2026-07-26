@@ -35,6 +35,7 @@ const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFina
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
+const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBase/KnowledgeBasePage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
 const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjectsPage'));
 const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChaptersPage'));
@@ -65,6 +66,7 @@ const PortalIndexRedirect = () => {
     ['dispute.view', '/admin-portal/disputes'],
     ['warning.view', '/admin-portal/warnings'],
     ['question_bank.view', '/admin-portal/question-bank'],
+    ['knowledge_base.view', '/admin-portal/knowledge-base'],
     ['financial.view', '/admin-portal/financials'],
     ['payout.view', '/admin-portal/payouts'],
     ['lookup.view', '/admin-portal/resources/subjects'],
@@ -178,6 +180,7 @@ function App() {
               <Route path="question-bank" element={guard(<QuestionBankPage />, 'question_bank.view')} />
               <Route path="question-bank/upload" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="question-bank/upload/:id" element={guard(<UploadPdfPage />, 'question_document.upload')} />
+              <Route path="knowledge-base" element={guard(<KnowledgeBasePage />, 'knowledge_base.view')} />
               <Route path="disputes" element={guard(<AdminDisputesPage />, 'dispute.view')} />
               <Route path="disputes/:id" element={guard(<AdminDisputeDetailPage />, 'dispute.view')} />
               <Route path="settings" element={guard(<AdminSettingsPage />, 'lookup.view')} />
