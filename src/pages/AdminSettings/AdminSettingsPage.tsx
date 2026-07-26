@@ -16,7 +16,7 @@ const SETTINGS_TABS = [
 export const AdminSettingsPage = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('subjects');
     const [commissionRate, setCommissionRate] = useState<number>(15);
-    const [minWithdrawal, setMinWithdrawal] = useState<string>('50.00');
+    const [minWithdrawal, setMinWithdrawal] = useState<string>('50,000');
     const [escrowPeriod, setEscrowPeriod] = useState<string>('3 Ngày');
     const [vatEnabled, setVatEnabled] = useState<boolean>(true);
     const [vatRate, setVatRate] = useState<string>('20.0');
@@ -28,7 +28,7 @@ export const AdminSettingsPage = () => {
 
     const handleDiscard = () => {
         setCommissionRate(15);
-        setMinWithdrawal('50.00');
+        setMinWithdrawal('50,000');
         setEscrowPeriod('3 Ngày');
         setVatEnabled(true);
         setVatRate('20.0');

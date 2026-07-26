@@ -1,184 +1,201 @@
-/* ============================================================================
-   react-toastify — TUTORA brand override
-   Import AFTER 'react-toastify/dist/ReactToastify.css' để cascade thắng default.
-   Design tokens đồng bộ với BookingModal / ErrorPage / NotificationDropdown:
-     - Navy #1a2238 (primary, info)
-     - Gold #d4b483 (brand accent, warning)
-     - Success green #15803d, Error red #dc2626
-     - Border-radius 12px, Bricolage Grotesque + IBM Plex Sans
-   ============================================================================ */
+/* TUTORA toast system
+   Imported after react-toastify/dist/ReactToastify.css in App.tsx. */
 
-/* -----------------------------------------------------------------------------
-   Container — Desktop giữ top-right (config từ App.tsx), Mobile override → bottom-center
-   ----------------------------------------------------------------------------- */
 .Toastify__toast-container {
-    width: 380px;
-    padding: 8px;
+    width: min(368px, calc(100vw - 32px));
+    padding: 0;
+    gap: 10px;
     z-index: 99999;
 }
 
-/* Mobile: ép về bottom-center bất kể prop position trong App.tsx */
-@media (max-width: 768px) {
-    .Toastify__toast-container {
-        top: auto !important;
-        bottom: 16px !important;
-        left: 50% !important;
-        right: auto !important;
-        transform: translateX(-50%) !important;
-        width: calc(100vw - 32px);
-        max-width: 420px;
-        padding: 0;
-    }
+.Toastify__toast-container--top-right {
+    top: 20px;
+    right: 20px;
 }
 
-/* -----------------------------------------------------------------------------
-   Toast card — base
-   ----------------------------------------------------------------------------- */
 .Toastify__toast {
-    min-height: 60px;
-    margin-bottom: 10px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.06);
+    --tutora-toast-accent: #1a2238;
+    --tutora-toast-tint: rgba(26, 34, 56, 0.06);
+    --tutora-toast-border: rgba(26, 34, 56, 0.12);
+
+    width: 100%;
+    min-height: 68px;
+    margin: 0;
+    padding: 14px 48px 14px 14px;
+    border: 1px solid var(--tutora-toast-border);
+    border-radius: 16px;
+    background:
+        linear-gradient(110deg, var(--tutora-toast-tint) 0%, rgba(255, 255, 255, 0.98) 34%),
+        #ffffff;
     box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.04),
-        0 12px 28px -8px rgba(15, 23, 42, 0.18);
-    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+        0 2px 5px rgba(26, 34, 56, 0.06),
+        0 16px 38px -12px rgba(26, 34, 56, 0.24);
     color: #1a2238;
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    gap: 12px;
     overflow: hidden;
-    position: relative;
+    isolation: isolate;
 }
 
-/* Body layout (icon + text row) */
+.Toastify__toast--success {
+    --tutora-toast-accent: #198754;
+    --tutora-toast-tint: rgba(25, 135, 84, 0.09);
+    --tutora-toast-border: rgba(25, 135, 84, 0.18);
+}
+
+.Toastify__toast--error {
+    --tutora-toast-accent: #c2413b;
+    --tutora-toast-tint: rgba(194, 65, 59, 0.09);
+    --tutora-toast-border: rgba(194, 65, 59, 0.18);
+}
+
+.Toastify__toast--warning {
+    --tutora-toast-accent: #a16207;
+    --tutora-toast-tint: rgba(212, 180, 131, 0.17);
+    --tutora-toast-border: rgba(161, 98, 7, 0.2);
+}
+
+.Toastify__toast--info {
+    --tutora-toast-accent: #334b73;
+    --tutora-toast-tint: rgba(51, 75, 115, 0.09);
+    --tutora-toast-border: rgba(51, 75, 115, 0.18);
+}
+
 .Toastify__toast-body {
+    min-width: 0;
+    margin: 0;
     padding: 0;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    font-size: 13.5px;
-    font-weight: 500;
-    line-height: 1.5;
     color: #1a2238;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
 }
 
 .Toastify__toast-body > div:last-child {
-    flex: 1;
-    padding: 2px 0;
+    min-width: 0;
+    padding: 0;
 }
 
-/* -----------------------------------------------------------------------------
-   Icon — recolor default SVG theo type, đặt trong "chip" tròn nhẹ
-   ----------------------------------------------------------------------------- */
-.Toastify__toast-icon {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+.Toastify__toast .Toastify__toast-icon {
     display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    margin-inline-end: 0;
+    align-items: center;
+    justify-content: center;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--tutora-toast-tint);
+    box-shadow: inset 0 0 0 1px var(--tutora-toast-border);
+    box-sizing: border-box;
+}
+
+.Toastify__toast .Toastify__toast-icon svg {
+    display: block;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: var(--tutora-toast-accent);
+}
+
+.Toastify__toast .Toastify__close-button {
+    top: 50%;
+    right: 12px;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     place-items: center;
     border-radius: 999px;
-    margin-inline-end: 0;
-    background: rgba(15, 23, 42, 0.05);
+    color: #667085;
+    opacity: 0.48;
+    transform: translateY(-50%);
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        opacity 160ms ease;
 }
 
-.Toastify__toast-icon svg {
-    width: 18px;
-    height: 18px;
-}
-
-/* -----------------------------------------------------------------------------
-   Type variants — accent color cho icon background + SVG fill
-   ----------------------------------------------------------------------------- */
-
-/* Success — green */
-.Toastify__toast--success .Toastify__toast-icon {
-    background: rgba(21, 128, 61, 0.12);
-}
-.Toastify__toast--success .Toastify__toast-icon svg {
-    fill: #15803d;
-}
-
-/* Error — red */
-.Toastify__toast--error .Toastify__toast-icon {
-    background: rgba(220, 38, 38, 0.12);
-}
-.Toastify__toast--error .Toastify__toast-icon svg {
-    fill: #dc2626;
-}
-
-/* Warning — gold (brand accent) */
-.Toastify__toast--warning .Toastify__toast-icon {
-    background: rgba(212, 180, 131, 0.22);
-}
-.Toastify__toast--warning .Toastify__toast-icon svg {
-    fill: #7a4f12;
-}
-
-/* Info — navy */
-.Toastify__toast--info .Toastify__toast-icon {
-    background: rgba(26, 34, 56, 0.1);
-}
-.Toastify__toast--info .Toastify__toast-icon svg {
-    fill: #1a2238;
-}
-
-/* Default (no type) — neutral */
-.Toastify__toast--default .Toastify__toast-icon {
-    background: rgba(15, 23, 42, 0.06);
-}
-.Toastify__toast--default .Toastify__toast-icon svg {
-    fill: #6b7280;
-}
-
-/* -----------------------------------------------------------------------------
-   Close button — subtle, hover bg
-   ----------------------------------------------------------------------------- */
-.Toastify__close-button {
-    align-self: flex-start;
-    padding: 4px;
-    margin-top: -2px;
-    margin-right: -4px;
-    border-radius: 6px;
-    opacity: 0.5;
-    transition: opacity 0.15s ease, background 0.15s ease;
-    color: #6b7280;
-}
-
-.Toastify__close-button > svg {
-    width: 14px;
-    height: 14px;
+.Toastify__toast .Toastify__close-button > svg {
+    width: 13px;
+    height: 13px;
     fill: currentColor;
 }
 
-.Toastify__close-button:hover {
-    opacity: 1;
-    background: rgba(15, 23, 42, 0.06);
+.Toastify__toast .Toastify__close-button:hover,
+.Toastify__toast .Toastify__close-button:focus-visible {
     color: #1a2238;
-}
-
-/* -----------------------------------------------------------------------------
-   Progress bar — keep visible per user request; recolor theo type
-   ----------------------------------------------------------------------------- */
-.Toastify__progress-bar {
-    height: 3px;
-    bottom: 0;
+    background: rgba(26, 34, 56, 0.07);
     opacity: 1;
 }
 
-.Toastify__progress-bar--success { background: #15803d; }
-.Toastify__progress-bar--error   { background: #dc2626; }
-.Toastify__progress-bar--warning { background: #d4b483; }
-.Toastify__progress-bar--info    { background: #1a2238; }
-
-/* Default (no type) → navy */
-.Toastify__progress-bar-theme--light:not(.Toastify__progress-bar--success):not(.Toastify__progress-bar--error):not(.Toastify__progress-bar--warning):not(.Toastify__progress-bar--info) {
-    background: #1a2238;
+.Toastify__progress-bar--wrp {
+    height: 3px;
+    background: transparent;
 }
 
-/* -----------------------------------------------------------------------------
-   Subtle hover lift trên card
-   ----------------------------------------------------------------------------- */
+.Toastify__toast .Toastify__progress-bar {
+    height: 100%;
+    background: var(--tutora-toast-accent);
+    opacity: 0.88;
+}
+
+.Toastify__toast .Toastify__progress-bar--bg {
+    background: var(--tutora-toast-accent);
+    opacity: 0.1;
+}
+
 .Toastify__toast:hover {
+    border-color: var(--tutora-toast-border);
     box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.04),
-        0 16px 32px -8px rgba(15, 23, 42, 0.22);
+        0 3px 7px rgba(26, 34, 56, 0.07),
+        0 20px 44px -14px rgba(26, 34, 56, 0.3);
+}
+
+@media (max-width: 600px) {
+    .Toastify__toast-container {
+        top: auto !important;
+        right: 12px !important;
+        bottom: max(12px, env(safe-area-inset-bottom)) !important;
+        left: 12px !important;
+        width: auto !important;
+        max-width: none !important;
+        padding: 0;
+        transform: none !important;
+    }
+
+    .Toastify__toast {
+        --toastify-toast-width: 100%;
+
+        width: 100% !important;
+        min-height: 62px;
+        padding: 12px 44px 12px 12px;
+        border-radius: 14px;
+    }
+
+    .Toastify__toast .Toastify__toast-icon {
+        flex-basis: 34px;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+    }
+
+    .Toastify__toast .Toastify__close-button {
+        right: 10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .Toastify__toast .Toastify__close-button {
+        transition: none;
+    }
 }
