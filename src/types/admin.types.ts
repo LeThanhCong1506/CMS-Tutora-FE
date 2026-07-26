@@ -482,7 +482,7 @@ export interface TutorAvailability {
 
 export type DisputeType = 'no_show' | 'quality' | 'payment' | 'other';
 
-export type DisputeStatus = 'pending' | 'investigating' | 'resolved' | 'closed';
+export type DisputeStatus = 'pending' | 'investigating' | 'confirmed_no_show' | 'resolved' | 'closed';
 
 export type DisputePriority = 'low' | 'medium' | 'high';
 
@@ -502,6 +502,10 @@ export interface DisputeForAdmin {
   disputeTypeDisplay: string;
   statusDisplay: string;
   statusColor: string;
+  /** AI-classified priority — null until the background classification job has run. */
+  priority: DisputePriority | null;
+  priorityReason: string | null;
+  priorityDisplay: string;
 }
 
 export interface DisputeQueryParams {
@@ -530,6 +534,22 @@ export interface DisputeUserDto {
   avatarUrl: string | null;
 }
 
+export interface DisputeScheduleChangeAuditDto {
+  scheduleChangeId: number;
+  status: 'pending' | 'approved' | 'applied' | 'rejected' | 'expired';
+  originalScheduledStart: string;
+  originalScheduledEnd: string;
+  adjustedScheduledStart: string | null;
+  adjustedScheduledEnd: string | null;
+  learnerApproverRole: 'Student' | 'Parent';
+  tutorConfirmedByName: string | null;
+  tutorConfirmedAt: string | null;
+  learnerConfirmedByName: string | null;
+  learnerConfirmedAt: string | null;
+  requestedAt: string | null;
+  approvedAt: string | null;
+  appliedAt: string | null;
+}
 export interface DisputeClassSessionDto {
   classSessionId: number;
   scheduledStart: string;
@@ -540,6 +560,7 @@ export interface DisputeClassSessionDto {
   homework: string | null;
   isTutorPresent: boolean | null;
   isStudentPresent: boolean | null;
+  scheduleChanges?: DisputeScheduleChangeAuditDto[];
 }
 
 export interface DisputeTutorDto {
@@ -564,11 +585,22 @@ export interface DisputeDetail {
   resolutionNote: string | null;
   refundAmount: number | null;
   refundPercentage: number | null;
+  tutorResponse: string | null;
+  tutorRespondedAt: string | null;
+  additionalEvidence: DisputeEvidenceItemDto[] | null;
+  noShowConfirmedAt: string | null;
+  noShowConfirmedBy: string | null;
   createdBy: DisputeUserDto | null;
   resolvedBy: DisputeUserDto | null;
   classSession: DisputeClassSessionDto | null;
   tutor: DisputeTutorDto | null;
   timeSinceCreation: string | null;
+  /** Earliest time admin can Investigate without forceEarly (createdAt + 48h). */
+  tutorResponseDeadline: string | null;
+  /** AI-classified priority — null until the background classification job has run. */
+  priority: DisputePriority | null;
+  priorityReason: string | null;
+  priorityDisplay: string;
 }
 
 // ── Session log (Agora attendance evidence) ─────────────────────────────────
@@ -831,10 +863,20 @@ export interface AgoraNcsDiagnostics {
   verdict: string;
 }
 
-export type ResolutionType = 'refund_100' | 'refund_50' | 'release';
+export interface DisputeEvidenceItemDto {
+  disputeEvidenceId: number;
+  fileUrl: string | null;
+  fileType: string | null;
+  description: string | null;
+  createdAt: string | null;
+}
+
+export type ResolutionType = 'refund_100' | 'refund_50' | 'release' | 'custom';
 
 export interface ResolveDisputeRequest {
   resolutionType: ResolutionType;
+  /** Required when resolutionType = 'custom' (0-100). Ignored otherwise. */
+  customRefundPercentage?: number;
   resolutionNote: string;
   createTutorWarning?: boolean;
   warningLevel?: number;
