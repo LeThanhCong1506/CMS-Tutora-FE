@@ -235,6 +235,9 @@ export const formatDisputeStatus = (status: string): string => {
  */
 export const formatDisputeType = (type: string): string => {
   const typeMap: Record<string, string> = {
+    no_show: 'Gia sư vắng mặt',
+    quality: 'Chất lượng buổi học',
+    payment: 'Thanh toán',
     no_show_tutor: 'Gia sư vắng mặt',
     no_show_student: 'Học viên vắng mặt',
     poor_quality: 'Chất lượng kém',

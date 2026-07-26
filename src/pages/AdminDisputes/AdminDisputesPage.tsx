@@ -14,12 +14,30 @@ const getStatusVariant = (status?: string | null): StatusVariant => {
             return 'warning';
         case 'investigating':
             return 'info';
+        case 'confirmed_no_show':
         case 'resolved':
             return 'success';
         case 'closed':
             return 'neutral';
         default:
             return 'dark';
+    }
+};
+
+const getStatusLabel = (dispute: DisputeForAdmin) => {
+    switch (dispute.status) {
+        case 'pending':
+            return 'Chờ tiếp nhận';
+        case 'investigating':
+            return 'Đang xem xét';
+        case 'confirmed_no_show':
+            return 'Đã ghi nhận vắng mặt';
+        case 'resolved':
+            return 'Đã hoàn tất';
+        case 'closed':
+            return 'Đã đóng';
+        default:
+            return dispute.statusDisplay || dispute.status || 'N/A';
     }
 };
 
@@ -85,12 +103,12 @@ const AdminDisputesPage = () => {
 
     const disputeTabs = useMemo(
         () => [
-            { key: 'all', label: `Tất cả (${totalActive})` },
-            { key: 'pending', label: `Chờ xử lý (${stats?.totalPending ?? 0})` },
-            { key: 'investigating', label: `Đang điều tra (${stats?.totalInvestigating ?? 0})` },
-            { key: 'resolved', label: `Đã giải quyết (${stats?.resolvedThisMonth ?? 0})` },
+            { key: 'all', label: 'Tất cả' },
+            { key: 'pending', label: `Chờ tiếp nhận (${stats?.totalPending ?? 0})` },
+            { key: 'investigating', label: `Đang xem xét (${stats?.totalInvestigating ?? 0})` },
+            { key: 'resolved', label: 'Đã hoàn tất' },
         ],
-        [stats, totalActive],
+        [stats],
     );
 
     const filteredDisputes = useMemo(() => {
@@ -116,147 +134,137 @@ const AdminDisputesPage = () => {
 
     const disputeColumns: DataTableColumn<DisputeForAdmin>[] = [
         {
-            key: 'id',
-            title: 'Mã',
-            render: (dispute) => <span className="admin-ui-code-chip">#{dispute.disputeId}</span>,
-            width: 96,
-        },
-        {
-            key: 'createdBy',
-            title: 'Người khiếu nại',
+            key: 'case',
+            title: 'Hồ sơ',
             render: (dispute) => (
                 <div className="admin-ui-entity">
-                    <span className="admin-ui-entity-primary">{dispute.createdByName || 'N/A'}</span>
-                    <span className="admin-ui-entity-secondary">Booking #{dispute.bookingId || 'N/A'}</span>
+                    <span className="admin-ui-code-chip">#{dispute.disputeId}</span>
+                    <span className="admin-ui-entity-secondary">
+                        {dispute.createdAt ? formatRelativeTime(dispute.createdAt) : 'Chưa có thời gian'}
+                    </span>
                 </div>
             ),
-            minWidth: 180,
+            width: 118,
         },
         {
-            key: 'tutor',
-            title: 'Gia sư',
-            render: (dispute) => (
-                <div className="admin-ui-entity">
-                    <span className="admin-ui-entity-primary">{dispute.tutorName || 'N/A'}</span>
-                    <span className="admin-ui-entity-secondary">Buổi học #{dispute.classSessionId || 'N/A'}</span>
-                </div>
-            ),
-            minWidth: 180,
-        },
-        {
-            key: 'type',
-            title: 'Loại',
+            key: 'issue',
+            title: 'Nội dung phản ánh',
             render: (dispute) => (
                 <div className="admin-ui-entity">
                     <span className="admin-ui-entity-primary">
                         {dispute.disputeTypeDisplay || formatDisputeType(dispute.disputeType || '')}
                     </span>
-                    {dispute.reason && <span className="admin-ui-entity-secondary">{dispute.reason}</span>}
+                    <span className="admin-ui-entity-secondary dispute-list-reason">
+                        {dispute.reason || 'Không có mô tả bổ sung'}
+                    </span>
                 </div>
             ),
-            minWidth: 220,
+            minWidth: 250,
+        },
+        {
+            key: 'parties',
+            title: 'Các bên liên quan',
+            render: (dispute) => (
+                <div className="dispute-list-parties">
+                    <div className="admin-ui-entity">
+                        <span className="admin-ui-entity-primary">{dispute.createdByName || 'Chưa xác định'}</span>
+                        <span className="admin-ui-entity-secondary">Người gửi phản ánh</span>
+                    </div>
+                    <span className="material-symbols-outlined dispute-list-arrow" aria-hidden="true">
+                        arrow_forward
+                    </span>
+                    <div className="admin-ui-entity">
+                        <span className="admin-ui-entity-primary">{dispute.tutorName || 'Chưa xác định'}</span>
+                        <span className="admin-ui-entity-secondary">Gia sư</span>
+                    </div>
+                </div>
+            ),
+            minWidth: 260,
         },
         {
             key: 'amount',
-            title: 'Số tiền',
-            render: (dispute) => <span className="admin-ui-amount">{formatCurrency(dispute.classSessionPrice || 0)}</span>,
-            hideOnMobile: true,
+            title: 'Buổi học',
+            render: (dispute) => (
+                <div className="admin-ui-entity">
+                    <span className="admin-ui-amount">{formatCurrency(dispute.classSessionPrice || 0)}</span>
+                    <span className="admin-ui-entity-secondary">
+                        #{dispute.classSessionId || 'N/A'}
+                    </span>
+                </div>
+            ),
+            hideOnTablet: true,
         },
         {
             key: 'status',
             title: 'Trạng thái',
             render: (dispute) => (
                 <StatusBadge variant={getStatusVariant(dispute.status)}>
-                    {dispute.statusDisplay || dispute.status || 'N/A'}
+                    {getStatusLabel(dispute)}
                 </StatusBadge>
             ),
         },
         {
             key: 'priority',
-            title: 'Mức độ ưu tiên',
+            title: 'Ưu tiên',
             render: (dispute) => (
                 <span title={dispute.priorityReason || undefined}>
                     <StatusBadge variant={getPriorityVariant(dispute.priority)} shape="tag">
-                        {dispute.priorityDisplay || 'Chưa phân loại'}
+                        {dispute.priorityDisplay || 'Chưa có'}
                     </StatusBadge>
                 </span>
             ),
-            hideOnMobile: true,
-        },
-        {
-            key: 'createdAt',
-            title: 'Thời gian',
-            render: (dispute) => (
-                <span className="admin-ui-table-meta">
-                    {dispute.createdAt ? formatRelativeTime(dispute.createdAt) : 'N/A'}
-                </span>
-            ),
-            hideOnMobile: true,
-        },
-        {
-            key: 'actions',
-            title: 'Hành động',
-            align: 'right',
-            render: (dispute) => (
-                <button
-                    type="button"
-                    className="admin-ui-button admin-ui-button-primary"
-                    onClick={() => navigate(`/admin-portal/disputes/${dispute.disputeId}`)}
-                >
-                    Xem chi tiết
-                </button>
-            ),
-            width: 140,
+            hideOnTablet: true,
         },
     ];
 
     return (
         <PageContainer
             eyebrow="Vận hành"
-            title="Trung tâm Giải quyết Khiếu nại"
-            subtitle="Quản lý, phân loại và giải quyết xung đột giữa học viên và gia sư một cách minh bạch."
+            title="Phản ánh buổi học"
             maxWidth="wide"
             headerAction={
-                <div className="admin-ui-actions">
-                    <button className="admin-ui-button admin-ui-button-secondary" onClick={() => void fetchDisputes()}>
-                        <span className="material-symbols-outlined">refresh</span>
-                        Làm mới
-                    </button>
-                    <button className="admin-ui-button admin-ui-button-primary">
-                        <span className="material-symbols-outlined">file_download</span>
-                        Xuất báo cáo
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-secondary"
+                    onClick={() => {
+                        void fetchStats();
+                        void fetchDisputes();
+                    }}
+                    disabled={loading}
+                >
+                    <span className="material-symbols-outlined">refresh</span>
+                    {loading ? 'Đang tải...' : 'Làm mới'}
+                </button>
             }
         >
-            <div className="admin-ui-kpi-grid">
+            <div className="admin-ui-kpi-grid dispute-kpi-grid">
                 <StatCard
                     icon={<span className="material-symbols-outlined">folder_open</span>}
                     value={stats?.totalPending ?? '...'}
-                    label="Chờ xử lý"
-                    subLabel="Cần xem xét và phân loại"
+                    label="Chờ tiếp nhận"
                     badge={totalActive > 0 ? `${totalActive} đang mở` : undefined}
                     badgeVariant="orange"
+                    onClick={() => setActiveTab('pending')}
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">search</span>}
                     value={stats?.totalInvestigating ?? '...'}
-                    label="Đang điều tra"
-                    subLabel="Đang thu thập bằng chứng"
+                    label="Đang xem xét"
                     badgeVariant="blue"
+                    onClick={() => setActiveTab('investigating')}
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">check_circle</span>}
                     value={stats?.resolvedThisMonth ?? '...'}
-                    label="Đã giải quyết tháng này"
-                    subLabel={stats ? `Hoàn tiền: ${formatCurrency(stats.totalRefundedThisMonth)}` : 'Đang tải dữ liệu'}
+                    label="Đã hoàn tất tháng này"
+                    badge={stats ? `Hoàn ${formatCurrency(stats.totalRefundedThisMonth)}` : undefined}
                     badgeVariant="green"
+                    onClick={() => setActiveTab('resolved')}
                 />
             </div>
 
             <SectionCard
-                title="Danh sách khiếu nại"
-                subtitle="Lọc theo trạng thái, tìm nhanh theo mã hồ sơ, tên người dùng hoặc nội dung khiếu nại."
+                title="Danh sách hồ sơ"
                 headerAction={
                     <FilterTabs
                         tabs={disputeTabs}
@@ -271,7 +279,8 @@ const AdminDisputesPage = () => {
                         <span className="material-symbols-outlined admin-ui-search-icon">search</span>
                         <input
                             className="admin-ui-search-input"
-                            placeholder="Tìm theo mã hồ sơ, tên hoặc nội dung..."
+                            aria-label="Tìm kiếm phản ánh"
+                            placeholder="Tìm mã hồ sơ, người dùng hoặc nội dung..."
                             type="search"
                             value={searchQuery}
                             onChange={(event) => setSearchQuery(event.target.value)}
@@ -292,16 +301,21 @@ const AdminDisputesPage = () => {
                     columns={disputeColumns}
                     data={filteredDisputes}
                     rowKey="disputeId"
+                    onRowClick={(dispute) => navigate(`/admin-portal/disputes/${dispute.disputeId}`)}
+                    rowAriaLabel={(dispute) => `Mở hồ sơ phản ánh ${dispute.disputeId}`}
+                    tableLabel="Danh sách hồ sơ phản ánh"
                     loading={loading}
-                    loadingText="Đang tải danh sách khiếu nại..."
-                    emptyText={searchQuery ? 'Không tìm thấy khiếu nại phù hợp' : 'Không có khiếu nại nào'}
+                    loadingText="Đang tải danh sách phản ánh..."
+                    emptyText={searchQuery ? 'Không tìm thấy phản ánh phù hợp' : 'Chưa có phản ánh nào'}
                     emptyIcon={
                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#94a3b8' }}>
-                            gavel
+                            forum
                         </span>
                     }
-                    minWidth={1080}
+                    minWidth={860}
                     variant="embedded"
+                    density="compact"
+                    adaptive
                 />
             </SectionCard>
         </PageContainer>

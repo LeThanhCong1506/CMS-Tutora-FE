@@ -34,14 +34,14 @@ const IssueWarningModal = ({
             setIsSubmitting(true);
             setError('');
             await onIssueWarning(disputeId, tutorId, reason, severity);
-            toast.success(`Đã gửi cảnh báo đến ${tutorName}`);
+            toast.success(`Đã gửi nhắc nhở đến ${tutorName}`);
             onClose();
             // Reset form
             setReason('');
             setSeverity('medium');
         } catch (err) {
             console.error('Error issuing warning:', err);
-            toast.error('Không thể gửi cảnh báo. Vui lòng thử lại.');
+            toast.error('Không thể gửi nhắc nhở. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
         }
@@ -52,9 +52,9 @@ const IssueWarningModal = ({
     return (
         <div className="vetting-modal-overlay" onClick={onClose}>
             <div className="vetting-rejection-modal" onClick={(e) => e.stopPropagation()}>
-                <h3>Gửi cảnh báo đến gia sư</h3>
+                <h3>Gửi nhắc nhở đến gia sư</h3>
                 <p style={{ marginBottom: '20px' }}>
-                    Bạn đang gửi cảnh báo đến <strong>{tutorName}</strong>. Cảnh báo sẽ được ghi vào hồ sơ gia sư.
+                    Nội dung nhắc nhở dành cho <strong>{tutorName}</strong> sẽ được lưu trong hồ sơ để tiện theo dõi.
                 </p>
 
                 <div style={{ marginBottom: '20px' }}>
@@ -67,7 +67,7 @@ const IssueWarningModal = ({
                             marginBottom: '8px',
                         }}
                     >
-                        Mức độ nghiêm trọng
+                        Mức độ theo dõi
                     </label>
                     <select
                         value={severity}
@@ -81,9 +81,9 @@ const IssueWarningModal = ({
                             fontFamily: 'inherit',
                         }}
                     >
-                        <option value="low">Thấp - Vi phạm nhỏ</option>
-                        <option value="medium">Trung bình - Vi phạm đáng chú ý</option>
-                        <option value="high">Cao - Vi phạm nghiêm trọng</option>
+                        <option value="low">Mức 1 - Nhắc nhở</option>
+                        <option value="medium">Mức 2 - Cần theo dõi</option>
+                        <option value="high">Mức 3 - Cần ưu tiên xem xét</option>
                     </select>
                 </div>
 
@@ -97,7 +97,7 @@ const IssueWarningModal = ({
                             marginBottom: '8px',
                         }}
                     >
-                        Lý do cảnh báo (tối thiểu 10 ký tự)
+                        Nội dung nhắc nhở (tối thiểu 10 ký tự)
                     </label>
                     <textarea
                         className="vetting-rejection-textarea"
@@ -107,7 +107,7 @@ const IssueWarningModal = ({
                             setReason(e.target.value);
                             setError('');
                         }}
-                        placeholder="Mô tả chi tiết lý do cảnh báo..."
+                        placeholder="Mô tả nội dung cần gia sư lưu ý..."
                     />
                     {error && <p className="vetting-error-message">{error}</p>}
                 </div>
@@ -125,7 +125,7 @@ const IssueWarningModal = ({
                         onClick={handleSubmit}
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? 'Đang gửi...' : 'Gửi cảnh báo'}
+                        {isSubmitting ? 'Đang gửi...' : 'Gửi nhắc nhở'}
                     </button>
                 </div>
             </div>
