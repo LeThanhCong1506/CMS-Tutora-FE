@@ -1,4 +1,5 @@
 import type { StatusVariant } from '../../components/shared';
+import { formatVNDNumber } from '../../utils/formatters';
 
 /**
  * Mapping booking status từ BE (lowercase snake_case) → label tiếng Việt + màu badge.
@@ -83,7 +84,7 @@ export const BOOKING_STATUS_FILTER_OPTIONS: { value: string; label: string }[] =
 /** Format VND currency. */
 export function formatVND(amount?: number): string {
     if (amount == null) return '—';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return `${formatVNDNumber(amount)} ₫`;
 }
 
 // ───── Lesson status — match LessonStatus.cs constants ──────────────────────
