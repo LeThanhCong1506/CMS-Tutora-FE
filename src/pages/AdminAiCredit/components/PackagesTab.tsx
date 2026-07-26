@@ -16,6 +16,7 @@ import type {
   PackageFormValues,
 } from '../../../types/aiCredit.types';
 import { PACKAGE_FORM_DEFAULT } from '../../../types/aiCredit.types';
+import { formatVNDNumber } from '../../../utils/formatters';
 
 import '../../../styles/pages/admin-shared.css';
 import '../../../styles/pages/admin-ai-credit.css';
@@ -23,7 +24,9 @@ import '../../../styles/pages/admin-ai-credit.css';
 const formatPrice = (price: number, currency: string) =>
   price === 0
     ? 'Miễn phí'
-    : new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(price);
+    : currency.toUpperCase() === 'VND'
+      ? `${formatVNDNumber(price)} ₫`
+      : new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price);
 
 interface PackageModalProps {
   mode: 'create' | 'edit';
