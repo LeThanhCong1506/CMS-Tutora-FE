@@ -99,9 +99,20 @@ export const LESSON_STATUS_MAP: Record<string, { label: string; variant: StatusV
     checked_in: { label: 'Đã check-in', variant: 'info' },
 };
 
-export function getLessonStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
+/**
+ * A checked-out lesson intentionally remains `in_progress` until the tutor submits the report.
+ * Use `realEnd` to distinguish that awaiting-report phase from a lesson that is still live.
+ */
+export function getLessonStatusDisplay(
+    status?: string,
+    realEnd?: string | null,
+): { label: string; variant: StatusVariant } {
     if (!status) return { label: '—', variant: 'neutral' };
-    return LESSON_STATUS_MAP[status.toLowerCase()] ?? { label: status, variant: 'neutral' };
+    const normalizedStatus = status.toLowerCase();
+    if (normalizedStatus === 'in_progress' && realEnd) {
+        return { label: 'Chờ gửi báo cáo', variant: 'warning' };
+    }
+    return LESSON_STATUS_MAP[normalizedStatus] ?? { label: status, variant: 'neutral' };
 }
 
 // ───── Escrow status ────────────────────────────────────────────────────────
