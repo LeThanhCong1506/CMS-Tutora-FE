@@ -136,7 +136,7 @@ export interface AdminBookingDetailResponse {
 
     // ───── Phase 2 fields (BE Feature/ChangeTime) ──────────────────────────
     timeline: BookingTimelineEvent[];
-    lessons: AdminBookingLessonItem[];
+    classSessions: AdminBookingClassSessionItem[];
     paymentBreakdown: AdminBookingPaymentBreakdown;
 }
 
@@ -150,17 +150,19 @@ export interface BookingTimelineEvent {
     occurredAt: string;
 }
 
-// ───── Lessons ───────────────────────────────────────────────────────────────
+// ───── Class sessions ────────────────────────────────────────────────────────
+// Field names mirror AdminBookingClassSessionItem on the backend. They used to be called
+// `lesson*` here, which silently produced `undefined` and crashed the booking detail page.
 
-export interface AdminBookingLessonItem {
-    lessonId: number;
-    lessonNumber: number;
+export interface AdminBookingClassSessionItem {
+    classSessionId: number;
+    classSessionNumber: number;
     status?: string;
     scheduledStart: string;
     scheduledEnd: string;
     realStart?: string;
     realEnd?: string;
-    lessonPrice?: number;
+    classSessionPrice?: number;
     isSettled?: boolean;
     isMakeup?: boolean;
     tutorNotes?: string;

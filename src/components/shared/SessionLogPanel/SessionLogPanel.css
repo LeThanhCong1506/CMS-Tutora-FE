@@ -1,0 +1,82 @@
+/* Container for the Agora attendance evidence panel.
+   Kept self-contained so the panel renders the same inside the dispute detail tabs and inside the
+   booking lessons modal, instead of inheriting whichever page it happens to sit in. */
+.session-log-panel {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    min-width: 0;
+}
+
+.session-log-panel__scroll {
+    overflow-x: auto;
+}
+
+.session-log-panel__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.session-log-panel__snapshot {
+    margin: 0 0 6px;
+    color: #64748b;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.session-log-panel__refresh {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.session-log-panel__refresh:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.session-log-panel__refresh-error {
+    margin: 0 0 16px;
+    padding: 8px 12px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 12px;
+}
+
+/* Shown only when the log looks like the Agora feed failed it — answers "why is there no data"
+   without the admin having to go ask an engineer. */
+/* Punctuality sits above the numbers because it is usually the first thing staff look for, and it
+   always carries the source of its timing so a weaker measurement is never read as a strong one. */
+.session-log-panel__event-meta {
+    display: block;
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .session-log-panel {
+        padding: 16px;
+    }
+
+    .session-log-panel__heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .session-log-panel__refresh {
+        align-self: flex-start;
+    }
+}

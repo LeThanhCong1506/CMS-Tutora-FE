@@ -1,0 +1,509 @@
+.ai-credit-pkg-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: rgba(26, 34, 56, 0.04);
+    border: 1px solid rgba(62, 47, 40, 0.08);
+    padding: 3px;
+    flex-shrink: 0;
+}
+
+.ai-credit-pkg-icon-fallback {
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1px dashed rgba(62, 47, 40, 0.15);
+    color: var(--color-navy-40);
+    font-size: 18px !important;
+    flex-shrink: 0;
+}
+
+.ai-credit-icon-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-credit-icon-input-row .ai-credit-form-input {
+    flex: 1;
+}
+
+.ai-credit-icon-preview {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: rgba(26, 34, 56, 0.04);
+    border: 1px solid rgba(62, 47, 40, 0.1);
+    padding: 3px;
+    flex-shrink: 0;
+}
+
+/* Ô preview icon lớn ở top modal (kèm nút tải ảnh lên Cloudinary). */
+.ai-credit-icon-upload-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-md, 12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(26, 34, 56, 0.04);
+    border: 1px solid rgba(62, 47, 40, 0.1);
+    overflow: hidden;
+}
+
+.ai-credit-icon-upload-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+}
+
+.ai-credit-icon-upload-preview .material-symbols-outlined {
+    font-size: 32px;
+    color: rgba(26, 34, 56, 0.3);
+}
+
+.ai-credit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.ai-credit-badge-active {
+    background: rgba(34, 134, 58, 0.1);
+    color: #16803c;
+}
+
+.ai-credit-badge-inactive {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.ai-credit-badge-purchasable {
+    background: rgba(99, 27, 27, 0.08);
+    color: var(--color-burgundy);
+}
+
+.ai-credit-badge-free {
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--color-navy-60);
+}
+
+
+.ai-credit-amount-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-credit-amount-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--color-navy);
+}
+
+.ai-credit-amount-unit {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-navy-50);
+}
+
+
+.ai-credit-price {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--color-navy);
+}
+
+.ai-credit-price-free {
+    color: var(--color-navy-50);
+    font-style: italic;
+}
+
+
+.ai-credit-code-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-badge);
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--color-navy);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+
+.ai-credit-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(26, 34, 56, 0.45);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: ai-credit-fade-in 0.18s ease;
+}
+
+@keyframes ai-credit-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.ai-credit-modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 60px -12px rgba(26, 34, 56, 0.22);
+    animation: ai-credit-slide-up 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes ai-credit-slide-up {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ai-credit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px 16px;
+    border-bottom: 1.2px solid rgba(62, 47, 40, 0.08);
+}
+
+.ai-credit-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-navy);
+}
+
+.ai-credit-modal-title .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--color-burgundy);
+}
+
+.ai-credit-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-navy-50);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.ai-credit-modal-close:hover {
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--color-navy);
+}
+
+.ai-credit-modal-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ai-credit-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px 20px;
+    border-top: 1.2px solid rgba(62, 47, 40, 0.08);
+}
+
+
+.ai-credit-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.ai-credit-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ai-credit-form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.ai-credit-form-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-navy);
+    letter-spacing: 0.02em;
+}
+
+.ai-credit-form-label-required::after {
+    content: ' *';
+    color: #dc2626;
+}
+
+.ai-credit-form-input,
+.ai-credit-form-textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid rgba(62, 47, 40, 0.18);
+    border-radius: var(--radius-control);
+    background: var(--color-white);
+    color: var(--color-navy);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ai-credit-form-input:focus,
+.ai-credit-form-textarea:focus {
+    outline: none;
+    border-color: rgba(212, 180, 131, 0.7);
+    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.18);
+}
+
+.ai-credit-form-input.error {
+    border-color: rgba(220, 38, 38, 0.5);
+}
+
+.ai-credit-form-input:disabled {
+    background: rgba(26, 34, 56, 0.04);
+    color: var(--color-navy-50);
+    cursor: not-allowed;
+}
+
+.ai-credit-form-hint {
+    font-size: 11px;
+    color: var(--color-navy-50);
+    line-height: 1.4;
+}
+
+.ai-credit-form-textarea {
+    resize: vertical;
+    min-height: 72px;
+}
+
+/* Toggle switch */
+.ai-credit-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(62, 47, 40, 0.1);
+    border-radius: var(--radius-control);
+    background: rgba(250, 249, 246, 0.5);
+}
+
+.ai-credit-toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ai-credit-toggle-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-navy);
+}
+
+.ai-credit-toggle-desc {
+    font-size: 11px;
+    color: var(--color-navy-50);
+}
+
+.ai-credit-toggle-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 22px;
+}
+
+.ai-credit-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ai-credit-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 34, 56, 0.15);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ai-credit-toggle-switch input:checked + .ai-credit-toggle-track {
+    background: var(--color-navy);
+}
+
+.ai-credit-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.ai-credit-toggle-switch input:checked + .ai-credit-toggle-track::after {
+    transform: translateX(18px);
+}
+
+
+.ai-credit-settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ai-credit-settings-field-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 360px;
+}
+
+.ai-credit-settings-field-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-navy);
+}
+
+.ai-credit-settings-field-desc {
+    font-size: 13px;
+    color: var(--color-navy-100);
+    line-height: 1.5;
+}
+
+.ai-credit-settings-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-credit-settings-number-input {
+    width: 120px;
+    padding: 9px 12px;
+    border: 1px solid rgba(62, 47, 40, 0.18);
+    border-radius: var(--radius-control);
+    background: var(--color-white);
+    color: var(--color-navy);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ai-credit-settings-number-input:focus {
+    outline: none;
+    border-color: rgba(212, 180, 131, 0.7);
+    box-shadow: 0 0 0 3px rgba(212, 180, 131, 0.18);
+}
+
+.ai-credit-settings-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-navy-100);
+}
+
+.ai-credit-settings-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid rgba(212, 180, 131, 0.3);
+    border-radius: var(--radius-md);
+    background: rgba(212, 180, 131, 0.08);
+    color: var(--color-navy-60);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ai-credit-settings-callout .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--color-gold);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.ai-credit-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-credit-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-badge);
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.14s, border-color 0.14s, color 0.14s;
+    color: var(--color-navy-50);
+}
+
+.ai-credit-action-btn:hover {
+    background: rgba(26, 34, 56, 0.06);
+    border-color: rgba(62, 47, 40, 0.12);
+    color: var(--color-navy);
+}
+
+.ai-credit-action-btn.danger:hover {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: #dc2626;
+}
+
+.ai-credit-action-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+
+@media (max-width: 640px) {
+    .ai-credit-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-credit-modal {
+        max-height: 95vh;
+    }
+}
