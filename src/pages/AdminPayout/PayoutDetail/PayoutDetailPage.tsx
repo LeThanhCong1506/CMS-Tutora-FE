@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   getPayoutRequestDetail,
@@ -89,6 +89,7 @@ const SummaryFact = ({
 const PayoutDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<AdminWithdrawalDetail | null>(null);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
@@ -96,6 +97,9 @@ const PayoutDetailPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const requestId = Number.parseInt(id || '', 10);
+  const isReviewDetail = location.pathname.startsWith('/admin-portal/payout/review/');
+  const backPath = isReviewDetail ? '/admin-portal/payout/review' : '/admin-portal/payouts';
+  const backLabel = isReviewDetail ? 'Chờ xét duyệt' : 'Tổng quan';
 
   const fetchDetail = useCallback(async () => {
     if (!Number.isFinite(requestId)) return;
@@ -208,10 +212,10 @@ const PayoutDetailPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => navigate('/admin-portal/payouts')}
+            onClick={() => navigate(backPath)}
           >
             <span className="material-symbols-outlined">arrow_back</span>
-            Tổng quan
+            {backLabel}
           </button>
         }
       >
@@ -241,10 +245,10 @@ const PayoutDetailPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => navigate('/admin-portal/payouts')}
+            onClick={() => navigate(backPath)}
           >
             <span className="material-symbols-outlined">arrow_back</span>
-            Tổng quan
+            {backLabel}
           </button>
           <WithdrawalStatusBadge status={requestInfo.status} />
         </div>

@@ -87,6 +87,7 @@ const PendingReviewPage: React.FC = () => {
                     total={total}
                     currentPage={currentPage}
                     pageSize={pageSize}
+                    detailBasePath="/admin-portal/payout/review"
                     onPageChange={(page, size) => {
                         setCurrentPage(page);
                         setPageSize(size);
