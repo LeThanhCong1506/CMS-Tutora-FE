@@ -13,6 +13,7 @@ interface Props {
   currentPage: number;
   pageSize: number;
   onPageChange: (page: number, size: number) => void;
+  detailBasePath?: string;
 }
 
 const getTutorInitials = (name: string): string => {
@@ -26,11 +27,19 @@ const getTutorInitials = (name: string): string => {
     .toUpperCase();
 };
 
-const WithdrawalRequestTable: React.FC<Props> = ({ data, loading, total, currentPage, pageSize, onPageChange }) => {
+const WithdrawalRequestTable: React.FC<Props> = ({
+  data,
+  loading,
+  total,
+  currentPage,
+  pageSize,
+  onPageChange,
+  detailBasePath = '/admin-portal/payouts',
+}) => {
   const navigate = useNavigate();
 
   const openRequest = (record: WithdrawalRequestItem) => {
-    navigate(`/admin-portal/payouts/${record.withdrawalId}`);
+    navigate(`${detailBasePath}/${record.withdrawalId}`);
   };
 
   const columns: DataTableColumn<WithdrawalRequestItem>[] = [

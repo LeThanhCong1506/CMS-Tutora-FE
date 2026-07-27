@@ -80,10 +80,10 @@ const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
       <section className="payout-operations-panel" aria-labelledby="payout-operations-title">
         <div className="payout-operations-panel__header">
           <div>
-            <span>Tổng quan vận hành</span>
-            <h2 id="payout-operations-title">Khối lượng xử lý</h2>
+            <span>Quy trình thủ công</span>
+            <h2 id="payout-operations-title">Tình trạng xử lý</h2>
           </div>
-          <span className="payout-period-chip">Tháng này</span>
+          <span className="payout-period-chip">Admin / Staff</span>
         </div>
 
         <div className="payout-operation-grid">
@@ -95,24 +95,24 @@ const PayoutStatsCards: React.FC<Props> = ({ overview, loading }) => {
             tone="blue"
           />
           <OperationMetric
-            icon="verified"
-            value={metric((decisionBreakdown?.autoApprove ?? 0).toLocaleString('vi-VN'), loading)}
-            label="Tự động duyệt"
-            note="Đã qua kiểm tra hệ thống"
-            tone="green"
-          />
-          <OperationMetric
-            icon="pause_circle"
-            value={metric((decisionBreakdown?.delayed ?? 0).toLocaleString('vi-VN'), loading)}
-            label="Đang tạm giữ"
-            note="Cần theo dõi thời hạn"
+            icon="pending_actions"
+            value={metric((processingStats?.pendingCount ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Cần xử lý"
+            note="Chờ tiếp nhận hoặc đang đối soát"
             tone="amber"
           />
           <OperationMetric
-            icon="policy"
-            value={metric((decisionBreakdown?.manualReview ?? 0).toLocaleString('vi-VN'), loading)}
-            label="Xét duyệt thủ công"
-            note="Cần quyết định từ admin"
+            icon="manage_search"
+            value={metric((decisionBreakdown?.delayed ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Đang tạm giữ"
+            note="Chờ bổ sung hoặc đối soát"
+            tone="blue"
+          />
+          <OperationMetric
+            icon="cancel"
+            value={metric((decisionBreakdown?.rejected ?? 0).toLocaleString('vi-VN'), loading)}
+            label="Đã từ chối"
+            note="Kết thúc sau khi kiểm tra"
             tone="red"
           />
         </div>
