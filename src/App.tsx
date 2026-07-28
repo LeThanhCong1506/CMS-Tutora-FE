@@ -191,10 +191,7 @@ function App() {
               <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
               <Route path="payouts/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />
               <Route path="payout/review" element={guard(<PendingReviewPage />, 'payout.view')} />
-              <Route
-                path="payout/review/:id"
-                element={guard(<div className="p-6">Payout Request Detail Page (Coming Soon)</div>, 'payout.view')}
-              />
+              <Route path="payout/review/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />
             </Route>
 
             <Route path="/401" element={<UnauthorizedPage />} />

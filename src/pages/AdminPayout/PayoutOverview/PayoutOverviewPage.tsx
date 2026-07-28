@@ -61,7 +61,6 @@ const PayoutOverviewPage: React.FC = () => {
       className="payout-overview-page"
       eyebrow="Thanh toán"
       title="Quản lý thanh toán"
-      subtitle="Xét duyệt và xử lý các yêu cầu rút tiền từ người dùng."
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">
@@ -81,7 +80,6 @@ const PayoutOverviewPage: React.FC = () => {
       <SectionCard
         className="payout-requests-card"
         title="Yêu cầu rút tiền"
-        subtitle="Theo dõi trạng thái xử lý, rà soát rủi ro và mở chi tiết để phê duyệt hoặc từ chối."
         headerAction={
           <span className="payout-section-queue">
             <span className="payout-section-queue__dot" aria-hidden="true" />
