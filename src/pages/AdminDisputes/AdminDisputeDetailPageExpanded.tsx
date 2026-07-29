@@ -498,7 +498,11 @@ const AdminDisputeDetailPageExpanded = () => {
 
         try {
             setIsSubmitting(true);
-            await classifyDispute(disputeDetail.disputeId);
+            const classified = await classifyDispute(disputeDetail.disputeId);
+            if (!classified.priority) {
+                toast.error('AI chưa phân loại được mức ưu tiên. Vui lòng thử lại sau.');
+                return;
+            }
             toast.success('Đã cập nhật mức độ ưu tiên của hồ sơ.');
             await fetchDisputeDetail(disputeId);
         } catch (err) {
