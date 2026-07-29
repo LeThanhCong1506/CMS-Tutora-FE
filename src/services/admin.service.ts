@@ -553,20 +553,6 @@ export const suspendTutor = async (request: SuspendUserRequest): Promise<ApiResp
   }
 };
 
-/**
- * Lock user account
- * Updates users.status = 'locked'
- */
-export const lockAccount = async (userId: string, reason: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/users/${userId}/lock`, { reason });
-    return data;
-  } catch (error) {
-    console.error('lockAccount error:', error);
-    throw error;
-  }
-};
-
 // ============================================
 // FINANCIALS APIs (ADM-04)
 // ============================================
@@ -781,48 +767,6 @@ export const getUserDetail = async (userId: string, signal?: AbortSignal): Promi
     if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
       console.error('getUserDetail error:', error);
     }
-    throw error;
-  }
-};
-
-/**
- * Block user account
- * Updates users.status = 'blocked'
- */
-export const blockUser = async (userId: string, reason: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/users/${userId}/block`, { reason });
-    return data;
-  } catch (error) {
-    console.error('blockUser error:', error);
-    throw error;
-  }
-};
-
-/**
- * Unblock user account
- * Updates users.status = 'active'
- */
-export const unblockUser = async (userId: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/users/${userId}/unblock`);
-    return data;
-  } catch (error) {
-    console.error('unblockUser error:', error);
-    throw error;
-  }
-};
-
-/**
- * Reset user password
- * Sends reset email to user
- */
-export const resetUserPassword = async (userId: string): Promise<ApiResponse<any>> => {
-  try {
-    const { data } = await api.post(`/admin/users/${userId}/reset-password`);
-    return data;
-  } catch (error) {
-    console.error('resetUserPassword error:', error);
     throw error;
   }
 };
