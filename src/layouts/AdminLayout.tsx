@@ -73,6 +73,9 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
       { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính', permission: 'financial.view' },
       { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
+      // TEMP: proposal pages, running on mock data — see src/pages/AdminFinanceNew and src/pages/AdminTax
+      { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
+      { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
