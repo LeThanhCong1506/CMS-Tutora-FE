@@ -79,9 +79,6 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                             <span className="material-symbols-outlined">pause_circle</span>
                             Tạm ngưng hồ sơ gia sư
                         </h3>
-                        <p className="um-modal-sub">
-                            Gia sư sẽ không nhận được buổi học mới. Các buổi đã đặt vẫn giữ nguyên.
-                        </p>
                     </div>
                     <button
                         type="button"
