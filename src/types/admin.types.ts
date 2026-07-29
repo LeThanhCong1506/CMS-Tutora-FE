@@ -508,11 +508,18 @@ export interface DisputeForAdmin {
   priorityDisplay: string;
 }
 
+/** Cũ nhất trước / mới nhất trước, theo thời gian tạo. Khớp BE `ListSortDirection`. */
+export type ListSortDirection = 'asc' | 'desc';
+
 export interface DisputeQueryParams {
   status?: string;
   disputeType?: string;
   startDate?: string;
   endDate?: string;
+  /** Chỉ lấy phản ánh về buổi học này. */
+  classSessionId?: number;
+  /** Mặc định BE là 'desc' (mới nhất trước). */
+  sortDirection?: ListSortDirection;
   page?: number;
   pageSize?: number;
 }

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import { getDisputes, getDisputeStats } from '../../services/admin.service';
-import type { DisputeForAdmin, DisputeStatsDto } from '../../types/admin.types';
+import type { DisputeForAdmin, DisputeStatsDto, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
+import { parseIdFilter } from '../../utils/idFilter';
 
 type DisputeTab = 'all' | 'pending' | 'investigating' | 'resolved';
 
@@ -62,12 +63,20 @@ const AdminDisputesPage = () => {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<DisputeStatsDto | null>(null);
 
+    // Ô nhập id buổi học và giá trị đã áp dụng tách riêng: lọc ở server nên chỉ
+    // gọi lại API khi admin bấm áp dụng, không phải mỗi lần gõ một chữ số.
+    const [classSessionInput, setClassSessionInput] = useState('');
+    const [classSessionFilter, setClassSessionFilter] = useState<number | undefined>(undefined);
+    const [sortDirection, setSortDirection] = useState<ListSortDirection>('desc');
+
     const fetchDisputes = useCallback(async () => {
         try {
             setLoading(true);
             const statusFilter = activeTab === 'all' ? undefined : activeTab;
             const data = await getDisputes({
                 status: statusFilter,
+                classSessionId: classSessionFilter,
+                sortDirection,
                 page: 1,
                 pageSize: 20,
             });
@@ -78,7 +87,16 @@ const AdminDisputesPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab]);
+    }, [activeTab, classSessionFilter, sortDirection]);
+
+    const applyClassSessionFilter = () => {
+        setClassSessionFilter(parseIdFilter(classSessionInput));
+    };
+
+    const clearClassSessionFilter = () => {
+        setClassSessionInput('');
+        setClassSessionFilter(undefined);
+    };
 
     const fetchStats = useCallback(async () => {
         try {
@@ -272,7 +290,11 @@ const AdminDisputesPage = () => {
                         onChange={(key) => setActiveTab(key as DisputeTab)}
                     />
                 }
-                footer={`Hiển thị ${filteredDisputes.length} hồ sơ`}
+                footer={
+                    classSessionFilter !== undefined
+                        ? `Hiển thị ${filteredDisputes.length} hồ sơ về buổi học #${classSessionFilter}`
+                        : `Hiển thị ${filteredDisputes.length} hồ sơ`
+                }
             >
                 <div className="admin-ui-toolbar">
                     <div className="admin-ui-search">
@@ -295,6 +317,56 @@ const AdminDisputesPage = () => {
                             Xóa tìm kiếm
                         </button>
                     )}
+
+                    <div className="dispute-list-filter">
+                        <label className="dispute-list-filter__label" htmlFor="dispute-class-session-filter">
+                            ID buổi học
+                        </label>
+                        <input
+                            id="dispute-class-session-filter"
+                            className="dispute-list-filter__input"
+                            type="number"
+                            min={1}
+                            inputMode="numeric"
+                            placeholder="VD: 12345"
+                            value={classSessionInput}
+                            onChange={(event) => setClassSessionInput(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') applyClassSessionFilter();
+                            }}
+                        />
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-secondary"
+                            onClick={applyClassSessionFilter}
+                        >
+                            Áp dụng
+                        </button>
+                        {classSessionFilter !== undefined && (
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-secondary"
+                                onClick={clearClassSessionFilter}
+                            >
+                                Bỏ lọc
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="dispute-list-filter">
+                        <label className="dispute-list-filter__label" htmlFor="dispute-sort-direction">
+                            Sắp xếp
+                        </label>
+                        <select
+                            id="dispute-sort-direction"
+                            className="dispute-list-filter__select"
+                            value={sortDirection}
+                            onChange={(event) => setSortDirection(event.target.value as ListSortDirection)}
+                        >
+                            <option value="desc">Mới nhất trước</option>
+                            <option value="asc">Cũ nhất trước</option>
+                        </select>
+                    </div>
                 </div>
 
                 <DataTable
@@ -306,7 +378,13 @@ const AdminDisputesPage = () => {
                     tableLabel="Danh sách hồ sơ phản ánh"
                     loading={loading}
                     loadingText="Đang tải danh sách phản ánh..."
-                    emptyText={searchQuery ? 'Không tìm thấy phản ánh phù hợp' : 'Chưa có phản ánh nào'}
+                    emptyText={
+                        classSessionFilter !== undefined
+                            ? `Không có phản ánh nào về buổi học #${classSessionFilter}`
+                            : searchQuery
+                              ? 'Không tìm thấy phản ánh phù hợp'
+                              : 'Chưa có phản ánh nào'
+                    }
                     emptyIcon={
                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#94a3b8' }}>
                             forum

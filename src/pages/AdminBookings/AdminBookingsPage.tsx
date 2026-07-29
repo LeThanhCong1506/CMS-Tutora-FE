@@ -7,6 +7,8 @@ import { getAdminBookings } from '../../services/adminBooking.service';
 import type { AdminBookingListItem, AdminBookingListParams } from '../../types/adminBooking.types';
 import { formatDateTime } from '../../utils/formatters';
 import { formatVND, getBookingStatusDisplay, getTeachingModeLabel } from './bookingDisplay';
+import { parseIdFilter } from '../../utils/idFilter';
+import type { ListSortDirection } from '../../types/admin.types';
 import BookingFilterBar from './BookingFilterBar';
 import styles from './AdminBookings.module.css';
 
@@ -27,6 +29,15 @@ export default function AdminBookingsPage() {
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Ô nhập và giá trị đã áp dụng tách riêng cho các bộ lọc theo id: lọc chạy ở
+    // server nên chỉ gọi API khi admin bấm Tìm kiếm / nhấn Enter, không phải mỗi
+    // lần gõ thêm một chữ số.
+    const [bookingIdInput, setBookingIdInput] = useState('');
+    const [classSessionIdInput, setClassSessionIdInput] = useState('');
+    const [bookingIdFilter, setBookingIdFilter] = useState<number | undefined>(undefined);
+    const [classSessionIdFilter, setClassSessionIdFilter] = useState<number | undefined>(undefined);
+    const [sortDirection, setSortDirection] = useState<ListSortDirection>('desc');
+
     const fetchAbortRef = useRef<AbortController | null>(null);
 
     const fetchBookings = useCallback(async () => {
@@ -36,11 +47,13 @@ export default function AdminBookingsPage() {
 
         setLoading(true);
         try {
-            const params: AdminBookingListParams = { page, pageSize };
+            const params: AdminBookingListParams = { page, pageSize, sortDirection };
             if (status) params.status = status;
             if (from) params.from = from;
             if (to) params.to = to;
             if (searchQuery) params.search = searchQuery;
+            if (bookingIdFilter !== undefined) params.bookingId = bookingIdFilter;
+            if (classSessionIdFilter !== undefined) params.classSessionId = classSessionIdFilter;
 
             const res = await getAdminBookings(params, controller.signal);
             if (controller.signal.aborted) return;
@@ -59,7 +72,7 @@ export default function AdminBookingsPage() {
         } finally {
             if (!controller.signal.aborted) setLoading(false);
         }
-    }, [from, page, pageSize, searchQuery, status, to]);
+    }, [bookingIdFilter, classSessionIdFilter, from, page, pageSize, searchQuery, sortDirection, status, to]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -73,6 +86,10 @@ export default function AdminBookingsPage() {
         setTo('');
         setSearchInput('');
         setSearchQuery('');
+        setBookingIdInput('');
+        setClassSessionIdInput('');
+        setBookingIdFilter(undefined);
+        setClassSessionIdFilter(undefined);
         setPage(1);
     };
 
@@ -87,8 +104,16 @@ export default function AdminBookingsPage() {
         setPage(1);
     };
 
-    const handleSearchSubmit = () => {
+    const handleFiltersSubmit = () => {
         setSearchQuery(searchInput.trim());
+        setBookingIdFilter(parseIdFilter(bookingIdInput));
+        setClassSessionIdFilter(parseIdFilter(classSessionIdInput));
+        setPage(1);
+    };
+
+    const handleSortDirectionChange = (value: ListSortDirection) => {
+        setSortDirection(value);
+        // Trang 2 của thứ tự cũ không tương ứng gì với thứ tự mới.
         setPage(1);
     };
 
@@ -269,7 +294,14 @@ export default function AdminBookingsPage() {
                     searchInput={searchInput}
                     searchQuery={searchQuery}
                     onSearchInputChange={setSearchInput}
-                    onSearchSubmit={handleSearchSubmit}
+                    onFiltersSubmit={handleFiltersSubmit}
+                    bookingIdInput={bookingIdInput}
+                    onBookingIdInputChange={setBookingIdInput}
+                    classSessionIdInput={classSessionIdInput}
+                    onClassSessionIdInputChange={setClassSessionIdInput}
+                    sortDirection={sortDirection}
+                    onSortDirectionChange={handleSortDirectionChange}
+                    hasAppliedIdFilters={bookingIdFilter !== undefined || classSessionIdFilter !== undefined}
                     onReset={resetFilters}
                 />
 
