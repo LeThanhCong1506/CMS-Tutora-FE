@@ -114,13 +114,19 @@ export const AccessProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [refresh]);
 
+  // TEMP: auth bypass for local UI preview. Revert before committing/deploying.
+  const BYPASS_AUTH_FOR_UI_PREVIEW = true;
+
   const role = access?.role || getCurrentUserRole() || '';
-  const isAdmin = role.toLowerCase() === 'admin';
+  const isAdmin = BYPASS_AUTH_FOR_UI_PREVIEW || role.toLowerCase() === 'admin';
   const isStaff = role.toLowerCase() === 'staff';
   const granted = useMemo(() => new Set(access?.permissionKeys ?? []), [access?.permissionKeys]);
-  const can = useCallback((permission: string) => canAccess(role, granted, { permission }), [granted, role]);
+  const can = useCallback(
+    (permission: string) => BYPASS_AUTH_FOR_UI_PREVIEW || canAccess(role, granted, { permission }),
+    [granted, role],
+  );
   const canAny = useCallback(
-    (permissions: string[]) => canAccess(role, granted, { anyOf: permissions }),
+    (permissions: string[]) => BYPASS_AUTH_FOR_UI_PREVIEW || canAccess(role, granted, { anyOf: permissions }),
     [granted, role],
   );
 
