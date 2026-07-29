@@ -1148,6 +1148,69 @@ export interface UserSuspension {
   createdByName: string;
 }
 
+/**
+ * One row of a user's warning history.
+ * Mirrors BE `WarningHistoryResponse` (serialized camelCase).
+ * `warningLevel`: 1 = Thấp, 2 = Trung bình, 3 = Cao.
+ */
+export interface AdminWarningHistoryItem {
+  warningId: number;
+  warningLevel: number;
+  reason?: string | null;
+  relatedBookingId?: number | null;
+  createdAt?: string | null;
+  /** Null for warnings raised by the system rather than an admin. */
+  issuedByName?: string | null;
+  warningLevelDisplay?: string;
+  warningLevelColor?: string;
+}
+
+/**
+ * Warning summary + full history for a single user.
+ * Mirrors BE `UserWarningSummaryResponse`.
+ *
+ * Note: the suspension fields describe the *current* suspension only — BE has
+ * no per-user suspension history endpoint yet.
+ */
+export interface AdminUserWarningSummary {
+  userId?: string | null;
+  fullName?: string | null;
+  email?: string | null;
+  totalWarnings: number;
+  level1Warnings: number;
+  level2Warnings: number;
+  warningsLast30Days: number;
+  isSuspended: boolean;
+  suspensionType?: string | null;
+  suspensionEndDate?: string | null;
+  warnings: AdminWarningHistoryItem[];
+}
+
+/**
+ * One row of a user's suspension history (active or already ended).
+ * Mirrors BE `SuspensionListResponse`.
+ *
+ * `endDate` is null for permanent suspensions. `isActive` reflects the stored
+ * flag — a temporary suspension whose `endDate` has passed can still be flagged
+ * active until the hourly auto-unsuspend job flips it, so treat `isActive`
+ * together with `endDate` when labelling status.
+ */
+export interface AdminSuspensionHistoryItem {
+  suspensionId: number;
+  userId?: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  suspensionType: string;
+  reason?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isActive?: boolean | null;
+  /** Null for suspensions applied automatically by the system. */
+  createdByName?: string | null;
+  timeRemainingDisplay?: string | null;
+  suspensionTypeDisplay?: string;
+}
+
 export interface AdminLinkedUser {
   userId: string | null;
   fullName: string;
