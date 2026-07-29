@@ -58,6 +58,82 @@
    without the admin having to go ask an engineer. */
 /* Punctuality sits above the numbers because it is usually the first thing staff look for, and it
    always carries the source of its timing so a weaker measurement is never read as a strong one. */
+/* Chỉ có ở variant="compact": lối vào phần bằng chứng thô. Để dạng link thay vì nút nổi bật, vì
+   phần lớn lượt xem sẽ không cần mở nó ra. */
+.session-log-panel__details-toggle {
+    margin-top: 16px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.session-log-panel__details-toggle:hover {
+    text-decoration: underline;
+}
+
+/* Nút thắc mắc "Vì sao có 2 loại số liệu?".
+   Dạng chip có viền thay vì link chữ: nhãn "Agora"/"Trình duyệt" trên mỗi dòng chỉ có nghĩa với ai
+   đã đọc giải thích, nên lối vào phần đó phải tự nhìn thấy được. Khác kiểu với link "Xem bằng chứng
+   chi tiết" bên dưới để hai thứ không trông như cùng một hành động. */
+.session-log-panel__source-help-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Icon đổi theo trạng thái: "?" khi còn đóng, "×" khi đang mở — người dùng thấy ngay bấm lần nữa
+   là đóng lại, không phải mở thêm thứ khác. Dựa trên aria-expanded nên không cần thêm state. */
+.session-log-panel__source-help-toggle::before {
+    content: '?';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.session-log-panel__source-help-toggle[aria-expanded='true'] {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.session-log-panel__source-help-toggle[aria-expanded='true']::before {
+    content: '\00d7';
+    font-size: 12px;
+}
+
+.session-log-panel__source-help-toggle:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.session-log-panel__source-help-toggle:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
 .session-log-panel__event-meta {
     display: block;
     margin-top: 2px;
