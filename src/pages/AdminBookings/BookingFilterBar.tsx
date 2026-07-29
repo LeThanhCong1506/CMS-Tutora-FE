@@ -1,5 +1,7 @@
+import type { KeyboardEvent } from 'react';
 import styles from './AdminBookings.module.css';
 import { BOOKING_STATUS_FILTER_OPTIONS } from './bookingDisplay';
+import type { ListSortDirection } from '../../types/admin.types';
 
 interface BookingFilterBarProps {
     status: string;
@@ -10,7 +12,15 @@ interface BookingFilterBarProps {
     searchInput: string;
     searchQuery: string;
     onSearchInputChange: (value: string) => void;
-    onSearchSubmit: () => void;
+    /** Áp dụng cùng lúc ô tìm kiếm và hai ô lọc theo id. */
+    onFiltersSubmit: () => void;
+    bookingIdInput: string;
+    onBookingIdInputChange: (value: string) => void;
+    classSessionIdInput: string;
+    onClassSessionIdInputChange: (value: string) => void;
+    sortDirection: ListSortDirection;
+    onSortDirectionChange: (value: ListSortDirection) => void;
+    hasAppliedIdFilters: boolean;
     onReset: () => void;
 }
 
@@ -23,10 +33,22 @@ export default function BookingFilterBar({
     searchInput,
     searchQuery,
     onSearchInputChange,
-    onSearchSubmit,
+    onFiltersSubmit,
+    bookingIdInput,
+    onBookingIdInputChange,
+    classSessionIdInput,
+    onClassSessionIdInputChange,
+    sortDirection,
+    onSortDirectionChange,
+    hasAppliedIdFilters,
     onReset,
 }: BookingFilterBarProps) {
-    const hasActiveFilters = Boolean(status || from || to || searchQuery);
+    const hasActiveFilters = Boolean(status || from || to || searchQuery || hasAppliedIdFilters);
+
+    // Enter ở bất kỳ ô lọc theo id nào cũng áp dụng, giống ô tìm kiếm.
+    const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') onFiltersSubmit();
+    };
 
     const handleFromChange = (newFrom: string) => {
         if (newFrom && to && newFrom > to) {
@@ -79,14 +101,61 @@ export default function BookingFilterBar({
                             placeholder="Nhập tên học sinh hoặc gia sư..."
                             value={searchInput}
                             onChange={(event) => onSearchInputChange(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') onSearchSubmit();
-                            }}
+                            onKeyDown={submitOnEnter}
                         />
-                        <button type="button" className={styles.searchBtn} onClick={onSearchSubmit}>
+                        <button type="button" className={styles.searchBtn} onClick={onFiltersSubmit}>
                             Tìm kiếm
                         </button>
                     </div>
+                </div>
+
+                <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel} htmlFor="booking-id-filter">
+                        Mã đặt lịch
+                    </label>
+                    <input
+                        id="booking-id-filter"
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        className={styles.filterInput}
+                        placeholder="VD: 88"
+                        value={bookingIdInput}
+                        onChange={(event) => onBookingIdInputChange(event.target.value)}
+                        onKeyDown={submitOnEnter}
+                    />
+                </div>
+
+                <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel} htmlFor="booking-class-session-filter">
+                        ID buổi học
+                    </label>
+                    <input
+                        id="booking-class-session-filter"
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        className={styles.filterInput}
+                        placeholder="VD: 12345"
+                        value={classSessionIdInput}
+                        onChange={(event) => onClassSessionIdInputChange(event.target.value)}
+                        onKeyDown={submitOnEnter}
+                    />
+                </div>
+
+                <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel} htmlFor="booking-sort-direction">
+                        Sắp xếp
+                    </label>
+                    <select
+                        id="booking-sort-direction"
+                        className={styles.filterSelect}
+                        value={sortDirection}
+                        onChange={(event) => onSortDirectionChange(event.target.value as ListSortDirection)}
+                    >
+                        <option value="desc">Mới nhất trước</option>
+                        <option value="asc">Cũ nhất trước</option>
+                    </select>
                 </div>
 
                 <div className={styles.filterGroup}>

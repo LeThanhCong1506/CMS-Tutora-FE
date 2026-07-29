@@ -9,6 +9,8 @@
  *   GET  /api/admin/bookings/{id}            → AdminBookingDetailResponse
  */
 
+import type { ListSortDirection } from './admin.types';
+
 // ───── LIST ──────────────────────────────────────────────────────────────────
 
 export interface AdminBookingListItem {
@@ -73,7 +75,14 @@ export interface AdminBookingListParams {
     subjectId?: number;
     from?: string; // ISO date
     to?: string;   // ISO date
+    /** Khớp tên gia sư/phụ huynh, email, payment code — KHÔNG khớp mã đặt lịch. */
     search?: string;
+    /** Lọc theo chính mã đặt lịch. */
+    bookingId?: number;
+    /** Lọc ra khóa học chứa buổi học này. */
+    classSessionId?: number;
+    /** Mặc định BE là 'desc' (mới nhất trước). */
+    sortDirection?: ListSortDirection;
 }
 
 // ───── DETAIL ────────────────────────────────────────────────────────────────
