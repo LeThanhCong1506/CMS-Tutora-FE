@@ -670,8 +670,9 @@ export const getAllUsers = async (
       createdat: u.createdat || u.createdAt || '',
       lastloginat: u.lastloginat || u.lastLoginAt || null,
       avatarurl: u.avatarurl || null,
-      warningsCount: 0,
-      suspensionsCount: 0,
+      // BE chỉ trả 2 field này ở endpoint danh sách admin; null = chưa tính được.
+      warningsCount: u.warningsCount ?? 0,
+      suspensionsCount: u.suspensionsCount ?? 0,
     }));
     return { users, total };
   } catch (error) {
