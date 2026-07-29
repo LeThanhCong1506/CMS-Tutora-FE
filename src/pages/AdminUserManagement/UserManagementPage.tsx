@@ -123,6 +123,16 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
             setUsers(mapped);
             setTotal(totalCount);
+
+            // Modal chi tiết giữ bản sao user chụp lúc bấm mở. Các thao tác đổi
+            // trạng thái (cảnh cáo mức Cao tự tạm ngưng, chặn, tạm ngưng) có gọi
+            // lại fetchUsers nhưng bản sao đó thì không được cập nhật, nên modal
+            // vẫn hiện trạng thái cũ và sai nút Chặn/Mở khóa cho tới khi F5.
+            // Đồng bộ lại theo dữ liệu vừa tải; giữ nguyên nếu user đã rơi khỏi
+            // trang hiện tại do bộ lọc, vì lúc đó không có gì mới hơn để dùng.
+            setSelectedUser((current) =>
+                current ? (mapped.find((item) => item.userid === current.userid) ?? current) : current
+            );
         } catch (err: unknown) {
             // Aborted requests throw — silently ignore them, only surface real errors.
             const isAbort =
