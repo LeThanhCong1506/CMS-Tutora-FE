@@ -34,6 +34,8 @@ import type {
   // User Management
   UserListItem,
   AdminUserDetail,
+  AdminUserWarningSummary,
+  AdminSuspensionHistoryItem,
   // Settings
   Subject,
   PlatformConfig,
@@ -670,8 +672,9 @@ export const getAllUsers = async (
       createdat: u.createdat || u.createdAt || '',
       lastloginat: u.lastloginat || u.lastLoginAt || null,
       avatarurl: u.avatarurl || null,
-      warningsCount: 0,
-      suspensionsCount: 0,
+      // BE chỉ trả 2 field này ở endpoint danh sách admin; null = chưa tính được.
+      warningsCount: u.warningsCount ?? 0,
+      suspensionsCount: u.suspensionsCount ?? 0,
     }));
     return { users, total };
   } catch (error) {
@@ -1082,14 +1085,66 @@ export const getDisputeStats = async (): Promise<DisputeStatsDto> => {
 };
 
 /**
- * Get user warning summary
+ * Get a user's warning summary and full warning history.
+ * Backend: GET /api/admin/warnings/users/{userId} — requires the `warning.view`
+ * permission, so callers should gate on it to avoid a guaranteed 403.
+ *
+ * Returns a normalized summary: a user with no warnings still yields zeroed
+ * counters and an empty list rather than null, so callers can render directly.
  */
-export const getUserWarnings = async (userId: string): Promise<ApiResponse<any>> => {
+export const getUserWarnings = async (
+  userId: string,
+  signal?: AbortSignal
+): Promise<AdminUserWarningSummary> => {
   try {
-    const { data } = await api.get(`/admin/warnings/users/${userId}`);
-    return data;
+    const { data } = await api.get<{ content?: AdminUserWarningSummary }>(
+      `/admin/warnings/users/${userId}`,
+      { signal }
+    );
+    const content = data.content;
+    return {
+      userId: content?.userId ?? userId,
+      fullName: content?.fullName ?? null,
+      email: content?.email ?? null,
+      totalWarnings: content?.totalWarnings ?? 0,
+      level1Warnings: content?.level1Warnings ?? 0,
+      level2Warnings: content?.level2Warnings ?? 0,
+      warningsLast30Days: content?.warningsLast30Days ?? 0,
+      isSuspended: content?.isSuspended ?? false,
+      suspensionType: content?.suspensionType ?? null,
+      suspensionEndDate: content?.suspensionEndDate ?? null,
+      warnings: content?.warnings ?? [],
+    };
   } catch (error) {
-    console.error('getUserWarnings error:', error);
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserWarnings error:', error);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Get a user's full suspension history — active and already ended — newest first.
+ * Backend: GET /api/admin/warnings/users/{userId}/suspensions — requires the
+ * `warning.view` permission.
+ *
+ * Distinct from `getActiveSuspensions`, which lists only currently active
+ * suspensions across all users.
+ */
+export const getUserSuspensions = async (
+  userId: string,
+  signal?: AbortSignal
+): Promise<AdminSuspensionHistoryItem[]> => {
+  try {
+    const { data } = await api.get<{ content?: AdminSuspensionHistoryItem[] }>(
+      `/admin/warnings/users/${userId}/suspensions`,
+      { signal }
+    );
+    return data.content ?? [];
+  } catch (error) {
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserSuspensions error:', error);
+    }
     throw error;
   }
 };

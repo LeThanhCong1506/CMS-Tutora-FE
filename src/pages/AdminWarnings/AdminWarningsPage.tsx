@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { getActiveSuspensions, getUserWarnings, unsuspendUser } from '../../services/admin.service';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
+import type { AdminUserWarningSummary, AdminWarningHistoryItem } from '../../types/admin.types';
 import { Can } from '../../contexts/AccessContext';
 import '../../styles/pages/admin-warnings.css';
 
@@ -19,31 +20,6 @@ interface SuspensionListItem {
     createdByName?: string;
     timeRemainingDisplay?: string;
     suspensionTypeDisplay?: string;
-}
-
-interface WarningHistoryItem {
-    warningId: number;
-    warningLevel: number;
-    reason?: string;
-    relatedBookingId?: number;
-    createdAt?: string;
-    issuedByName?: string;
-    warningLevelDisplay?: string;
-    warningLevelColor?: string;
-}
-
-interface UserWarningSummary {
-    userId?: string;
-    fullName?: string;
-    email?: string;
-    totalWarnings: number;
-    level1Warnings: number;
-    level2Warnings: number;
-    warningsLast30Days: number;
-    isSuspended: boolean;
-    suspensionType?: string;
-    suspensionEndDate?: string;
-    warnings: WarningHistoryItem[];
 }
 
 type TabKey = 'suspensions' | 'lookup';
@@ -82,26 +58,7 @@ const parsePagedItems = <T,>(response: unknown): { items: T[]; total: number } =
     return { items, total };
 };
 
-const parseWarningSummary = (response: unknown): UserWarningSummary | null => {
-    const content = unwrapContent<Partial<UserWarningSummary>>(response);
-    if (!content) return null;
-
-    return {
-        userId: content.userId,
-        fullName: content.fullName,
-        email: content.email,
-        totalWarnings: content.totalWarnings ?? 0,
-        level1Warnings: content.level1Warnings ?? 0,
-        level2Warnings: content.level2Warnings ?? 0,
-        warningsLast30Days: content.warningsLast30Days ?? 0,
-        isSuspended: content.isSuspended ?? false,
-        suspensionType: content.suspensionType,
-        suspensionEndDate: content.suspensionEndDate,
-        warnings: content.warnings ?? [],
-    };
-};
-
-const formatDate = (dateStr?: string) => {
+const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleDateString('vi-VN', {
         day: '2-digit',
@@ -128,7 +85,7 @@ const AdminWarningsPage: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
     const [searchUserId, setSearchUserId] = useState('');
-    const [warningSummary, setWarningSummary] = useState<UserWarningSummary | null>(null);
+    const [warningSummary, setWarningSummary] = useState<AdminUserWarningSummary | null>(null);
     const [lookupLoading, setLookupLoading] = useState(false);
 
     const fetchSuspensions = useCallback(async () => {
@@ -176,8 +133,7 @@ const AdminWarningsPage: React.FC = () => {
 
         try {
             setLookupLoading(true);
-            const response = await getUserWarnings(userId);
-            setWarningSummary(parseWarningSummary(response));
+            setWarningSummary(await getUserWarnings(userId));
         } catch (error: unknown) {
             const status = (error as { response?: { status?: number } })?.response?.status;
             toast.error(status === 404 ? 'Không tìm thấy user.' : 'Lỗi khi tra cứu cảnh báo.');
@@ -267,7 +223,7 @@ const AdminWarningsPage: React.FC = () => {
         },
     ], [handleUnsuspend]);
 
-    const warningColumns = useMemo<DataTableColumn<WarningHistoryItem>[]>(() => [
+    const warningColumns = useMemo<DataTableColumn<AdminWarningHistoryItem>[]>(() => [
         {
             key: 'level',
             title: 'Mức',
@@ -457,7 +413,7 @@ const AdminWarningsPage: React.FC = () => {
                                 subtitle="Các cảnh báo đã phát hành cho user này."
                                 footer={`Hiển thị ${warningSummary.warnings.length} cảnh báo`}
                             >
-                                <DataTable<WarningHistoryItem>
+                                <DataTable<AdminWarningHistoryItem>
                                     columns={warningColumns}
                                     data={warningSummary.warnings}
                                     rowKey="warningId"
