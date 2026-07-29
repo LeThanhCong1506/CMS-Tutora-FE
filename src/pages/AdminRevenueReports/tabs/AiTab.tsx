@@ -97,7 +97,7 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
             )}
 
             <ChartBlock
-                title="Doanh thu AI 12 tháng"
+                title="Doanh thu AI theo tháng"
                 subtitle="Tiền bán gói credit theo tháng"
                 hint="Doanh thu từ AI giải bài tập. Tỷ trọng này tăng thì biên lợi nhuận chung của nền tảng cải thiện."
             >

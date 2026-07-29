@@ -166,6 +166,7 @@ export interface SubjectRevenueRow {
     subjectName: string;
     gmv: number;
     platformRevenue: number;
+    deferredRevenue: number;
     bookings: number;
     sessionsDelivered: number;
     avgPricePerSession: number;

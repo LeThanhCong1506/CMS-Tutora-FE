@@ -31,6 +31,11 @@ const Chart: React.FC<{ option: EChartsOption; height: number }> = ({ option, he
 
 const fmt = (money: boolean) => (v: number) => (money ? fullVnd(v) : plainNumber(v));
 
+export type ChartRow = object;
+
+/** Đọc một cột theo key động từ ChartRow. */
+const cell = (row: ChartRow, key: string): unknown => (row as Record<string, unknown>)[key];
+
 // Đường nhiều chuỗi
 export interface LineSeries {
     key: string;
@@ -44,7 +49,7 @@ export interface LineSeries {
 
 export const LineTrendChart: React.FC<
     BaseProps & {
-        data: Record<string, unknown>[];
+        data: ChartRow[];
         xKey: string;
         series: LineSeries[];
         money?: boolean;
@@ -60,7 +65,7 @@ export const LineTrendChart: React.FC<
             },
             legend: { ...legendStyle, data: series.map((s) => s.name) },
             grid: { ...baseGrid, bottom: 26 },
-            xAxis: categoryAxis(data.map((d) => String(d[xKey]))),
+            xAxis: categoryAxis(data.map((d) => String(cell(d, xKey)))),
             yAxis: valueAxis(money),
             series: series.map((s, i) => {
                 const color = s.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
@@ -69,7 +74,7 @@ export const LineTrendChart: React.FC<
                     type: 'line',
                     smooth: true,
                     showSymbol: false,
-                    data: data.map((d) => Number(d[s.key] ?? 0)),
+                    data: data.map((d) => Number(cell(d, s.key) ?? 0)),
                     lineStyle: {
                         width: 2.2,
                         color,
@@ -86,7 +91,7 @@ export const LineTrendChart: React.FC<
 // Bar ngang xếp hạng
 export const RankBarChart: React.FC<
     BaseProps & {
-        data: Record<string, unknown>[];
+        data: ChartRow[];
         labelKey: string;
         valueKey: string;
         name: string;
@@ -119,7 +124,7 @@ export const RankBarChart: React.FC<
                 xAxis: { ...valueAxis(money && !percent), show: false },
                 yAxis: {
                     type: 'category',
-                    data: rows.map((d) => String(d[labelKey])),
+                    data: rows.map((d) => String(cell(d, labelKey))),
                     axisLabel: { ...axisLabelStyle, width: 150, overflow: 'truncate' },
                     axisTick: { show: false },
                     axisLine: { show: false },
@@ -130,7 +135,7 @@ export const RankBarChart: React.FC<
                         type: 'bar',
                         barMaxWidth: 16,
                         itemStyle: { color, borderRadius: [0, 5, 5, 0] },
-                        data: rows.map((d) => Number(d[valueKey] ?? 0)),
+                        data: rows.map((d) => Number(cell(d, valueKey) ?? 0)),
                         label: {
                             show: true,
                             position: 'right',
@@ -152,7 +157,7 @@ export const RankBarChart: React.FC<
 // Bar đứng, có thể xếp chồng
 export const BarGroupChart: React.FC<
     BaseProps & {
-        data: Record<string, unknown>[];
+        data: ChartRow[];
         xKey: string;
         series: LineSeries[];
         stacked?: boolean;
@@ -173,7 +178,7 @@ export const BarGroupChart: React.FC<
                     ? { ...legendStyle, data: series.map((s) => s.name) }
                     : undefined,
             grid: { ...baseGrid, bottom: series.length > 1 ? 26 : 8 },
-            xAxis: categoryAxis(data.map((d) => String(d[xKey]))),
+            xAxis: categoryAxis(data.map((d) => String(cell(d, xKey)))),
             yAxis: valueAxis(money),
             series: series.map((s, i) => ({
                 name: s.name,
@@ -184,7 +189,7 @@ export const BarGroupChart: React.FC<
                     color: s.color ?? SERIES_COLORS[i % SERIES_COLORS.length],
                     borderRadius: stacked ? 0 : ([4, 4, 0, 0] as [number, number, number, number]),
                 },
-                data: data.map((d) => Number(d[s.key] ?? 0)),
+                data: data.map((d) => Number(cell(d, s.key) ?? 0)),
             })),
         }}
     />
@@ -193,7 +198,7 @@ export const BarGroupChart: React.FC<
 // Combo bar + line hai trục
 export const ComboChart: React.FC<
     BaseProps & {
-        data: Record<string, unknown>[];
+        data: ChartRow[];
         xKey: string;
         barKey: string;
         barName: string;
@@ -212,7 +217,7 @@ export const ComboChart: React.FC<
             },
             legend: { ...legendStyle, data: [barName, lineName] },
             grid: { ...baseGrid, bottom: 26 },
-            xAxis: categoryAxis(data.map((d) => String(d[xKey]))),
+            xAxis: categoryAxis(data.map((d) => String(cell(d, xKey)))),
             yAxis: [
                 valueAxis(true),
                 {
@@ -232,7 +237,7 @@ export const ComboChart: React.FC<
                     type: 'bar',
                     barMaxWidth: 20,
                     itemStyle: { color: PALETTE.navy, borderRadius: [4, 4, 0, 0] },
-                    data: data.map((d) => Number(d[barKey] ?? 0)),
+                    data: data.map((d) => Number(cell(d, barKey) ?? 0)),
                     tooltip: { valueFormatter: (v) => fullVnd(Number(v)) },
                 },
                 {
@@ -243,7 +248,7 @@ export const ComboChart: React.FC<
                     symbolSize: 6,
                     lineStyle: { width: 2.4, color: PALETTE.gold },
                     itemStyle: { color: PALETTE.gold },
-                    data: data.map((d) => Number(d[lineKey] ?? 0)),
+                    data: data.map((d) => Number(cell(d, lineKey) ?? 0)),
                     tooltip: {
                         valueFormatter: (v) =>
                             lineIsPercent ? `${Number(v).toFixed(2)}%` : axisMoney(Number(v)),
