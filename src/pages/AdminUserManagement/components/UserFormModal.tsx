@@ -141,11 +141,11 @@ const UserFormModal = ({ isOpen, mode, user, lockedRole, onClose, onSaved }: Use
                             <span className="material-symbols-outlined">{isCreate ? 'person_add' : 'edit'}</span>
                             {isCreate ? 'Thêm người dùng' : 'Chỉnh sửa người dùng'}
                         </h3>
-                        <p className="um-modal-sub">
-                            {isCreate
-                                ? 'Tài khoản được kích hoạt ngay và đăng nhập bằng số điện thoại.'
-                                : 'Cập nhật thông tin cơ bản. Để trống email nếu không muốn thay đổi.'}
-                        </p>
+                        {isCreate && (
+                            <p className="um-modal-sub">
+                                Tài khoản được kích hoạt ngay và đăng nhập bằng số điện thoại.
+                            </p>
+                        )}
                     </div>
                     <button type="button" className="um-modal-close" onClick={onClose} aria-label="Đóng">
                         <span className="material-symbols-outlined">close</span>
