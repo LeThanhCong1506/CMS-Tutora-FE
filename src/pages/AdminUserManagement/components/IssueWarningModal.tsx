@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import type { FlatUserDetail } from '../mockData';
+import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
 
 const MIN_REASON = 10;
@@ -96,10 +96,6 @@ const IssueWarningModal = ({
                             <span className="material-symbols-outlined">warning</span>
                             Cảnh cáo người dùng
                         </h3>
-                        <p className="um-modal-sub">
-                            Cảnh cáo được ghi vào hồ sơ và gửi thông báo. Nhiều cảnh cáo có thể dẫn tới tạm ngưng hoặc
-                            chặn tài khoản.
-                        </p>
                     </div>
                     <button
                         type="button"

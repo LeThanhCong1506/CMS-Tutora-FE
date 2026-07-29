@@ -12,7 +12,7 @@ import { DataTable, PageContainer, SectionCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { useAccess } from '../../contexts/AccessContext';
 import type { UserListItem } from '../../types/admin.types';
-import type { FlatUserDetail } from './mockData';
+import type { FlatUserDetail } from './userTypes';
 import UserDetailModal from './components/UserDetailModal';
 import BlockUserModal from './components/BlockUserModal';
 import IssueWarningModal from './components/IssueWarningModal';

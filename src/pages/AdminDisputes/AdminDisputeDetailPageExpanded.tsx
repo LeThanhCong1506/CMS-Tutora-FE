@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
 import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
 import TutorAccessModal from '../AdminUserManagement/components/BlockUserModal';
-import type { FlatUserDetail } from '../AdminUserManagement/mockData';
+import type { FlatUserDetail } from '../AdminUserManagement/userTypes';
 import {
     getDisputeDetail,
     resolveDispute,
