@@ -37,6 +37,18 @@ const CloseIcon = () => (
     </svg>
 );
 
+const SidebarToggleIcon = ({ collapsed }: { collapsed: boolean }) => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <rect x="2.5" y="3.5" width="15" height="13" rx="2.5" />
+        <path d="M8 3.5V16.5" />
+        {collapsed ? (
+            <path d="M11.5 7.5L14 10L11.5 12.5" strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+            <path d="M14 7.5L11.5 10L14 12.5" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+    </svg>
+);
+
 const LogoutIcon = () => (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M6 16H3C2.44772 16 2 15.5523 2 15V3C2 2.44772 2.44772 2 3 2H6" strokeLinecap="round" />
@@ -102,6 +114,16 @@ export interface PortalLayoutProps {
 
 // ─── Helpers ───
 
+const SIDEBAR_PINNED_KEY = 'tutora.sidebarPinned';
+
+const readPinnedPreference = () => {
+    try {
+        return localStorage.getItem(SIDEBAR_PINNED_KEY) !== 'false';
+    } catch {
+        return true;
+    }
+};
+
 const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
     if (parts.length >= 2) {
@@ -144,6 +166,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
     // ── Sidebar state ──
     const [sidebarOpenInternal, setSidebarOpenInternal] = useState(false);
+    const [sidebarPinned, setSidebarPinned] = useState(readPinnedPreference);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     // Expand/collapse state for nav groups (items with children), keyed by path.
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -153,6 +176,16 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
         setSidebarOpenInternal(open);
         if (open) onSidebarOpen?.();
         else onSidebarClose?.();
+    };
+
+    const toggleSidebarPinned = () => {
+        setSidebarPinned((prev) => {
+            const next = !prev;
+            try {
+                localStorage.setItem(SIDEBAR_PINNED_KEY, String(next));
+            } catch { /* private mode: giữ state trong phiên là đủ */ }
+            return next;
+        });
     };
 
     // Close sidebar on route change
@@ -397,7 +430,7 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
 
             {/* Sidebar — ẩn trong Mini App (dùng bottom nav thay thế) */}
             {!inMiniApp && <aside
-                className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}
+                className={`${styles.sidebar} ${sidebarPinned ? styles.sidebarPinned : ''} ${sidebarOpen ? styles.sidebarOpen : ''}`}
                 {...(sidebarDataTour ? { 'data-tour': sidebarDataTour } : {})}
             >
                 {/* Logo */}
@@ -479,6 +512,17 @@ const PortalLayout: React.FC<PortalLayoutProps> = ({
                             onClick={() => setSidebarOpen(true)}
                         >
                             <MenuIcon />
+                        </button>
+
+                        <button
+                            type="button"
+                            className={styles.sidebarToggleBtn}
+                            onClick={toggleSidebarPinned}
+                            aria-pressed={sidebarPinned}
+                            aria-label={sidebarPinned ? 'Thu gọn thanh điều hướng' : 'Mở rộng thanh điều hướng'}
+                            title={sidebarPinned ? 'Thu gọn thanh điều hướng' : 'Mở rộng thanh điều hướng'}
+                        >
+                            <SidebarToggleIcon collapsed={!sidebarPinned} />
                         </button>
 
                         {/* Header Left (portal-specific) */}

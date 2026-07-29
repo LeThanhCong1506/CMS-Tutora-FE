@@ -65,17 +65,41 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates, permission: 'certificate.view' },
         ],
       },
-      { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', permission: 'dispute.view' },
-      { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
-      { path: '/admin-portal/resources/subjects', label: 'Môn & Lớp', materialIcon: 'category', sectionLabel: 'Tài nguyên', permission: 'lookup.view' },
-      { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
+      {
+        path: '/admin-portal/disputes',
+        label: 'Tranh chấp',
+        materialIcon: 'gavel',
+        children: [
+          { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', permission: 'dispute.view' },
+          { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
+        ]
+      },
+      {
+        path: '/admin-portal/reports',
+        label: 'Báo cáo',
+        materialIcon: 'analytics',
+        sectionLabel: 'Tài chính',
+        children: [
+          { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
+          { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
+          { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
+          
+        ]
+      },
+      { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
+      {
+        path: '/admin-portal/resources',
+        label: 'Cấu hình câu hỏi',
+        materialIcon: 'folder',
+        sectionLabel: 'Tài nguyên',
+        children: [
+          { path: '/admin-portal/resources/subjects', label: 'Môn & Lớp', materialIcon: 'category', permission: 'lookup.view' },
+          { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
+        ]
+      },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
       { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
-      { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', sectionLabel: 'Tài chính', permission: 'financial.view' },
-      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
       // TEMP: proposal pages, running on mock data — see src/pages/AdminFinanceNew and src/pages/AdminTax
-      { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
-      { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
