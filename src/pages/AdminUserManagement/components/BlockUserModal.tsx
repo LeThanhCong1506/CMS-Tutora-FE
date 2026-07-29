@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import type { FlatUserDetail } from '../mockData';
+import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
 
 const MIN_REASON = 20;
@@ -75,9 +75,6 @@ const BlockUserModal = ({ isOpen, onClose, user, onBlock }: BlockUserModalProps)
                             <span className="material-symbols-outlined">block</span>
                             Chặn tài khoản
                         </h3>
-                        <p className="um-modal-sub">
-                            Người dùng sẽ không thể đăng nhập, đặt lớp hoặc nhận thanh toán. Có thể mở khoá lại sau.
-                        </p>
                     </div>
                     <button
                         type="button"

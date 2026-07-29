@@ -207,9 +207,19 @@ export default function AdminBookingDetailPage() {
 
                     {data.student && (
                         <div className={styles.partyRow}>
-                            <div className={`${styles.partyAvatar} ${styles.partyAvatarPlaceholder}`}>
-                                {data.student.name?.charAt(0).toUpperCase() ?? 'S'}
-                            </div>
+                            {data.student.avatarUrl ? (
+                                <img
+                                    src={data.student.avatarUrl}
+                                    alt={data.student.name ?? 'Student'}
+                                    className={styles.partyAvatar}
+                                />
+                            ) : (
+                                <div
+                                    className={`${styles.partyAvatar} ${styles.partyAvatarPlaceholder}`}
+                                >
+                                    {data.student.name?.charAt(0).toUpperCase() ?? 'S'}
+                                </div>
+                            )}
                             <div className={styles.partyInfo}>
                                 <span className={styles.partyRole}>Học sinh</span>
                                 <span className={styles.partyName}>{data.student.name ?? '—'}</span>

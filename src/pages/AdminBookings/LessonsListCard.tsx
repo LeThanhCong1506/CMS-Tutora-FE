@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminBookingClassSessionItem } from '../../types/adminBooking.types';
 import { SessionLogPanel, StatusBadge } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
@@ -20,7 +20,7 @@ interface Props {
 export default function LessonsListCard({ lessons = [] }: Props) {
     // Attendance evidence is opened per lesson from here, so staff can inspect a session without
     // a dispute having to exist first.
-    const [sessionLogId, setSessionLogId] = useState<number | null>(null);
+    const [openLog, setOpenLog] = useState<{ classSessionId: number; lessonNumber: number } | null>(null);
 
     if (!lessons.length) {
         return (
@@ -111,7 +111,10 @@ export default function LessonsListCard({ lessons = [] }: Props) {
                                         <Can permission="dispute.view">
                                             <button
                                                 type="button"
-                                                onClick={() => setSessionLogId(lesson.classSessionId)}
+                                                onClick={() => setOpenLog({
+                                                    classSessionId: lesson.classSessionId,
+                                                    lessonNumber: lesson.classSessionNumber,
+                                                })}
                                                 title="Xem ai đã vào phòng học và khi nào, theo ghi nhận của Agora"
                                                 style={{
                                                     padding: '4px 10px',
@@ -135,8 +138,12 @@ export default function LessonsListCard({ lessons = [] }: Props) {
             </div>
 
             <Can permission="dispute.view">
-                {sessionLogId !== null && (
-                    <SessionLogModal classSessionId={sessionLogId} onClose={() => setSessionLogId(null)} />
+                {openLog !== null && (
+                    <SessionLogModal
+                        classSessionId={openLog.classSessionId}
+                        lessonNumber={openLog.lessonNumber}
+                        onClose={() => setOpenLog(null)}
+                    />
                 )}
             </Can>
         </section>
@@ -144,7 +151,23 @@ export default function LessonsListCard({ lessons = [] }: Props) {
 }
 
 /** Lightweight overlay so the log can be read without navigating away from the booking. */
-function SessionLogModal({ classSessionId, onClose }: { classSessionId: number; onClose: () => void }) {
+function SessionLogModal({
+    classSessionId,
+    lessonNumber,
+    onClose,
+}: {
+    classSessionId: number;
+    lessonNumber: number;
+    onClose: () => void;
+}) {
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [onClose]);
+
     return (
         <div
             role="presentation"
@@ -164,11 +187,21 @@ function SessionLogModal({ classSessionId, onClose }: { classSessionId: number; 
             <div
                 role="dialog"
                 aria-modal="true"
-                aria-label="Nhật ký buổi học"
+                aria-label={`Nhật ký buổi học số ${lessonNumber}`}
                 onClick={(event) => event.stopPropagation()}
-                style={{ width: '100%', maxWidth: 920 }}
+                style={{ width: '100%', maxWidth: 720 }}
             >
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        marginBottom: 8,
+                        color: '#fff',
+                    }}
+                >
+                    <span style={{ fontWeight: 700 }}>Buổi học số {lessonNumber}</span>
                     <button
                         type="button"
                         onClick={onClose}

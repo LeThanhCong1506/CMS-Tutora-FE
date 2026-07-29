@@ -3,6 +3,7 @@ import { getSessionLog } from '../../../services/admin.service';
 import type {
     SessionLog,
     SessionLogDeviceUse,
+    SessionLogEvent,
     SessionLogHeartbeat,
     SessionLogLobbyEvidence,
     SessionLogLobbyParticipant,
@@ -10,17 +11,25 @@ import type {
     SessionLogSummary,
 } from '../../../types/admin.types';
 import {
+    buildPersonRows,
     countDistinctSources,
+    formatClock,
+    formatDuration,
     formatPunctuality,
     getActivityDisplay,
     getParticipantPresenceState,
-    getRefundDisplay,
+    getSessionVerdict,
+    getStaffWarnings,
 } from './sessionLogDisplay';
+import type { PersonRow, SessionVerdict, StaffWarning } from './sessionLogDisplay';
 import './SessionLogPanel.css';
 
 /**
- * Attendance evidence for a lesson, focused on facts an administrator can use in a dispute:
- * lobby access, room participation, devices, and the event timeline.
+ * Attendance evidence for a lesson, focused on facts an administrator can use in a dispute.
+ *
+ * Mở ra với phần kết luận: buổi học có diễn ra không, một dòng cho mỗi người, và các cảnh báo cần
+ * hành động. Bằng chứng thô (phòng chờ, chuỗi tín hiệu, thiết bị, dòng thời gian) nằm sau nút "Xem
+ * bằng chứng chi tiết" — ai cũng cần câu trả lời, chỉ một số ít cần kiểm chứng nó.
  */
 
 type SessionLogPanelProps = {
@@ -46,29 +55,16 @@ const ROLE_LABELS: Record<string, string> = {
 const CONFIDENCE_LABELS: Record<string, string> = {
     exact: 'Khớp mã chính xác',
     correlated: 'Suy ra theo thời điểm vào phòng',
-    unmatched: 'Chưa gắn được UID Agora',
+    unmatched: 'Chưa xác định được danh tính trong dữ liệu Agora',
 };
 
-const formatDuration = (totalSeconds: number): string => {
-    if (totalSeconds <= 0) return '0 phút';
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const parts: string[] = [];
-    if (hours > 0) parts.push(`${hours} giờ`);
-    if (minutes > 0) parts.push(`${minutes} phút`);
-    if (hours === 0 && seconds > 0) parts.push(`${seconds} giây`);
-    return parts.join(' ');
-};
-
-const formatClock = (value: string | null): string => {
-    if (!value) return '—';
-    // Backend timestamps are UTC. Keep the display correct even if an older deployment serializes
-    // a PostgreSQL timestamp-without-time-zone value without the trailing Z.
-    const hasOffset = value.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(value);
-    const date = new Date(hasOffset ? value : `${value}Z`);
-    if (Number.isNaN(date.getTime())) return '—';
-    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+/** Màu của khối kết luận. Giữ ở một chỗ để tông màu không lệch nhau giữa các phần. */
+const VERDICT_TONES: Record<SessionVerdict['tone'], { border: string; background: string; text: string }> = {
+    positive: { border: '#a7f3d0', background: '#ecfdf5', text: '#166534' },
+    partial: { border: '#fde68a', background: '#fffbeb', text: '#92400e' },
+    negative: { border: '#fecaca', background: '#fef2f2', text: '#991b1b' },
+    pending: { border: '#bfdbfe', background: '#eff6ff', text: '#1e40af' },
+    unknown: { border: '#e2e8f0', background: '#f8fafc', text: '#475569' },
 };
 
 type FetchMode = 'initial' | 'manual' | 'poll';
@@ -78,6 +74,8 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const [sourceHelpOpen, setSourceHelpOpen] = useState(false);
     const mountedRef = useRef(false);
     const requestVersionRef = useRef(0);
     const initialRequestRef = useRef(0);
@@ -134,8 +132,11 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
     }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+        /* eslint-disable react-hooks/set-state-in-effect */
+        // Chuyển sang buổi khác thì phần chi tiết đóng lại: trạng thái "đã mở" là của buổi trước.
+        setDetailsOpen(false);
         if (classSessionId) void fetchLog(classSessionId, 'initial');
+        /* eslint-enable react-hooks/set-state-in-effect */
         return () => {
             requestVersionRef.current += 1;
         };
@@ -208,13 +209,21 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
         bothSidesRecorded: false,
         participants: [],
     };
-    const overlapPercent = Math.round(summary.overlapRatio * 1000) / 10;
-    const refundDisplay = getRefundDisplay(summary);
     const punctuality = formatPunctuality(
         summary.tutorLateSeconds,
         summary.tutorEarlyLeaveSeconds,
         summary.punctualitySource,
     );
+
+    const showEvidence = detailsOpen;
+    const verdict = getSessionVerdict(summary, activeLog.flags);
+    const warnings = getStaffWarnings(activeLog.flags);
+    const personRows = buildPersonRows(
+        participants,
+        heartbeats,
+        summary.isEvidenceConclusive && !summary.isOngoing,
+    );
+
     return (
         <div className="session-log-panel">
             <div className="session-log-panel__heading">
@@ -236,67 +245,80 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                     {refreshing ? 'Đang làm mới…' : 'Làm mới'}
                 </button>
             </div>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px' }}>
-                Thông tin tham gia lobby, phòng học và các mốc thời gian liên quan.
-            </p>
-
             {error && (
                 <div className="session-log-panel__refresh-error">
                     {error}. Snapshot gần nhất vẫn được giữ lại.
                 </div>
             )}
 
-            {/* Vào trễ / rời sớm — luôn kèm nguồn đo, vì số đo từ heartbeat yếu hơn số đo từ Agora
-                và người đọc phải thấy được điều đó ngay cạnh con số. */}
-            {punctuality.sourceNote && (
-                <div
-                    style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'baseline',
-                        gap: '4px 10px',
-                        marginBottom: 20,
-                        padding: '10px 14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 8,
-                        background: '#f8fafc',
-                    }}
+            <div style={{ marginTop: 16 }}>
+                <VerdictBanner verdict={verdict} />
+
+                {summary.punctualitySource && (
+                    <p style={{ margin: '12px 0 0', fontSize: 13, color: '#334155' }}>
+                        <strong style={{ fontWeight: 700 }}>{punctuality.text}</strong>
+                        <SourceTag source={summary.punctualitySource} />
+                    </p>
+                )}
+
+                {personRows.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: 8,
+                                marginBottom: 8,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: '#94a3b8',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                Người tham gia
+                            </span>
+                            <button
+                                type="button"
+                                className="session-log-panel__source-help-toggle"
+                                onClick={() => setSourceHelpOpen((open) => !open)}
+                                aria-expanded={sourceHelpOpen}
+                            >
+                                {sourceHelpOpen ? 'Ẩn giải thích' : 'Vì sao có 2 loại số liệu?'}
+                            </button>
+                        </div>
+
+                        {sourceHelpOpen && <SourceHelpCard />}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {personRows.map((row) => (
+                                <PersonLine key={row.key} row={row} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {warnings.length > 0 && <WarningList warnings={warnings} />}
+
+                <button
+                    type="button"
+                    className="session-log-panel__details-toggle"
+                    onClick={() => setDetailsOpen((open) => !open)}
+                    aria-expanded={detailsOpen}
                 >
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-navy)' }}>
-                        {punctuality.text}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{punctuality.sourceNote}</span>
-                </div>
-            )}
+                    {detailsOpen ? 'Ẩn bằng chứng chi tiết' : 'Xem bằng chứng chi tiết'}
+                </button>
+            </div>
 
-            {summary.eventCount > 0 && (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                        gap: 12,
-                        marginBottom: 24,
-                    }}
-                >
-                    <StatTile
-                        label="Thời gian học thực tế"
-                        value={formatDuration(summary.overlapSeconds)}
-                        hint={`${overlapPercent}% so với lịch hẹn`}
-                        emphasis
-                    />
-                    <StatTile label="Gia sư có mặt" value={formatDuration(summary.tutorSeconds)} />
-                    <StatTile label="Học viên có mặt" value={formatDuration(summary.studentSeconds)} />
-                    <StatTile
-                        label="Gợi ý hoàn tiền"
-                        value={refundDisplay.value}
-                        hint={refundDisplay.hint}
-                    />
-                </div>
-            )}
+            {showEvidence && <LobbyEvidencePanel lobby={lobby} />}
 
-            <LobbyEvidencePanel lobby={lobby} />
-
-            {summary.eventCount > 0 && (
+            {showEvidence && summary.eventCount > 0 && (
                 <>
                     <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 12px' }}>
                         Người tham gia
@@ -317,15 +339,11 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
 
             {/* KHÔNG gate theo summary.eventCount: chuỗi heartbeat là nguồn độc lập với Agora và
                 chính là bằng chứng còn lại khi Agora không gửi gì — đó là lúc cần nó nhất. */}
-            {heartbeats.length > 0 && (
+            {showEvidence && heartbeats.length > 0 && (
                 <>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 4px' }}>
-                        Chuỗi heartbeat trong phòng học (client tự báo)
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 12px' }}>
+                        Chuỗi tín hiệu trong phòng học (trình duyệt tự báo)
                     </h4>
-                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
-                        Trình duyệt của người dùng gửi mỗi ~20 giây khi đang trong phòng. Cho biết ai rời chủ động,
-                        ai bị đứt kết nối, và mic/camera có bật hay không.
-                    </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {heartbeats.map((heartbeat) => (
                             <HeartbeatCard key={heartbeat.appUserId} heartbeat={heartbeat} />
@@ -334,87 +352,29 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
                 </>
             )}
 
-            {devices.length > 0 && (
+            {showEvidence && devices.length > 0 && (
                 <>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 4px' }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 12px' }}>
                         Thiết bị và mạng
                     </h4>
-                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px' }}>
-                        Mỗi tài khoản bình thường chỉ có một dòng. Nhiều dòng nghĩa là tài khoản vào phòng từ nhiều nơi.
-                    </p>
                     <DeviceTable devices={devices} />
                 </>
             )}
 
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 12px' }}>
-                Dòng thời gian ({timeline.length} sự kiện)
-            </h4>
-            {timeline.length === 0 ? (
-                <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Chưa có sự kiện nào được ghi nhận.</p>
-            ) : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                        <thead>
-                            <tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-                                <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Thời điểm</th>
-                                <th style={{ padding: '8px 10px' }}>Sự kiện</th>
-                                <th style={{ padding: '8px 10px' }}>Người</th>
-                                <th style={{ padding: '8px 10px' }}>Thiết bị</th>
-                                <th style={{ padding: '8px 10px' }}>Lý do</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {timeline.map((event, index) => (
-                                <tr
-                                    key={[
-                                        event.eventAt,
-                                        event.clientSequence ?? 'no-sequence',
-                                        event.agoraUid ?? event.agoraAccount ?? 'channel',
-                                        event.eventType,
-                                        index,
-                                    ].join('-')}
-                                    style={{ borderBottom: '1px solid #f1f5f9' }}
-                                >
-                                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                                        {formatClock(event.eventAt)}
-                                    </td>
-                                    <td style={{ padding: '8px 10px' }}>
-                                        {event.eventLabel}
-                                        {(event.clientSequence !== null || event.clientType !== null) && (
-                                            <span className="session-log-panel__event-meta">
-                                                {event.clientSequence !== null && `Thứ tự #${event.clientSequence}`}
-                                                {event.clientSequence !== null && event.clientType !== null && ' · '}
-                                                {event.clientType !== null && `client ${event.clientType}`}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '8px 10px' }}>
-                                        {event.displayName
-                                            ?? event.agoraAccount
-                                            ?? (event.agoraUid ? `Mã ${event.agoraUid}` : '—')}
-                                        {event.role && (
-                                            <span style={{ color: '#94a3b8' }}> · {ROLE_LABELS[event.role] ?? event.role}</span>
-                                        )}
-                                        {event.displayName && event.agoraAccount && (
-                                            <span className="session-log-panel__event-meta">
-                                                Tài khoản Agora: {event.agoraAccount}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '8px 10px', color: '#64748b' }}>
-                                        {event.platformLabel ?? '—'}
-                                    </td>
-                                    <td style={{ padding: '8px 10px', color: event.reason === 2 || event.reason === 10 ? '#b45309' : '#64748b' }}>
-                                        {event.reasonLabel ?? '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            {showEvidence && (
+                <>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '24px 0 12px' }}>
+                        Dòng thời gian ({timeline.length} sự kiện)
+                    </h4>
+                    {timeline.length === 0 ? (
+                        <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Chưa có sự kiện nào được ghi nhận.</p>
+                    ) : (
+                        <TimelineTable timeline={timeline} />
+                    )}
+                </>
             )}
 
-            {summary.maxIngestLagSeconds > 60 && (
+            {showEvidence && summary.maxIngestLagSeconds > 60 && (
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
                     Độ trễ nhận dữ liệu lớn nhất: {formatDuration(summary.maxIngestLagSeconds)}. Thời điểm hiển thị là giờ
                     Agora ghi nhận sự kiện, không phải giờ hệ thống nhận được.
@@ -424,28 +384,230 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
     );
 };
 
-const StatTile = ({
-    label,
-    value,
-    hint,
-    emphasis,
-}: {
-    label: string;
-    value: string;
-    hint?: string;
-    emphasis?: boolean;
-}) => (
+/**
+ * Câu trả lời cho "buổi này có diễn ra không", đặt ở vị trí đầu tiên người đọc nhìn vào.
+ *
+ * Khi chưa kết luận được thì lý do nằm ngay trong khối này chứ không phải một danh sách cờ ở cuối
+ * trang: người đọc phải hiểu vì sao màn hình từ chối kết luận, nếu không họ sẽ tự kết luận thay.
+ */
+const VerdictBanner = ({ verdict }: { verdict: SessionVerdict }) => {
+    const tone = VERDICT_TONES[verdict.tone];
+
+    return (
+        <div
+            style={{
+                padding: '14px 16px',
+                borderRadius: 10,
+                border: `1px solid ${tone.border}`,
+                background: tone.background,
+            }}
+        >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: tone.text }}>{verdict.headline}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{verdict.detail}</p>
+
+            {/* Giờ chỉ còn tối đa 1 lý do (xem getPrimaryBlockingReason) nên hiện như một câu bình
+                thường — danh sách gạch đầu dòng chỉ hợp lý khi có từ 2 mục trở lên. */}
+            {verdict.blockers.map((blocker) => (
+                <p key={blocker} style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                    {blocker}
+                </p>
+            ))}
+        </div>
+    );
+};
+
+/**
+ * Nhãn nguồn dữ liệu, gắn ngay sau mốc thời gian thay vì một câu riêng — admin chỉ cần liếc màu là
+ * biết con số này mạnh hay yếu, không cần đọc chữ. Ai muốn hiểu vì sao có 2 nguồn thì bấm nút
+ * "Vì sao có 2 loại số liệu?" ở trên danh sách.
+ *
+ * Cố tình không gọi nguồn thứ hai là "Client" — admin không phải dân kỹ thuật, và "Client" trong
+ * tiếng Việt thường bị hiểu là "khách hàng". "Trình duyệt" nói đúng bản chất: số đo này tự trình
+ * duyệt người dùng báo về, không phải máy chủ Agora xác nhận.
+ */
+const SOURCE_TAG_STYLES: Record<'agora' | 'heartbeat', { label: string; color: string }> = {
+    agora: { label: 'Agora', color: '#94a3b8' },
+    heartbeat: { label: 'Trình duyệt', color: '#b45309' },
+};
+
+const SourceTag = ({ source }: { source: 'agora' | 'heartbeat' }) => {
+    const meta = SOURCE_TAG_STYLES[source];
+    return (
+        <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: meta.color }}>· {meta.label}</span>
+    );
+};
+
+/** Giải thích 2 cơ chế theo dõi, mở ra khi admin bấm nút thắc mắc — không hiện mặc định. */
+const SourceHelpCard = () => (
     <div
         style={{
-            padding: '14px 16px',
-            borderRadius: 10,
-            background: emphasis ? '#ecfdf5' : '#f8fafc',
-            border: `1px solid ${emphasis ? '#a7f3d0' : '#e2e8f0'}`,
+            marginBottom: 12,
+            padding: '12px 14px',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+            background: '#f8fafc',
+            fontSize: 12,
+            color: '#334155',
+            lineHeight: 1.6,
         }}
     >
-        <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>{label}</p>
-        <p style={{ margin: '4px 0 0', fontSize: 18, fontWeight: 700, color: 'var(--color-navy)' }}>{value}</p>
-        {hint && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94a3b8' }}>{hint}</p>}
+        <p style={{ margin: 0 }}>
+            Hệ thống nhận biết ai đang trong phòng bằng 2 nguồn độc lập, luôn ưu tiên nguồn đầu tiên:
+        </p>
+        <p style={{ margin: '8px 0 0' }}>
+            <strong style={{ color: SOURCE_TAG_STYLES.agora.color }}>Agora</strong> — hệ thống video Agora tự
+            phát hiện ngay khi có người kết nối vào phòng học. Đây là bằng chứng mạnh vì người dùng không thể
+            tự sửa hay can thiệp được.
+        </p>
+        <p style={{ margin: '6px 0 0' }}>
+            <strong style={{ color: SOURCE_TAG_STYLES.heartbeat.color }}>Trình duyệt</strong> — máy của gia sư/học
+            viên tự báo về "vẫn đang mở trang học" mỗi khoảng 20 giây. Chỉ dùng số liệu này khi Agora không nhận
+            được gì, nên đây là bằng chứng yếu hơn, có thể sai lệch nếu người dùng gian lận.
+        </p>
+    </div>
+);
+
+const PERSON_STATE_STYLES: Record<PersonRow['state'], { label: string; color: string }> = {
+    'in-room': { label: 'Đang trong phòng', color: '#15803d' },
+    attended: { label: '', color: 'var(--color-navy)' },
+    absent: { label: 'Không vào phòng', color: '#991b1b' },
+    // "Chưa xác minh" khác hẳn "vắng mặt" và phải đọc ra khác — đây là nguyên tắc xuyên suốt của
+    // cả tính năng, không phải chi tiết trình bày.
+    unverified: { label: 'Chưa xác minh được', color: '#92400e' },
+};
+
+/** Một người, một dòng: có mặt bao lâu, từ mấy giờ đến mấy giờ, và điều bất thường nếu có. */
+const PersonLine = ({ row }: { row: PersonRow }) => {
+    const state = PERSON_STATE_STYLES[row.state];
+    const isAttended = row.state === 'attended';
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                flexWrap: 'wrap',
+                gap: '2px 12px',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: row.state === 'unverified' || row.note ? '#fffbeb' : '#fff',
+            }}
+        >
+            <div style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, color: 'var(--color-navy)' }}>{row.name}</span>
+                <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b' }}>
+                    {ROLE_LABELS[row.role] ?? row.role}
+                </span>
+                {row.parentName && (
+                    <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: '#64748b' }}>
+                        Phụ huynh: {row.parentName}
+                    </span>
+                )}
+                {row.note && (
+                    <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: '#92400e' }}>{row.note}</span>
+                )}
+            </div>
+
+            <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontWeight: 700, color: state.color }}>
+                    {isAttended ? formatDuration(row.totalSeconds) : state.label}
+                </span>
+                {row.firstAt && (
+                    <span style={{ display: 'block', fontSize: 12, color: '#64748b' }}>
+                        {formatClock(row.firstAt, false)}
+                        {row.lastAt ? ` → ${formatClock(row.lastAt, false)}` : ' → đang diễn ra'}
+                        {/* Gộp vào cùng một dòng thay vì một câu riêng — bấm "Vì sao có 2 loại số
+                            liệu?" ở trên mới cần đọc câu giải thích đầy đủ. */}
+                        {row.source && <SourceTag source={row.source} />}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const WarningList = ({ warnings }: { warnings: StaffWarning[] }) => (
+    <div
+        style={{
+            marginTop: 16,
+            padding: '12px 14px',
+            borderRadius: 8,
+            border: '1px solid #fde68a',
+            background: '#fffbeb',
+        }}
+    >
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>Cần lưu ý</p>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: '#78350f', lineHeight: 1.6 }}>
+            {warnings.map((warning) => (
+                <li key={warning.flag}>{warning.text}</li>
+            ))}
+        </ul>
+    </div>
+);
+
+/** Bảng sự kiện thô của Agora. Tách riêng vì nó là phần dài nhất và ít khi cần mở ra. */
+const TimelineTable = ({ timeline }: { timeline: SessionLogEvent[] }) => (
+    <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+                <tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Thời điểm</th>
+                    <th style={{ padding: '8px 10px' }}>Sự kiện</th>
+                    <th style={{ padding: '8px 10px' }}>Người</th>
+                    <th style={{ padding: '8px 10px' }}>Thiết bị</th>
+                    <th style={{ padding: '8px 10px' }}>Lý do</th>
+                </tr>
+            </thead>
+            <tbody>
+                {timeline.map((event, index) => (
+                    <tr
+                        key={[
+                            event.eventAt,
+                            event.clientSequence ?? 'no-sequence',
+                            event.agoraUid ?? event.agoraAccount ?? 'channel',
+                            event.eventType,
+                            index,
+                        ].join('-')}
+                        style={{ borderBottom: '1px solid #f1f5f9' }}
+                    >
+                        <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatClock(event.eventAt)}
+                        </td>
+                        <td style={{ padding: '8px 10px' }}>
+                            {event.eventLabel}
+                            {(event.clientSequence !== null || event.clientType !== null) && (
+                                <span className="session-log-panel__event-meta">
+                                    {event.clientSequence !== null && `Thứ tự #${event.clientSequence}`}
+                                    {event.clientSequence !== null && event.clientType !== null && ' · '}
+                                    {event.clientType !== null && `client ${event.clientType}`}
+                                </span>
+                            )}
+                        </td>
+                        <td style={{ padding: '8px 10px' }}>
+                            {event.displayName
+                                ?? event.agoraAccount
+                                ?? (event.agoraUid ? `Mã ${event.agoraUid}` : '—')}
+                            {event.role && (
+                                <span style={{ color: '#94a3b8' }}> · {ROLE_LABELS[event.role] ?? event.role}</span>
+                            )}
+                            {event.displayName && event.agoraAccount && (
+                                <span className="session-log-panel__event-meta">
+                                    Tài khoản Agora: {event.agoraAccount}
+                                </span>
+                            )}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: '#64748b' }}>
+                            {event.platformLabel ?? '—'}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: event.reason === 2 || event.reason === 10 ? '#b45309' : '#64748b' }}>
+                            {event.reasonLabel ?? '—'}
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
     </div>
 );
 
@@ -490,7 +652,10 @@ const HeartbeatCard = ({ heartbeat }: { heartbeat: SessionLogHeartbeat }) => {
                         <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: '#64748b' }}>{roleLabel}</span>
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: 12, color: activityColor }}>{activity.label}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>{activity.detail}</p>
+                    {/* Hoạt động bình thường thì không có gì để nói thêm — dòng rỗng chỉ chiếm chỗ. */}
+                    {activity.detail && (
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>{activity.detail}</p>
+                    )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: 0, fontWeight: 700, color: heartbeat.isCurrentlyBeating ? '#15803d' : 'var(--color-navy)' }}>
@@ -548,12 +713,9 @@ const LobbyEvidencePanel = ({ lobby }: { lobby: SessionLogLobbyEvidence }) => {
 
     return (
         <section style={{ marginTop: 24 }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 4px' }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 12px' }}>
                 Phòng chờ trước buổi học
             </h4>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 12px', lineHeight: 1.5 }}>
-                Ghi nhận tài khoản đã xác thực chờ vào lớp. Việc có mặt tại lobby không đồng nghĩa đã vào phòng học.
-            </p>
 
             {!lobby.hasAnyRecord ? (
                 <div
@@ -705,7 +867,7 @@ const ParticipantCard = ({
     const lastInterval = participant.intervals.at(-1);
     const currentIntervalStart = lastInterval?.start ?? participant.firstJoinAt;
     const confidenceLabel = isUnverifiedAbsence
-        ? 'Chưa gắn được UID Agora; chưa thể kết luận vắng mặt'
+        ? 'Chưa xác định được danh tính trong dữ liệu Agora; chưa thể kết luận vắng mặt'
         : CONFIDENCE_LABELS[participant.identityConfidence] ?? participant.identityConfidence;
 
     const presenceValue = isCurrentlyPresent
