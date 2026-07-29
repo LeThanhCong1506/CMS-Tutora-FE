@@ -123,6 +123,16 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
             setUsers(mapped);
             setTotal(totalCount);
+
+            // Modal chi tiết giữ bản sao user chụp lúc bấm mở. Các thao tác đổi
+            // trạng thái (cảnh cáo mức Cao tự tạm ngưng, chặn, tạm ngưng) có gọi
+            // lại fetchUsers nhưng bản sao đó thì không được cập nhật, nên modal
+            // vẫn hiện trạng thái cũ và sai nút Chặn/Mở khóa cho tới khi F5.
+            // Đồng bộ lại theo dữ liệu vừa tải; giữ nguyên nếu user đã rơi khỏi
+            // trang hiện tại do bộ lọc, vì lúc đó không có gì mới hơn để dùng.
+            setSelectedUser((current) =>
+                current ? (mapped.find((item) => item.userid === current.userid) ?? current) : current
+            );
         } catch (err: unknown) {
             // Aborted requests throw — silently ignore them, only surface real errors.
             const isAbort =
@@ -191,12 +201,10 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     };
 
     const handleIssueWarning = async (userId: string, reason: string, severity: string, relatedBookingId?: string) => {
-        // BE supports only 2 warning levels: 1 = minor, 2 = major.
-        // The UI exposes 3 (low / medium / high); collapse them so:
-        //   low                  → 1 (gentle reminder)
-        //   medium / high        → 2 (formal warning / serious violation)
-        // Keeps semantic meaning: any escalation beyond a "nudge" goes on record as major.
-        const warninglevel = severity === 'low' ? 1 : 2;
+        // BE có đủ 3 mức (WarningLevel.cs): 1 = Thấp, 2 = Trung bình, 3 = Cao.
+        // Mức 3 khiến BE tạm ngưng tài khoản ngay lập tức; mức 1-2 chỉ tạm ngưng
+        // khi tích lũy đủ 3 cảnh cáo trong 30 ngày.
+        const warninglevel = severity === 'low' ? 1 : severity === 'medium' ? 2 : 3;
         try {
             await issueWarning({
                 userid: userId,

@@ -1246,7 +1246,7 @@ export interface AdminUserDetail {
 
 export interface IssueWarningRequest {
   userid: string;
-  warninglevel: number; // 1, 2
+  warninglevel: number; // 1 = Thấp, 2 = Trung bình, 3 = Cao (tạm ngưng ngay)
   reason: string;
   relatedbookingid?: string;
 }

@@ -88,6 +88,8 @@ export interface AdminBookingPartyInfo {
 export interface AdminBookingStudentInfo {
     id?: string;
     name?: string;
+    /** Avatar tài khoản liên kết, fallback về bản sao trên hồ sơ học sinh. */
+    avatarUrl?: string;
     gradeLevel?: string;
 }
 

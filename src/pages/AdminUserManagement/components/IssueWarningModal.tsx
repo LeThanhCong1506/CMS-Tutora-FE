@@ -7,11 +7,15 @@ const MIN_REASON = 10;
 
 type Severity = 'low' | 'medium' | 'high';
 
-/** BE chỉ có 2 mức (1 = nhẹ, 2 = nặng); UI phơi ra 3 mức rồi gộp lại ở page. */
+/**
+ * Khớp 1-1 với WarningLevel bên BE (1 = Thấp, 2 = Trung bình, 3 = Cao).
+ * Thấp/Trung bình chỉ tạm ngưng khi tích lũy đủ 3 lần trong 30 ngày; Cao tạm
+ * ngưng ngay nên phải nói rõ hậu quả trên nút chọn.
+ */
 const SEVERITIES: { value: Severity; title: string; desc: string }[] = [
     { value: 'low', title: 'Thấp', desc: 'Nhắc nhở nhẹ' },
     { value: 'medium', title: 'Trung bình', desc: 'Cảnh cáo chính thức' },
-    { value: 'high', title: 'Cao', desc: 'Vi phạm nghiêm trọng' },
+    { value: 'high', title: 'Cao', desc: 'Tạm ngưng tài khoản ngay lập tức' },
 ];
 
 const COMMON_REASONS = [
