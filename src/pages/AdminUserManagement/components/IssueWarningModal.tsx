@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import type { FlatUserDetail } from '../mockData';
+import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
 
 const MIN_REASON = 10;

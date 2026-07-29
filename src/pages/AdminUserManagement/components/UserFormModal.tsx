@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { createUser, updateUser } from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
-import type { FlatUserDetail } from '../mockData';
+import type { FlatUserDetail } from '../userTypes';
 
 // Roles an admin may create through this modal. Internal accounts (Staff/Admin)
 // have their own flow, so they are intentionally excluded here.
