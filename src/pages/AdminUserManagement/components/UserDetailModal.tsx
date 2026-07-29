@@ -1,29 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { formatCurrency, formatDateTime } from '../../../utils/formatters';
-import { mockGetUserWarnings, mockGetUserSuspensions } from '../mockData';
-import type { FlatUserDetail } from '../mockData';
-import type { AdminLinkedUser, AdminUserRelationships } from '../../../types/admin.types';
-import { getUserDetail } from '../../../services/admin.service';
+import type { FlatUserDetail } from '../userTypes';
+import type {
+    AdminLinkedUser,
+    AdminSuspensionHistoryItem,
+    AdminUserRelationships,
+    AdminWarningHistoryItem,
+} from '../../../types/admin.types';
+import { getUserDetail, getUserSuspensions, getUserWarnings } from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
 import { Can, useAccess } from '../../../contexts/AccessContext';
-
-interface UserWarningRow {
-    warningid: string;
-    createdat: string;
-    reason: string;
-    severity: string;
-    issuedby: string;
-    relatedbookingid?: string;
-}
-
-interface UserSuspensionRow {
-    suspensionid: string;
-    startdate: string;
-    enddate: string;
-    reason: string;
-    durationdays: number;
-    status: string;
-}
 
 interface UserDetailModalProps {
     isOpen: boolean;
@@ -52,10 +38,45 @@ const STATUS_META: Record<string, { label: string; variant: string }> = {
     blocked: { label: 'Bị chặn', variant: 'danger' },
 };
 
-const SEVERITY_META: Record<string, { label: string; variant: string }> = {
-    high: { label: 'Cao', variant: 'danger' },
-    medium: { label: 'Trung bình', variant: 'warning' },
-    low: { label: 'Thấp', variant: 'neutral' },
+/** BE `warninglevel`: 1 = Thấp, 2 = Trung bình, 3 = Cao (3 tự động tạm ngưng). */
+const WARNING_LEVEL_META: Record<number, { label: string; variant: string }> = {
+    1: { label: 'Thấp', variant: 'neutral' },
+    2: { label: 'Trung bình', variant: 'warning' },
+    3: { label: 'Cao', variant: 'danger' },
+};
+
+// Mức lạ (BE thêm bậc mới) được coi là nặng hơn thay vì nhẹ đi, để admin không
+// đánh giá thấp một vi phạm chưa biết.
+const getWarningLevelMeta = (level: number) =>
+    WARNING_LEVEL_META[level] ?? (level > 3 ? WARNING_LEVEL_META[3] : WARNING_LEVEL_META[1]);
+
+/**
+ * DB chứa hai bộ từ vựng cho loại tạm ngưng: 'temporary'/'permanent' do hệ thống
+ * tự áp, và 'hidden_1_week'/'account_locked' do admin thao tác từ CMS.
+ */
+const SUSPENSION_TYPE_LABEL: Record<string, string> = {
+    temporary: 'Tạm thời',
+    permanent: 'Vĩnh viễn',
+    hidden_1_week: 'Ẩn hồ sơ',
+    account_locked: 'Khóa tài khoản',
+};
+
+/**
+ * Còn hiệu lực thật sự = cờ isactive còn bật VÀ chưa tới hạn kết thúc. Job tự gỡ
+ * chạy theo giờ nên bản ghi hết hạn có thể vẫn còn cờ bật — đừng chỉ tin isActive.
+ *
+ * `nowMs` là mốc thời gian lúc tải dữ liệu, không phải lúc render: đọc đồng hồ
+ * trong render sẽ cho kết quả đổi theo từng lần re-render.
+ */
+const isSuspensionInEffect = (suspension: AdminSuspensionHistoryItem, nowMs: number) =>
+    suspension.isActive === true &&
+    (!suspension.endDate || new Date(suspension.endDate).getTime() > nowMs);
+
+const getSuspensionDurationDays = (suspension: AdminSuspensionHistoryItem) => {
+    if (!suspension.startDate || !suspension.endDate) return null;
+    const ms = new Date(suspension.endDate).getTime() - new Date(suspension.startDate).getTime();
+    if (!Number.isFinite(ms) || ms <= 0) return null;
+    return Math.max(1, Math.round(ms / 86_400_000));
 };
 
 const createEmptyRelationships = (): AdminUserRelationships => ({ parent: null, students: [] });
@@ -79,35 +100,90 @@ const UserDetailModal = ({
     onDeleteUser,
     onResetPassword,
 }: UserDetailModalProps) => {
-    const { isAdmin } = useAccess();
-    const [warnings, setWarnings] = useState<UserWarningRow[]>([]);
-    const [suspensions, setSuspensions] = useState<UserSuspensionRow[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { isAdmin, can } = useAccess();
+    const [warnings, setWarnings] = useState<AdminWarningHistoryItem[]>([]);
+    const [warningsLoading, setWarningsLoading] = useState(false);
+    const [warningsError, setWarningsError] = useState<string | null>(null);
+    const [suspensions, setSuspensions] = useState<AdminSuspensionHistoryItem[]>([]);
+    const [suspensionsLoading, setSuspensionsLoading] = useState(false);
+    const [suspensionsError, setSuspensionsError] = useState<string | null>(null);
+    const [suspensionsLoadedAt, setSuspensionsLoadedAt] = useState(0);
     const [relationships, setRelationships] = useState<AdminUserRelationships>(createEmptyRelationships);
     const [relationshipLoading, setRelationshipLoading] = useState(false);
     const [relationshipError, setRelationshipError] = useState<string | null>(null);
     const relationshipRequestRef = useRef<AbortController | null>(null);
+    const warningRequestRef = useRef<AbortController | null>(null);
+    const suspensionRequestRef = useRef<AbortController | null>(null);
 
     const userId = user?.userid;
     const normalizedRole = user?.primaryrole?.toLowerCase();
     const supportsRelationships = normalizedRole === 'parent' || normalizedRole === 'student';
+    // GET /admin/warnings/users/{id} yêu cầu quyền warning.view — không có quyền
+    // thì đừng gọi để khỏi nhận 403 rồi hiện lỗi vô nghĩa.
+    const canViewWarnings = can('warning.view');
 
-    const fetchUserData = useCallback(async () => {
-        if (!userId) return;
+    const fetchWarnings = useCallback(async () => {
+        if (!userId || !canViewWarnings) return;
+
+        warningRequestRef.current?.abort();
+        const controller = new AbortController();
+        warningRequestRef.current = controller;
+
+        setWarningsError(null);
+        setWarningsLoading(true);
+
         try {
-            setLoading(true);
-            const [warningsData, suspensionsData] = await Promise.all([
-                mockGetUserWarnings(userId),
-                mockGetUserSuspensions(userId),
-            ]);
-            setWarnings(warningsData as UserWarningRow[]);
-            setSuspensions(suspensionsData as UserSuspensionRow[]);
-        } catch (err) {
-            console.error('Error fetching user data:', err);
+            const summary = await getUserWarnings(userId, controller.signal);
+            if (!controller.signal.aborted) setWarnings(summary.warnings);
+        } catch (error: unknown) {
+            const isCanceled =
+                controller.signal.aborted ||
+                (error as { code?: string; name?: string })?.code === 'ERR_CANCELED' ||
+                (error as { name?: string })?.name === 'AbortError';
+            if (!isCanceled) {
+                setWarnings([]);
+                setWarningsError('Không thể tải lịch sử cảnh cáo. Vui lòng thử lại.');
+            }
         } finally {
-            setLoading(false);
+            if (warningRequestRef.current === controller) {
+                warningRequestRef.current = null;
+                setWarningsLoading(false);
+            }
         }
-    }, [userId]);
+    }, [canViewWarnings, userId]);
+
+    const fetchSuspensions = useCallback(async () => {
+        if (!userId || !canViewWarnings) return;
+
+        suspensionRequestRef.current?.abort();
+        const controller = new AbortController();
+        suspensionRequestRef.current = controller;
+
+        setSuspensionsError(null);
+        setSuspensionsLoading(true);
+
+        try {
+            const history = await getUserSuspensions(userId, controller.signal);
+            if (!controller.signal.aborted) {
+                setSuspensions(history);
+                setSuspensionsLoadedAt(Date.now());
+            }
+        } catch (error: unknown) {
+            const isCanceled =
+                controller.signal.aborted ||
+                (error as { code?: string; name?: string })?.code === 'ERR_CANCELED' ||
+                (error as { name?: string })?.name === 'AbortError';
+            if (!isCanceled) {
+                setSuspensions([]);
+                setSuspensionsError('Không thể tải lịch sử tạm ngưng. Vui lòng thử lại.');
+            }
+        } finally {
+            if (suspensionRequestRef.current === controller) {
+                suspensionRequestRef.current = null;
+                setSuspensionsLoading(false);
+            }
+        }
+    }, [canViewWarnings, userId]);
 
     const fetchRelationships = useCallback(async () => {
         if (!userId || !supportsRelationships) return;
@@ -141,11 +217,50 @@ const UserDetailModal = ({
         }
     }, [supportsRelationships, userId]);
 
-    // Tải lịch sử cảnh cáo / tạm ngưng mỗi lần mở modal cho một user.
+    // Lịch sử tạm ngưng dùng chung quyền warning.view với cảnh cáo, nhưng tách
+    // request riêng để một bên lỗi không giấu mất bên còn lại.
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        if (isOpen && userId) void fetchUserData();
-    }, [isOpen, userId, fetchUserData]);
+        if (!isOpen || !userId || !canViewWarnings) {
+            const activeRequest = suspensionRequestRef.current;
+            suspensionRequestRef.current = null;
+            activeRequest?.abort();
+            setSuspensions([]);
+            setSuspensionsError(null);
+            setSuspensionsLoading(false);
+            return undefined;
+        }
+
+        void fetchSuspensions();
+        return () => {
+            const activeRequest = suspensionRequestRef.current;
+            suspensionRequestRef.current = null;
+            activeRequest?.abort();
+        };
+    }, [canViewWarnings, fetchSuspensions, isOpen, userId]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    // Cảnh cáo lấy từ API thật; tách riêng để 403/lỗi mạng ở đây không kéo theo
+    // các phần khác của modal, và để hủy được khi admin chuyển nhanh sang user khác.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!isOpen || !userId || !canViewWarnings) {
+            const activeRequest = warningRequestRef.current;
+            warningRequestRef.current = null;
+            activeRequest?.abort();
+            setWarnings([]);
+            setWarningsError(null);
+            setWarningsLoading(false);
+            return undefined;
+        }
+
+        void fetchWarnings();
+        return () => {
+            const activeRequest = warningRequestRef.current;
+            warningRequestRef.current = null;
+            activeRequest?.abort();
+        };
+    }, [canViewWarnings, fetchWarnings, isOpen, userId]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
     // Quan hệ gia đình là dữ liệu admin-only, tải riêng để lỗi API này không
@@ -405,15 +520,35 @@ const UserDetailModal = ({
                                 <span className="material-symbols-outlined">warning</span>
                                 Lịch sử cảnh cáo
                             </h3>
-                            <span
-                                className={`um-badge ${warnings.length > 0 ? 'um-badge-warning' : 'um-badge-neutral'}`}
-                            >
-                                {warnings.length} cảnh cáo
-                            </span>
+                            {canViewWarnings && !warningsLoading && !warningsError && (
+                                <span
+                                    className={`um-badge ${warnings.length > 0 ? 'um-badge-warning' : 'um-badge-neutral'}`}
+                                >
+                                    {warnings.length} cảnh cáo
+                                </span>
+                            )}
                         </div>
 
-                        {loading ? (
+                        {!canViewWarnings ? (
+                            <div className="um-empty">Bạn không có quyền xem lịch sử cảnh cáo.</div>
+                        ) : warningsLoading ? (
                             <p className="um-loading">Đang tải…</p>
+                        ) : warningsError ? (
+                            <div className="um-relationship-error" role="alert">
+                                <span className="material-symbols-outlined">cloud_off</span>
+                                <div>
+                                    <strong>Chưa thể tải cảnh cáo</strong>
+                                    <span>{warningsError}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="um-btn um-btn-secondary"
+                                    onClick={() => void fetchWarnings()}
+                                >
+                                    <span className="material-symbols-outlined">refresh</span>
+                                    Thử lại
+                                </button>
+                            </div>
                         ) : warnings.length === 0 ? (
                             <div className="um-empty">Không có cảnh cáo nào</div>
                         ) : (
@@ -429,15 +564,19 @@ const UserDetailModal = ({
                                     </thead>
                                     <tbody>
                                         {warnings.map((warning) => {
-                                            const sev = SEVERITY_META[warning.severity] ?? SEVERITY_META.low;
+                                            const sev = getWarningLevelMeta(warning.warningLevel);
                                             return (
-                                                <tr key={warning.warningid}>
-                                                    <td>{new Date(warning.createdat).toLocaleDateString('vi-VN')}</td>
+                                                <tr key={warning.warningId}>
                                                     <td>
-                                                        {warning.reason}
-                                                        {warning.relatedbookingid && (
+                                                        {warning.createdAt
+                                                            ? new Date(warning.createdAt).toLocaleDateString('vi-VN')
+                                                            : '—'}
+                                                    </td>
+                                                    <td>
+                                                        {warning.reason || '—'}
+                                                        {warning.relatedBookingId != null && (
                                                             <span className="um-table-note">
-                                                                #{warning.relatedbookingid}
+                                                                #{warning.relatedBookingId}
                                                             </span>
                                                         )}
                                                     </td>
@@ -446,7 +585,8 @@ const UserDetailModal = ({
                                                             {sev.label}
                                                         </span>
                                                     </td>
-                                                    <td>{warning.issuedby}</td>
+                                                    {/* Cảnh cáo tự động không có admin đứng tên. */}
+                                                    <td>{warning.issuedByName || 'Hệ thống'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -463,15 +603,35 @@ const UserDetailModal = ({
                                 <span className="material-symbols-outlined">pause_circle</span>
                                 Lịch sử tạm ngưng
                             </h3>
-                            <span
-                                className={`um-badge ${suspensions.length > 0 ? 'um-badge-danger' : 'um-badge-neutral'}`}
-                            >
-                                {suspensions.length} lần
-                            </span>
+                            {canViewWarnings && !suspensionsLoading && !suspensionsError && (
+                                <span
+                                    className={`um-badge ${suspensions.length > 0 ? 'um-badge-danger' : 'um-badge-neutral'}`}
+                                >
+                                    {suspensions.length} lần
+                                </span>
+                            )}
                         </div>
 
-                        {loading ? (
+                        {!canViewWarnings ? (
+                            <div className="um-empty">Bạn không có quyền xem lịch sử tạm ngưng.</div>
+                        ) : suspensionsLoading ? (
                             <p className="um-loading">Đang tải…</p>
+                        ) : suspensionsError ? (
+                            <div className="um-relationship-error" role="alert">
+                                <span className="material-symbols-outlined">cloud_off</span>
+                                <div>
+                                    <strong>Chưa thể tải lịch sử tạm ngưng</strong>
+                                    <span>{suspensionsError}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="um-btn um-btn-secondary"
+                                    onClick={() => void fetchSuspensions()}
+                                >
+                                    <span className="material-symbols-outlined">refresh</span>
+                                    Thử lại
+                                </button>
+                            </div>
                         ) : suspensions.length === 0 ? (
                             <div className="um-empty">Chưa bao giờ bị tạm ngưng</div>
                         ) : (
@@ -486,25 +646,42 @@ const UserDetailModal = ({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {suspensions.map((suspension) => (
-                                            <tr key={suspension.suspensionid}>
-                                                <td>{new Date(suspension.startdate).toLocaleDateString('vi-VN')}</td>
-                                                <td>{new Date(suspension.enddate).toLocaleDateString('vi-VN')}</td>
-                                                <td>
-                                                    {suspension.reason}
-                                                    <span className="um-table-note">
-                                                        ({suspension.durationdays} ngày)
-                                                    </span>
-                                                </td>
-                                                <td className="um-center">
-                                                    <span
-                                                        className={`um-badge ${suspension.status === 'active' ? 'um-badge-danger' : 'um-badge-neutral'}`}
-                                                    >
-                                                        {suspension.status === 'active' ? 'Đang áp dụng' : 'Đã hết hạn'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {suspensions.map((suspension) => {
+                                            const inEffect = isSuspensionInEffect(suspension, suspensionsLoadedAt);
+                                            const durationDays = getSuspensionDurationDays(suspension);
+                                            const typeLabel =
+                                                SUSPENSION_TYPE_LABEL[suspension.suspensionType] ??
+                                                suspension.suspensionType;
+                                            return (
+                                                <tr key={suspension.suspensionId}>
+                                                    <td>
+                                                        {suspension.startDate
+                                                            ? new Date(suspension.startDate).toLocaleDateString('vi-VN')
+                                                            : '—'}
+                                                    </td>
+                                                    <td>
+                                                        {suspension.endDate
+                                                            ? new Date(suspension.endDate).toLocaleDateString('vi-VN')
+                                                            : 'Vĩnh viễn'}
+                                                    </td>
+                                                    <td>
+                                                        {suspension.reason || '—'}
+                                                        <span className="um-table-note">
+                                                            {durationDays != null
+                                                                ? `${typeLabel} · ${durationDays} ngày`
+                                                                : typeLabel}
+                                                        </span>
+                                                    </td>
+                                                    <td className="um-center">
+                                                        <span
+                                                            className={`um-badge ${inEffect ? 'um-badge-danger' : 'um-badge-neutral'}`}
+                                                        >
+                                                            {inEffect ? 'Đang áp dụng' : 'Đã hết hạn'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
