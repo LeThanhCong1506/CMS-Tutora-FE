@@ -80,10 +80,10 @@ const AdminLayout: React.FC = () => {
         materialIcon: 'analytics',
         sectionLabel: 'Tài chính',
         children: [
+          { path: '/admin-portal/revenue-reports/overview', label: 'Báo cáo doanh thu', materialIcon: 'insights', permission: 'financial.view' },
           { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
           { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
           { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
-          
         ]
       },
       { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
@@ -141,6 +141,9 @@ const AdminLayout: React.FC = () => {
 
   const isActive = (path: string, pathname: string) => {
     if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');
+    if (path.startsWith('/admin-portal/revenue-reports')) {
+      return pathname.startsWith('/admin-portal/revenue-reports');
+    }
     if (path === '/admin-portal/warnings') return pathname.startsWith('/admin-portal/warnings');
     if (path === '/admin-portal/bookings') return pathname.startsWith('/admin-portal/bookings');
     if (path === '/admin-portal/disputes') return pathname.startsWith('/admin-portal/disputes');
