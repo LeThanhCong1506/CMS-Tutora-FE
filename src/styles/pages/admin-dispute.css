@@ -8,6 +8,48 @@
     max-width: 320px;
 }
 
+/* Bộ lọc id buổi học + chọn thứ tự, đặt cùng hàng với ô tìm kiếm trên toolbar. */
+.dispute-list-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dispute-list-filter__label {
+    color: var(--color-navy-40);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dispute-list-filter__input,
+.dispute-list-filter__select {
+    height: 38px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-navy);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.dispute-list-filter__input {
+    width: 128px;
+}
+
+.dispute-list-filter__input::placeholder {
+    color: var(--color-navy-40);
+}
+
+.dispute-list-filter__input:focus-visible,
+.dispute-list-filter__select:focus-visible {
+    outline: 2px solid rgba(212, 180, 131, 0.9);
+    outline-offset: 2px;
+}
+
 .dispute-list-parties {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
