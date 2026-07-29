@@ -37,9 +37,20 @@ import {
 } from '../../components/shared';
 import type { DisputeMessageDto, RefundPreviewDto } from '../../services/admin.service';
 import { signalRService } from '../../services/signalr.service';
-import type { StatusVariant } from '../../components/shared';
 import { formatCurrency, formatDateTime, formatRelativeTime } from '../../utils/formatters';
 import { Can } from '../../contexts/AccessContext';
+import {
+    getDisputeStatusLabel,
+    getDisputeStatusVariant,
+    getPriorityVariant,
+    getSuspensionTypeForDuration,
+    getVerdictSuggestion,
+    getWarningLevelFromSeverity,
+    isBeforeTutorResponseDeadline,
+    isImageEvidence,
+    TUTOR_ACTION_PERMISSIONS,
+    validateResolution,
+} from './disputeWorkflow';
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
@@ -50,84 +61,6 @@ type DisputeChatMessage = {
     sentAt?: string | null;
     content?: string | null;
     message?: string | null;
-};
-
-const getDisputeStatusVariant = (status?: string | null): StatusVariant => {
-    switch (status) {
-        case 'pending':
-            return 'warning';
-        case 'investigating':
-            return 'info';
-        case 'confirmed_no_show':
-            return 'success';
-        case 'resolved':
-            return 'success';
-        case 'closed':
-            return 'neutral';
-        default:
-            return 'dark';
-    }
-};
-
-const getDisputeStatusLabel = (status?: string | null) => {
-    switch (status) {
-        case 'pending':
-            return 'Chờ tiếp nhận';
-        case 'investigating':
-            return 'Đang xem xét';
-        case 'confirmed_no_show':
-            return 'Đã xác nhận vắng mặt';
-        case 'resolved':
-            return 'Đã hoàn tất';
-        case 'closed':
-            return 'Đã đóng';
-        default:
-            return status || 'N/A';
-    }
-};
-
-type VerdictSuggestion = {
-    resolution: ResolutionType;
-    label: string;
-    detail: string;
-};
-
-/**
- * Turns the attendance evidence into a starting point for the verdict.
- *
- * Returns null whenever the log itself refuses to conclude — an ongoing lesson, missing Agora data,
- * an uncertain identity. Offering "chuyển tiền cho gia sư" off evidence that admits it is incomplete
- * would be worse than offering nothing, because it looks like the system agrees.
- */
-const getVerdictSuggestion = (summary: SessionLogSummary | null): VerdictSuggestion | null => {
-    if (!summary || summary.suggestedRefundPercentage === null) return null;
-
-    const attended = `Hai bên cùng có mặt ${Math.round(summary.overlapSeconds / 60)} phút — ${
-        Math.round(summary.overlapRatio * 1000) / 10
-    }% so với lịch hẹn.`;
-
-    switch (summary.suggestedRefundPercentage) {
-        case 100:
-            return {
-                resolution: 'refund_100',
-                label: 'hoàn 100%',
-                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
-            };
-        case 50:
-            return {
-                resolution: 'refund_50',
-                label: 'chia 50% cho mỗi bên',
-                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
-            };
-        case 0:
-            return {
-                resolution: 'release',
-                label: 'chuyển tiền cho gia sư',
-                detail: `${attended} Tham khảo — quyết định vẫn thuộc về bạn.`,
-            };
-        default:
-            return null;
-    }
 };
 
 type EvidenceTab = 'evidence' | 'sessionLog' | 'recordings' | 'communication' | 'reliability';
@@ -141,9 +74,7 @@ type EvidenceFileCardProps = {
 };
 
 const EvidenceFileCard = ({ url, label, description, tone }: EvidenceFileCardProps) => {
-    const isImage = /\.(jpg|jpeg|png|gif|webp)(?:\?.*)?$/i.test(url);
-
-    if (isImage) {
+    if (isImageEvidence(url)) {
         return (
             <a
                 className={`dispute-evidence-file dispute-evidence-file--${tone}`}
@@ -178,20 +109,7 @@ const EvidenceFileCard = ({ url, label, description, tone }: EvidenceFileCardPro
     );
 };
 
-const getPriorityVariant = (priority?: string | null): StatusVariant => {
-    switch (priority) {
-        case 'high':
-            return 'error';
-        case 'medium':
-            return 'warning';
-        case 'low':
-            return 'success';
-        default:
-            return 'neutral';
-    }
-};
-
-const AdminDisputeDetailPageExpanded = () => {
+const AdminDisputeDetailPage = () => {
     const navigate = useNavigate();
     // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
     const { id: disputeId } = useParams<{ id: string }>();
@@ -418,13 +336,9 @@ const AdminDisputeDetailPageExpanded = () => {
     const handleResolveDispute = async () => {
         if (!disputeDetail || !disputeId) return;
 
-        if (adminNotes.trim().length < 10) {
-            toast.error('Ghi chú phải có ít nhất 10 ký tự');
-            return;
-        }
-
-        if (verdict === 'custom' && (customPercentage < 0 || customPercentage > 100)) {
-            toast.error('Phần trăm hoàn tiền tùy chỉnh phải từ 0 đến 100');
+        const validation = validateResolution({ verdict, notes: adminNotes, customPercentage });
+        if (!validation.ok) {
+            toast.error(validation.message);
             return;
         }
 
@@ -451,8 +365,7 @@ const AdminDisputeDetailPageExpanded = () => {
     const handleInvestigate = async () => {
         if (!disputeDetail || !disputeId) return;
 
-        const deadline = disputeDetail.tutorResponseDeadline ? new Date(disputeDetail.tutorResponseDeadline) : null;
-        const beforeDeadline = deadline ? Date.now() < deadline.getTime() : false;
+        const beforeDeadline = isBeforeTutorResponseDeadline(disputeDetail.tutorResponseDeadline, Date.now());
         if (beforeDeadline) {
             const confirmed = window.confirm(
                 `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi. Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?`,
@@ -516,11 +429,10 @@ const AdminDisputeDetailPageExpanded = () => {
     const handleIssueWarning = async (tutorId: string, reason: string, severity: string, relatedBookingId?: string) => {
         if (!disputeId) return;
 
-        const warninglevel = severity === 'low' ? 1 : 2;
         await issueWarning({
             userid: tutorId,
             reason,
-            warninglevel,
+            warninglevel: getWarningLevelFromSeverity(severity),
             relatedbookingid: relatedBookingId,
         });
         await fetchDisputeDetail(disputeId);
@@ -532,7 +444,7 @@ const AdminDisputeDetailPageExpanded = () => {
         await suspendTutor({
             userid: tutorId,
             reason,
-            suspensiontype: durationDays > 30 ? 'account_locked' : 'hidden_1_week',
+            suspensiontype: getSuspensionTypeForDuration(durationDays),
             durationDays,
         });
         await fetchDisputeDetail(disputeId);
@@ -774,7 +686,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                             Hỗ trợ quản lý gia sư
                                         </p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            <Can permission="warning.create">
+                                            <Can permission={TUTOR_ACTION_PERMISSIONS.reminder}>
                                             <button
                                                 type="button"
                                                 className="admin-ui-button admin-ui-button-secondary"
@@ -784,7 +696,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 Gửi nhắc nhở
                                             </button>
                                             </Can>
-                                            <Can permission="suspension.manage">
+                                            <Can permission={TUTOR_ACTION_PERMISSIONS.suspension}>
                                             <button
                                                 type="button"
                                                 className="admin-ui-button admin-ui-button-secondary"
@@ -794,7 +706,7 @@ const AdminDisputeDetailPageExpanded = () => {
                                                 Tạm ngưng hoạt động
                                             </button>
                                             </Can>
-                                            <Can permission="user.deactivate">
+                                            <Can permission={TUTOR_ACTION_PERMISSIONS.accessRemoval}>
                                             <button
                                                 type="button"
                                                 className="admin-ui-button admin-ui-button-danger"
@@ -1537,4 +1449,4 @@ const AdminDisputeDetailPageExpanded = () => {
     );
 };
 
-export default AdminDisputeDetailPageExpanded;
+export default AdminDisputeDetailPage;
