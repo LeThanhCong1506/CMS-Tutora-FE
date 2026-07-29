@@ -88,12 +88,14 @@
     display: inline-flex;
     align-items: center;
     width: fit-content;
-    padding: 3px 8px;
+    min-height: 26px;
+    padding: 6px 12px;
     border-radius: var(--radius-full);
     background: var(--color-navy);
     color: var(--color-white);
     font-size: 10px;
     font-weight: 800;
+    line-height: 1.2;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
