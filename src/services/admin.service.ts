@@ -493,7 +493,7 @@ export const getRefundPreview = async (
  * Issue a warning to a user.
  * Backend: POST /api/admin/warnings/users/{userId}
  * BE DTO (CreateWarningRequest):
- *   - warningLevel: int (1 = minor, 2 = major)
+ *   - warningLevel: int (1 = Thấp, 2 = Trung bình, 3 = Cao — 3 tạm ngưng ngay)
  *   - reason: string (10-1000 chars, required)
  *   - relatedBookingId: int? (nullable)
  *

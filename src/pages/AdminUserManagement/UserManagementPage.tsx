@@ -201,12 +201,10 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     };
 
     const handleIssueWarning = async (userId: string, reason: string, severity: string, relatedBookingId?: string) => {
-        // BE supports only 2 warning levels: 1 = minor, 2 = major.
-        // The UI exposes 3 (low / medium / high); collapse them so:
-        //   low                  → 1 (gentle reminder)
-        //   medium / high        → 2 (formal warning / serious violation)
-        // Keeps semantic meaning: any escalation beyond a "nudge" goes on record as major.
-        const warninglevel = severity === 'low' ? 1 : 2;
+        // BE có đủ 3 mức (WarningLevel.cs): 1 = Thấp, 2 = Trung bình, 3 = Cao.
+        // Mức 3 khiến BE tạm ngưng tài khoản ngay lập tức; mức 1-2 chỉ tạm ngưng
+        // khi tích lũy đủ 3 cảnh cáo trong 30 ngày.
+        const warninglevel = severity === 'low' ? 1 : severity === 'medium' ? 2 : 3;
         try {
             await issueWarning({
                 userid: userId,
