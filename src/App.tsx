@@ -32,6 +32,11 @@ const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/Admi
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
 const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBookingDetailPage'));
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
+// TEMP: proposal page, running on mock data — see src/mocks/taxMockData.ts
+const AdminTaxPage = lazy(() => import('./pages/AdminTax/AdminTaxPage'));
+// TEMP: proposal page, running on mock data — see src/mocks/financeManagementMockData.ts
+const AdminFinanceNewPage = lazy(() => import('./pages/AdminFinanceNew/AdminFinanceNewPage'));
+const AdminRevenueReportsPage = lazy(() => import('./pages/AdminRevenueReports/AdminRevenueReportsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
@@ -165,6 +170,16 @@ function App() {
               <Route path="bookings" element={guard(<AdminBookingsPage />, 'booking.view')} />
               <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
               <Route path="financials" element={guard(<AdminFinancialsPage />, 'financial.view')} />
+              <Route path="tax" element={guard(<AdminTaxPage />, 'financial.view')} />
+              <Route path="finance-new" element={guard(<AdminFinanceNewPage />, 'financial.view')} />
+              <Route
+                path="revenue-reports"
+                element={<Navigate to="/admin-portal/revenue-reports/overview" replace />}
+              />
+              <Route
+                path="revenue-reports/:tab"
+                element={guard(<AdminRevenueReportsPage />, 'financial.view')}
+              />
               <Route path="warnings" element={guard(<AdminWarningsPage />, 'warning.view')} />
               <Route path="resources" element={<Navigate to="/admin-portal/resources/subjects" replace />} />
               <Route path="resources/subjects" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
