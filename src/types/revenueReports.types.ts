@@ -55,6 +55,16 @@ export interface StalledBookingStats {
     dropOffPrevious: number;
 }
 
+/** Đã trả đợt 1 nhưng chưa học buổi nào, tồn quá 14 ngày. */
+export interface NeverStartedStats {
+    count: number;
+    countPrevious: number;
+    /** Hoa hồng của toàn bộ buổi đã bán chưa dạy */
+    feeAtRisk: number;
+    /** Tiền khách đã trả đang nằm im (GMV) */
+    cashHeld: number;
+}
+
 export interface StalledTrendPoint {
     month: string;
     stalled: number;
@@ -74,11 +84,28 @@ export interface BookingProgressRow {
     status: string;
 }
 
+export interface RefundStats {
+    amount: number;
+    amountPrevious: number;
+    count: number;
+    countPrevious: number;
+    rateOfCash: number;
+}
+
+export interface RefundTrendPoint {
+    month: string;
+    amount: number;
+    count: number;
+}
+
 export interface RevenueRecognitionResponse {
     summary: RevenueSummary;
     deferredAging: DeferredAgingBucket[];
     stalled: StalledBookingStats;
+    neverStarted: NeverStartedStats;
     stalledTrend: StalledTrendPoint[];
+    refunds: RefundStats;
+    refundTrend: RefundTrendPoint[];
     bookingProgress: BookingProgressRow[];
 }
 
@@ -89,6 +116,8 @@ export interface TutorRevenueRow {
     subject: string;
     gmv: number;
     platformRevenue: number;
+    /** % nền tảng giữ lại trên GMV — so sánh tương đối giữa gia sư */
+    takeRate: number;
     tutorEarnings: number;
     escrowHeld: number;
     sessionsDelivered: number;
@@ -99,9 +128,15 @@ export interface TutorRevenueRow {
 }
 
 export interface TutorRevenueResponse {
+    /** Đã cắt còn top dòng — không dùng .length làm số liệu */
     tutors: TutorRevenueRow[];
+    /** Số gia sư dạy xong ít nhất 1 buổi trong kỳ */
+    tutorsWithRevenue: number;
+    /** Số gia sư có buổi trong kỳ, kể cả huỷ hết */
+    activeTutors: number;
     concentration: NamedValue[];
     totalPlatformRevenue: number;
+    /** Escrow toàn sàn hiện tại, không lọc kỳ */
     totalEscrowHeld: number;
 }
 
@@ -115,14 +150,33 @@ export interface CustomerSummary {
     ltv: number;
 }
 
+/** Phân khúc người chi tiền: phụ huynh đặt cho con vs học sinh tự đặt. */
+export interface CustomerSegment {
+    segment: string;
+    customers: number;
+    bookings: number;
+    /** Tiền khách trả (GMV) */
+    totalSpent: number;
+    /** Hoa hồng nền tảng thực nhận */
+    platformRevenue: number;
+    ltv: number;
+    avgBookingValue: number;
+    repeatRate: number;
+}
+
 export interface ParentRevenueRow {
+    /** Phụ huynh, hoặc học sinh nếu tự đặt lịch */
     parentId: string;
     parentName: string;
+    /** 'Phụ huynh' | 'Học sinh' */
+    customerType: string;
     studentName: string;
     totalSpent: number;
     bookingCount: number;
     sessionsPurchased: number;
     sessionsCompleted: number;
+    /** Hoa hồng buổi đã mua chưa học. BE tính, không suy ra ở FE. */
+    deferredRevenue: number;
     firstBookingAt: string | null;
     lastBookingAt: string | null;
 }
@@ -153,6 +207,7 @@ export interface CohortRow {
 
 export interface CustomerRevenueResponse {
     summary: CustomerSummary;
+    segments: CustomerSegment[];
     parents: ParentRevenueRow[];
     arpuTrend: ArpuPoint[];
     newVsReturning: NewVsReturningPoint[];

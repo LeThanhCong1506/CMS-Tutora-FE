@@ -177,7 +177,7 @@
     font-weight: 400;
     line-height: 1.55;
     /* Chữ trong hộp phải xuống dòng bình thường dù cha là flex/nowrap */
-    white-space: normal;
+    white-space: pre-line;
     text-align: left;
     text-transform: none;
     letter-spacing: normal;

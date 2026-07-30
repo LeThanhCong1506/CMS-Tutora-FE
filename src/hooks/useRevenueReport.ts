@@ -2,22 +2,34 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { RevenueRange } from '../services/revenueReports.service';
 
-/** Khoảng thời gian dựng sẵn. */
-export type RangePreset = '3m' | '6m' | '12m' | 'ytd';
+/**
+ * Khoảng thời gian dựng sẵn.
+ */
+export type RangePreset = '3m' | '6m' | '12m' | 'ytd' | 'q-this' | 'q-last' | 'y-last';
 
 export const RANGE_PRESETS: { key: RangePreset; label: string }[] = [
     { key: '3m', label: '3 tháng' },
     { key: '6m', label: '6 tháng' },
     { key: '12m', label: '12 tháng' },
+    { key: 'q-this', label: 'Quý này' },
+    { key: 'q-last', label: 'Quý trước' },
     { key: 'ytd', label: 'Từ đầu năm' },
+    { key: 'y-last', label: 'Năm trước' },
 ];
 
+const PRESET_KEYS = RANGE_PRESETS.map((p) => p.key);
+
 const isPreset = (v: string | null): v is RangePreset =>
-    v === '3m' || v === '6m' || v === '12m' || v === 'ytd';
+    v !== null && (PRESET_KEYS as string[]).includes(v);
+
+/** Đầu quý chứa tháng `m` (0-11). */
+const quarterStartMonth = (m: number) => Math.floor(m / 3) * 3;
 
 const buildRange = (preset: RangePreset): RevenueRange => {
-    const to = new Date();
-    const from = new Date(to);
+    const now = new Date();
+    const to = new Date(now);
+    const from = new Date(now);
+
     switch (preset) {
         case '3m':
             from.setMonth(from.getMonth() - 3);
@@ -29,6 +41,28 @@ const buildRange = (preset: RangePreset): RevenueRange => {
             from.setMonth(0, 1);
             from.setHours(0, 0, 0, 0);
             break;
+
+        case 'q-this':
+            return {
+                from: new Date(now.getFullYear(), quarterStartMonth(now.getMonth()), 1, 0, 0, 0, 0),
+                to,
+            };
+        case 'q-last': {
+            const qStart = new Date(
+                now.getFullYear(),
+                quarterStartMonth(now.getMonth()) - 3,
+                1,
+                0, 0, 0, 0,
+            );
+            const qEnd = new Date(qStart.getFullYear(), qStart.getMonth() + 3, 1, 0, 0, 0, 0);
+            return { from: qStart, to: qEnd };
+        }
+        case 'y-last':
+            return {
+                from: new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0),
+                to: new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0),
+            };
+
         default:
             from.setMonth(from.getMonth() - 12);
     }
