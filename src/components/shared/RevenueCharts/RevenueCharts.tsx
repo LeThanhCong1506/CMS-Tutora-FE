@@ -139,8 +139,10 @@ export const RankBarChart: React.FC<
                         label: {
                             show: true,
                             position: 'right',
-                            formatter: (p: { value: number }) =>
-                                percent ? `${p.value}%` : money ? axisMoney(p.value) : plainNumber(p.value),
+                            formatter: (p: unknown) => {
+                                const v = Number((p as { value: number }).value);
+                                return percent ? `${v}%` : money ? axisMoney(v) : plainNumber(v);
+                            },
                             // Con số cuối cột là thông tin chính của chart xếp
                             // hạng — dùng mực đậm nhất, không phải màu trục.
                             color: PALETTE.ink,
@@ -366,8 +368,10 @@ export const FunnelChart: React.FC<
                     label: {
                         show: true,
                         position: 'inside',
-                        formatter: (p: { name: string; value: number }) =>
-                            `${p.name}  ${plainNumber(p.value)}`,
+                        formatter: (p: unknown) => {
+                            const it = p as { name: string; value: number };
+                            return `${it.name}  ${plainNumber(it.value)}`;
+                        },
                         color: '#fff',
                         fontSize: 12,
                         fontWeight: 600,
@@ -506,8 +510,8 @@ export const HeatmapChart: React.FC<
                             show: true,
                             // Ngoại lệ duy nhất còn rút gọn: ô heatmap quá hẹp cho số
                             // đầy đủ. Hover vẫn ra con số chính xác ở tooltip.
-                            formatter: (p: { value: [number, number, number] }) => {
-                                const v = p.value[2];
+                            formatter: (p: unknown) => {
+                                const v = (p as { value: [number, number, number] }).value[2];
                                 if (v === 0) return '—';
                                 if (suffix) return `${v}${suffix}`;
                                 if (!money) return plainNumber(v);

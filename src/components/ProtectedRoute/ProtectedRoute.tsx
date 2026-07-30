@@ -9,10 +9,6 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
-  // TEMP: auth bypass for local UI preview. Revert before committing/deploying.
-  return children ? <>{children}</> : <Outlet />;
-
-  // eslint-disable-next-line no-unreachable
   const user = getCurrentUser();
   if (!user?.accessToken) {
     toast.info('Vui lòng đăng nhập để truy cập trang này.', { toastId: 'auth-required' });
