@@ -45,7 +45,7 @@ const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
 const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjectsPage'));
 const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChaptersPage'));
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
-const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPageExpanded'));
+const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPage'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
