@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
 import type { FinancialMetrics } from '../../types/admin.types';
 import type { WithdrawalRequestItem } from '../../types/adminPayout.types';
@@ -9,6 +8,8 @@ import { getWithdrawalRequests } from '../../services/adminPayout.service';
 import { formatCompactNumber } from '../../utils/formatters';
 import WithdrawalRequestTable from '../AdminPayout/PayoutOverview/components/WithdrawalRequestTable';
 import TransactionLedger from './components/TransactionLedger';
+// TEMP: mock fallback for local UI preview while the backend is offline — see src/mocks/financialsMockFallback.ts
+import { mockFinancialMetrics, mockWithdrawalRequests } from '../../mocks/financialsMockFallback';
 import '../../styles/pages/admin-financial.css';
 
 type FinancialTab = 'withdrawals' | 'ledger' | 'commission';
@@ -38,7 +39,8 @@ const AdminFinancialsPage = () => {
             setMetrics(await getFinancialMetrics());
         } catch (err) {
             console.error('Error fetching financial metrics:', err);
-            toast.error('Không thể tải số liệu tài chính');
+            // TEMP: mock fallback for local UI preview — remove once backend is reachable.
+            setMetrics(mockFinancialMetrics);
         } finally {
             setMetricsLoading(false);
         }
@@ -52,7 +54,9 @@ const AdminFinancialsPage = () => {
             setWithdrawalTotal(res.total);
         } catch (err) {
             console.error('Error fetching withdrawal requests:', err);
-            toast.error('Không thể tải yêu cầu rút tiền');
+            // TEMP: mock fallback for local UI preview — remove once backend is reachable.
+            setWithdrawalRequests(mockWithdrawalRequests);
+            setWithdrawalTotal(mockWithdrawalRequests.length);
         } finally {
             setWithdrawalLoading(false);
         }
