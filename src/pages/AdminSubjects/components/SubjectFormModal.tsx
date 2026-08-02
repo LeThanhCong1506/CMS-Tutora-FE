@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -6,9 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { createSubject, updateSubject, uploadSubjectIcon } from '../../../services/adminLookup.service';
-import type { AdminSubject, SubjectPayload } from '../../../types/lookup.type';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  createSubject,
+  updateSubject,
+  uploadSubjectIcon,
+  getAdminGradeLevels,
+} from '../../../services/adminLookup.service';
+import type { AdminSubject, AdminGradeLevel, SubjectPayload } from '../../../types/lookup.type';
 import { apiErrorMessage } from '../../../utils/apiError';
+
+const UNLIMITED = 'unlimited';
 
 const MAX_ICON_BYTES = 2 * 1024 * 1024;
 
@@ -30,9 +38,18 @@ export const SubjectFormModal: React.FC<Props> = ({ subject, onClose, onSaved })
     displayOrder: subject?.displayOrder ?? 0,
     isHomeworkEnabled: subject?.isHomeworkEnabled ?? false,
     isActive: subject?.isActive ?? true,
+    minGradeLevelId: subject?.minGradeLevelId ?? null as number | null,
+    maxGradeLevelId: subject?.maxGradeLevelId ?? null as number | null,
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [gradeLevels, setGradeLevels] = useState<AdminGradeLevel[]>([]);
+
+  useEffect(() => {
+    getAdminGradeLevels()
+      .then(setGradeLevels)
+      .catch(() => toast.error('Không tải được danh sách khối lớp.'));
+  }, []);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -61,6 +78,15 @@ export const SubjectFormModal: React.FC<Props> = ({ subject, onClose, onSaved })
       toast.error('Vui lòng nhập tên môn học.');
       return;
     }
+    // So theo levelOrder — id không đảm bảo tăng dần theo khối lớp.
+    if (form.minGradeLevelId != null && form.maxGradeLevelId != null) {
+      const minOrder = gradeLevels.find((g) => g.gradeLevelId === form.minGradeLevelId)?.levelOrder;
+      const maxOrder = gradeLevels.find((g) => g.gradeLevelId === form.maxGradeLevelId)?.levelOrder;
+      if (minOrder != null && maxOrder != null && maxOrder < minOrder) {
+        toast.error('Khối lớp tối đa phải lớn hơn hoặc bằng khối lớp tối thiểu.');
+        return;
+      }
+    }
     setSaving(true);
     try {
       // slug bỏ trống -> BE tự sinh từ tên môn.
@@ -72,6 +98,8 @@ export const SubjectFormModal: React.FC<Props> = ({ subject, onClose, onSaved })
         displayOrder: form.displayOrder,
         isHomeworkEnabled: form.isHomeworkEnabled,
         isActive: form.isActive,
+        minGradeLevelId: form.minGradeLevelId,
+        maxGradeLevelId: form.maxGradeLevelId,
       };
       if (isEdit) await updateSubject(subject.subjectId, payload);
       else await createSubject(payload);
@@ -172,6 +200,59 @@ export const SubjectFormModal: React.FC<Props> = ({ subject, onClose, onSaved })
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-1.5">
+              <Label>Áp dụng từ khối</Label>
+              <Select
+                value={form.minGradeLevelId != null ? String(form.minGradeLevelId) : UNLIMITED}
+                onValueChange={(v) => set('minGradeLevelId', v === UNLIMITED ? null : Number(v))}
+                items={[
+                  { value: UNLIMITED, label: 'Không giới hạn' },
+                  ...gradeLevels.map((g) => ({ value: String(g.gradeLevelId), label: g.gradeName })),
+                ]}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Không giới hạn" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNLIMITED}>Không giới hạn</SelectItem>
+                  {gradeLevels.map((g) => (
+                    <SelectItem key={g.gradeLevelId} value={String(g.gradeLevelId)}>
+                      {g.gradeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Đến khối</Label>
+              <Select
+                value={form.maxGradeLevelId != null ? String(form.maxGradeLevelId) : UNLIMITED}
+                onValueChange={(v) => set('maxGradeLevelId', v === UNLIMITED ? null : Number(v))}
+                items={[
+                  { value: UNLIMITED, label: 'Không giới hạn' },
+                  ...gradeLevels.map((g) => ({ value: String(g.gradeLevelId), label: g.gradeName })),
+                ]}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Không giới hạn" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNLIMITED}>Không giới hạn</SelectItem>
+                  {gradeLevels.map((g) => (
+                    <SelectItem key={g.gradeLevelId} value={String(g.gradeLevelId)}>
+                      {g.gradeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Giới hạn khối lớp tutor được chọn khi khai báo môn dạy. Để "Không giới hạn" nếu môn áp
+            dụng cho mọi khối (vd Toán, Tiếng Anh).
+          </p>
 
           <div className="grid gap-1.5">
             <Label htmlFor="subject-desc">Mô tả</Label>

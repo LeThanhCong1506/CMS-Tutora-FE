@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { useAccess } from '../../../contexts/AccessContext';
 import {
   getAdminSubjects,
+  getAdminGradeLevels,
   deleteSubject,
   updateSubject,
   reorderSubjects,
 } from '../../../services/adminLookup.service';
-import type { AdminSubject } from '../../../types/lookup.type';
+import type { AdminSubject, AdminGradeLevel } from '../../../types/lookup.type';
 import { SubjectFormModal } from './SubjectFormModal';
 import { ConfirmDialog } from '../../../components/shared';
 import { SortableDataTable, type RowAction } from '../../../components/shared';
@@ -26,6 +27,7 @@ type SubjectRow = AdminSubject & { id: number };
 export const SubjectsTab: React.FC = () => {
   const { can } = useAccess();
   const [items, setItems] = useState<SubjectRow[]>([]);
+  const [grades, setGrades] = useState<AdminGradeLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
@@ -50,6 +52,27 @@ export const SubjectsTab: React.FC = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    getAdminGradeLevels()
+      .then(setGrades)
+      .catch(() => toast.error('Không tải được danh sách khối lớp.'));
+  }, []);
+
+  const gradeNameById = useMemo(
+    () => new Map(grades.map((g) => [g.gradeLevelId, g.gradeName])),
+    [grades],
+  );
+  const gradeRangeText = useCallback(
+    (s: AdminSubject) => {
+      if (s.minGradeLevelId == null && s.maxGradeLevelId == null) return 'Tất cả';
+      const min = s.minGradeLevelId != null ? (gradeNameById.get(s.minGradeLevelId) ?? '?') : null;
+      const max = s.maxGradeLevelId != null ? (gradeNameById.get(s.maxGradeLevelId) ?? '?') : null;
+      if (min && max) return `${min} - ${max}`;
+      return min ? `Từ ${min}` : `Đến ${max}`;
+    },
+    [gradeNameById],
+  );
 
   const filtered = useMemo(
     () =>
@@ -81,6 +104,8 @@ export const SubjectsTab: React.FC = () => {
         isHomeworkEnabled: s.isHomeworkEnabled,
         displayOrder: s.displayOrder,
         isActive: true,
+        minGradeLevelId: s.minGradeLevelId,
+        maxGradeLevelId: s.maxGradeLevelId,
       });
       toast.success('Đã khôi phục môn học.');
       void fetchData();
@@ -146,12 +171,19 @@ export const SubjectsTab: React.FC = () => {
         cell: ({ row }) => <OnOffBadge on={row.original.isHomeworkEnabled} />,
       },
       {
+        id: 'gradeRange',
+        header: 'Khối áp dụng',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">{gradeRangeText(row.original)}</span>
+        ),
+      },
+      {
         accessorKey: 'isActive',
         header: 'Trạng thái',
         cell: ({ row }) => <ActiveBadge isActive={row.original.isActive} />,
       },
     ],
-    [],
+    [gradeRangeText],
   );
 
   const actions = useMemo<RowAction<SubjectRow>[]>(() => {
