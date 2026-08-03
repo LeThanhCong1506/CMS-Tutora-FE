@@ -30,8 +30,8 @@ import {
 } from '../../services/knowledgeBase.service';
 import type { KbDocument, KbDocumentDetail } from '../../types/knowledgeBase.types';
 
-const ACCEPT = '.pdf,.docx,.xlsx';
-const ACCEPT_EXT = ['.pdf', '.docx', '.xlsx'];
+const ACCEPT = '.pdf,.docx,.xlsx,.md,.markdown';
+const ACCEPT_EXT = ['.pdf', '.docx', '.xlsx', '.md', '.markdown'];
 const MAX_MB = 20;
 
 const STATUS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -45,6 +45,7 @@ const SOURCE_TYPE_LABEL: Record<string, string> = {
   pdf: 'PDF',
   docx: 'Word',
   xlsx: 'Excel',
+  md: 'Markdown',
   manual: 'Viết tay',
 };
 
@@ -134,7 +135,7 @@ const KnowledgeBasePage: React.FC = () => {
     if (!f) return;
     const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
     if (!ACCEPT_EXT.includes(ext)) {
-      toast.error('Chỉ nhận file PDF, DOCX hoặc XLSX.');
+      toast.error('Chỉ nhận file PDF, DOCX, XLSX hoặc Markdown (.md).');
       return;
     }
     if (f.size > MAX_MB * 1024 * 1024) {
@@ -185,7 +186,7 @@ const KnowledgeBasePage: React.FC = () => {
   return (
     <PageContainer
       title="Cơ sở tri thức"
-      subtitle="Nạp nội dung, chính sách Tutora (PDF, DOCX, XLSX) để trợ lý trả lời câu hỏi thường gặp."
+      subtitle="Nạp nội dung, chính sách Tutora (PDF, DOCX, XLSX, Markdown) để trợ lý trả lời câu hỏi thường gặp."
       maxWidth="wide"
     >
       {/* Dropzone upload */}
@@ -213,7 +214,7 @@ const KnowledgeBasePage: React.FC = () => {
               <UploadCloud className="size-9" />
               <p className="text-base font-medium text-slate-600">Kéo thả tài liệu vào đây</p>
               <p className="text-sm text-slate-400">
-                hoặc bấm để chọn file — PDF, DOCX, XLSX (≤{MAX_MB}MB)
+                hoặc bấm để chọn file — PDF, DOCX, XLSX, Markdown (≤{MAX_MB}MB)
               </p>
               <input
                 ref={inputRef}
