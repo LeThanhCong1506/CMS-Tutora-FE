@@ -36,6 +36,10 @@ export interface AdminSubject extends Subject {
   iconUrl: string | null;
   isHomeworkEnabled: boolean;
   displayOrder: number;
+  /** Khối lớp thấp nhất môn này áp dụng. Null = không giới hạn. */
+  minGradeLevelId: number | null;
+  /** Khối lớp cao nhất môn này áp dụng. Null = không giới hạn. */
+  maxGradeLevelId: number | null;
 }
 
 export interface AdminGradeLevel extends GradeLevel {
@@ -64,6 +68,8 @@ export interface SubjectPayload {
   iconUrl?: string | null;
   isHomeworkEnabled: boolean;
   displayOrder: number;
+  minGradeLevelId?: number | null;
+  maxGradeLevelId?: number | null;
 }
 
 export interface GradeLevelPayload {

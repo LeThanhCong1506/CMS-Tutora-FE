@@ -89,7 +89,7 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
       {
         path: '/admin-portal/resources',
-        label: 'Cấu hình câu hỏi',
+        label: 'Cấu hình chương trình',
         materialIcon: 'folder',
         sectionLabel: 'Tài nguyên',
         children: [
