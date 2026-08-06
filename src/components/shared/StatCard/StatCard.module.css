@@ -104,6 +104,12 @@
     white-space: nowrap;
 }
 
+.statLabelRow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .statLabel {
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 11px;
@@ -112,6 +118,45 @@
     color: rgba(62, 47, 40, 0.6);
     letter-spacing: 0.26px;
     text-transform: uppercase;
+}
+
+.infoTooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    color: rgba(62, 47, 40, 0.4);
+    cursor: help;
+}
+
+.infoTooltipBubble {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background-color: #1a2238;
+    color: #fff;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.4;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: normal;
+    text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 20;
+}
+
+.infoTooltip:hover .infoTooltipBubble,
+.infoTooltip:focus-visible .infoTooltipBubble {
+    opacity: 1;
+    visibility: visible;
 }
 
 .statSubLabel {

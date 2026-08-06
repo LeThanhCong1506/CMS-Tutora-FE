@@ -727,7 +727,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                 onSaved={fetchUsers}
             />
 
-            {/* Delete confirmation — hard delete is irreversible (Admin only). */}
+            {/* Delete confirmation — BE thực chất chỉ soft-delete (Status=0 + Isdeleted/Deletedat),
+                không xóa row/dữ liệu khỏi DB. CMS hiện chưa có nút khôi phục tài khoản đã xóa. */}
             {isDeleteModalOpen && selectedUser && (
                 <div
                     className="um-overlay"
@@ -744,10 +745,10 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                         <div className="um-modal-head">
                             <div className="um-modal-head-main">
                                 <h3 id="delete-user-dialog-title" className="um-modal-title um-modal-title-danger">
-                                    <span className="material-symbols-outlined">delete_forever</span>
+                                    <span className="material-symbols-outlined">delete</span>
                                     Xóa tài khoản
                                 </h3>
-                                <p className="um-modal-sub">Hành động này không thể hoàn tác.</p>
+                                <p className="um-modal-sub">Tài khoản sẽ bị khóa và không thể đăng nhập lại. CMS hiện chưa có chức năng khôi phục.</p>
                             </div>
                             <button
                                 type="button"
@@ -777,10 +778,12 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                             <div className="um-callout um-callout-danger">
                                 <span className="material-symbols-outlined">error</span>
                                 <div>
-                                    <p className="um-callout-title">Xoá vĩnh viễn khỏi hệ thống</p>
+                                    <p className="um-callout-title">Không xóa dữ liệu khỏi hệ thống</p>
                                     <p className="um-callout-text">
-                                        Toàn bộ dữ liệu liên quan sẽ bị gỡ bỏ. Nếu chỉ muốn tạm thời ngăn đăng nhập, hãy
-                                        dùng “Chặn tài khoản” thay vì xoá.
+                                        Tài khoản và dữ liệu liên quan vẫn được giữ lại — hành động này chỉ khóa đăng
+                                        nhập và đánh dấu tài khoản đã xóa. Nếu chỉ cần tạm ngăn đăng nhập và có thể mở
+                                        lại sau, hãy dùng “Chặn tài khoản” thay vì xoá, vì CMS hiện chưa có nút khôi
+                                        phục cho tài khoản đã xóa.
                                     </p>
                                 </div>
                             </div>
@@ -795,8 +798,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                                 Hủy
                             </button>
                             <button className="um-btn um-btn-danger" onClick={handleDeleteUser} disabled={isDeleting}>
-                                <span className="material-symbols-outlined">delete_forever</span>
-                                {isDeleting ? 'Đang xóa…' : 'Xóa vĩnh viễn'}
+                                <span className="material-symbols-outlined">delete</span>
+                                {isDeleting ? 'Đang xóa…' : 'Xóa tài khoản'}
                             </button>
                         </div>
                     </div>
