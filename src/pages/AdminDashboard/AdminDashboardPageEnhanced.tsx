@@ -271,6 +271,7 @@ const AdminDashboardPageEnhanced = () => {
                     subLabel={formatCurrency(gmvValue)}
                     badge={gmvBadge?.text}
                     badgeVariant={gmvBadge?.variant}
+                    infoTooltip="Tổng giá trị giao dịch (Gross Merchandise Value) phát sinh trên nền tảng trong kỳ đã chọn."
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
@@ -279,6 +280,7 @@ const AdminDashboardPageEnhanced = () => {
                     subLabel={formatCurrency(revValue)}
                     badge={revBadge?.text}
                     badgeVariant={revBadge?.variant}
+                    infoTooltip="Doanh thu Tutora giữ lại (hoa hồng/phí dịch vụ) từ các giao dịch trong kỳ đã chọn."
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">event_available</span>}
@@ -289,6 +291,7 @@ const AdminDashboardPageEnhanced = () => {
                             ? `+${newInPeriod} mới · ${completedInPeriod} hoàn tất`
                             : `${completedInPeriod} hoàn tất`
                     }
+                    infoTooltip="Số booking hiện đang hoạt động (chưa hoàn tất/hủy), kèm số mới phát sinh và đã hoàn tất trong kỳ."
                 />
                 <StatCard
                     className="admin-kpi-alert"
@@ -298,6 +301,7 @@ const AdminDashboardPageEnhanced = () => {
                     subLabel={`${tutorApprovals} duyệt · ${withdrawalReviews} rút tiền · ${openDisputes} khiếu nại`}
                     badge={overdueCount > 0 ? `${overdueCount} quá hạn` : undefined}
                     badgeVariant="red"
+                    infoTooltip="Tổng số việc đang chờ xử lý: duyệt hồ sơ gia sư, yêu cầu rút tiền và khiếu nại đang mở."
                 />
             </div>
 

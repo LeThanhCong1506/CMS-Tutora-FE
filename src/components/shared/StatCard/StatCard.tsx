@@ -1,6 +1,15 @@
 import React from 'react';
 import styles from './StatCard.module.css';
 
+// Ẩn danh, style khớp bộ icon SVG stroke đã dùng ở InputGroup.tsx.
+const InfoIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+);
+
 export interface StatCardProps {
     /** Icon element displayed in the card header */
     icon: React.ReactNode;
@@ -10,6 +19,8 @@ export interface StatCardProps {
     label: string;
     /** Optional sub-label for supplementary info */
     subLabel?: React.ReactNode;
+    /** Optional tooltip explaining what this card means, shown via an info icon next to the label */
+    infoTooltip?: string;
     /** Optional badge text shown next to the icon (e.g. "+12%", "Tuần này") */
     badge?: string;
     /** Badge color variant */
@@ -29,6 +40,7 @@ const StatCard: React.FC<StatCardProps> = ({
     value,
     label,
     subLabel,
+    infoTooltip,
     badge,
     badgeVariant = 'green',
     onClick,
@@ -45,7 +57,21 @@ const StatCard: React.FC<StatCardProps> = ({
                 )}
             </div>
             <div className={styles.statValue}>{value}</div>
-            <div className={styles.statLabel}>{label}</div>
+            <div className={styles.statLabelRow}>
+                <span className={styles.statLabel}>{label}</span>
+                {infoTooltip && (
+                    <span
+                        className={styles.infoTooltip}
+                        tabIndex={0}
+                        role="img"
+                        aria-label={`Thông tin: ${infoTooltip}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <InfoIcon />
+                        <span className={styles.infoTooltipBubble}>{infoTooltip}</span>
+                    </span>
+                )}
+            </div>
             {subLabel && <div className={styles.statSubLabel}>{subLabel}</div>}
         </>
     );
