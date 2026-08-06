@@ -39,6 +39,7 @@ const AdminFinanceNewPage = lazy(() => import('./pages/AdminFinanceNew/AdminFina
 const AdminRevenueReportsPage = lazy(() => import('./pages/AdminRevenueReports/AdminRevenueReportsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
+const AdminFeedbacksPage = lazy(() => import('./pages/AdminFeedbacks/AdminFeedbacksPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
 const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBase/KnowledgeBasePage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
@@ -70,6 +71,7 @@ const PortalIndexRedirect = () => {
     ['certificate.view', '/admin-portal/vetting/certificates'],
     ['dispute.view', '/admin-portal/disputes'],
     ['warning.view', '/admin-portal/warnings'],
+    ['feedback.view', '/admin-portal/feedbacks'],
     ['question_bank.view', '/admin-portal/question-bank'],
     ['knowledge_base.view', '/admin-portal/knowledge-base'],
     ['financial.view', '/admin-portal/financials'],
@@ -181,6 +183,7 @@ function App() {
                 element={guard(<AdminRevenueReportsPage />, 'financial.view')}
               />
               <Route path="warnings" element={guard(<AdminWarningsPage />, 'warning.view')} />
+              <Route path="feedbacks" element={guard(<AdminFeedbacksPage />, 'feedback.view')} />
               <Route path="resources" element={<Navigate to="/admin-portal/resources/subjects" replace />} />
               <Route path="resources/subjects" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
               <Route path="resources/grade-levels" element={guard(<AdminSubjectsPage />, 'lookup.view')} />

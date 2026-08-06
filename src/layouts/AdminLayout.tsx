@@ -74,6 +74,7 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
         ]
       },
+      { path: '/admin-portal/feedbacks', label: 'Đánh giá', materialIcon: 'reviews', permission: 'feedback.view' },
       {
         path: '/admin-portal/reports',
         label: 'Báo cáo',
