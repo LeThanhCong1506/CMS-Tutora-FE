@@ -10,9 +10,10 @@ import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadg
 import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
 import HideFeedbackModal from './HideFeedbackModal';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-feedbacks.css';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 type VisibilityTab = 'all' | 'visible' | 'hidden';
 

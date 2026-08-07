@@ -51,6 +51,8 @@ const EscrowManagementTab = () => {
                 data={mockEscrowBookings}
                 rowKey="bookingCode"
                 variant="embedded"
+                density="compact"
+                adaptive
                 minWidth={820}
             />
         </div>

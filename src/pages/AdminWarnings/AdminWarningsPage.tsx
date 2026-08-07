@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { getActiveSuspensions, getUserWarnings, unsuspendUser } from '../../services/admin.service';
@@ -83,7 +84,7 @@ const AdminWarningsPage: React.FC = () => {
     const [suspensionsTotal, setSuspensionsTotal] = useState(0);
     const [suspensionsLoading, setSuspensionsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10;
+    const pageSize = ADMIN_PAGE_SIZE;
     const [searchUserId, setSearchUserId] = useState('');
     const [warningSummary, setWarningSummary] = useState<AdminUserWarningSummary | null>(null);
     const [lookupLoading, setLookupLoading] = useState(false);
@@ -319,6 +320,8 @@ const AdminWarningsPage: React.FC = () => {
                         }}
                         minWidth={1080}
                         variant="embedded"
+                        density="compact"
+                        adaptive
                     />
                 </SectionCard>
             )}
@@ -425,6 +428,8 @@ const AdminWarningsPage: React.FC = () => {
                                     }
                                     minWidth={760}
                                     variant="embedded"
+                                    density="compact"
+                                    adaptive
                                 />
                             </SectionCard>
                         </>

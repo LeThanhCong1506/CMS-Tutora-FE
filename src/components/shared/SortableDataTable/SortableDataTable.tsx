@@ -18,14 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  EllipsisVertical,
-  GripVertical,
-} from 'lucide-react';
+import { EllipsisVertical, GripVertical } from 'lucide-react';
 import {
   type ColumnDef,
   flexRender,
@@ -35,9 +28,9 @@ import {
   type Row,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TablePagination } from '../DataTable';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +38,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const PAGE_SIZES = [10, 20, 30, 40, 50];
 
 /** Tay cầm kéo-thả — tách riêng để chỉ phần này nhận sự kiện drag. */
 function DragHandle({ id, disabled, title }: { id: number; disabled: boolean; title?: string }) {
@@ -200,6 +191,8 @@ export function SortableDataTable<T extends { id: number }>({
     getRowId: (row) => String(row.id),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Khai rõ thay vì dựa vào mặc định của TanStack, để cùng một con số với DataTable.
+    initialState: { pagination: { pageIndex: 0, pageSize: ADMIN_PAGE_SIZE } },
   });
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -271,81 +264,18 @@ export function SortableDataTable<T extends { id: number }>({
             </TableBody>
           </Table>
         </DndContext>
-      </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-[rgba(62,47,40,0.1)] bg-white px-4 py-2.5">
-        <div className="hidden flex-1 text-sm text-[rgba(62,47,40,0.65)] lg:flex">
-          {data.length} mục
-        </div>
-        <div className="flex w-full items-center gap-8 lg:w-fit">
-          <div className="hidden items-center gap-2 lg:flex">
-            <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              Số dòng mỗi trang
-            </Label>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-              items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
-            >
-              <SelectTrigger size="sm" className="w-20 cursor-pointer" id="rows-per-page">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZES.map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex w-fit items-center justify-center text-sm font-medium">
-            Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
-          </div>
-
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
-            <Button
-              variant="outline"
-              className="hidden size-8 cursor-pointer p-0 lg:flex"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Trang đầu</span>
-              <ChevronsLeft />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8 cursor-pointer"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Trang trước</span>
-              <ChevronLeft />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8 cursor-pointer"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Trang sau</span>
-              <ChevronRight />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="hidden size-8 cursor-pointer lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Trang cuối</span>
-              <ChevronsRight />
-            </Button>
-          </div>
-        </div>
+        {/* Dùng chung thanh phân trang với DataTable, và đặt BÊN TRONG thẻ trắng ngay dưới
+            bảng đúng như DataTable — để ngoài thẻ thì trông vẫn lệch dù cùng một control.
+            Bỏ ô "số dòng mỗi trang" vì DataTable không có. */}
+        <TablePagination
+          config={{
+            current: table.getState().pagination.pageIndex + 1,
+            pageSize: table.getState().pagination.pageSize,
+            total: data.length,
+            onChange: (page) => table.setPageIndex(page - 1),
+          }}
+        />
       </div>
     </div>
   );

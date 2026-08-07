@@ -75,6 +75,8 @@ const TaxWithholdingTab = () => {
                     data={mockTaxDeclarations}
                     rowKey="id"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={640}
                 />
             </div>
@@ -107,6 +109,8 @@ const TaxWithholdingTab = () => {
                     data={mockWithholdingRecords}
                     rowKey="id"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={760}
                 />
             </div>

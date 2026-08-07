@@ -60,6 +60,8 @@ const CommissionConfigTab = () => {
                     data={cfg.history}
                     rowKey="effectiveFrom"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={560}
                 />
             </div>

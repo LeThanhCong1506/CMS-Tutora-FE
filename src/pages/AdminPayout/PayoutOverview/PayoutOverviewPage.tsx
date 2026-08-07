@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -24,7 +25,7 @@ const PayoutOverviewPage: React.FC = () => {
   const [requests, setRequests] = useState<WithdrawalRequestItem[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(ADMIN_PAGE_SIZE);
   const [activeTab, setActiveTab] = useState('all');
   const navigate = useNavigate();
 

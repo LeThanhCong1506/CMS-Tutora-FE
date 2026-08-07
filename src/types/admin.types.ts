@@ -512,8 +512,10 @@ export interface DisputeForAdmin {
 export type ListSortDirection = 'asc' | 'desc';
 
 export interface DisputeQueryParams {
-  status?: string;
-  disputeType?: string;
+  status?: DisputeStatus;
+  disputeType?: DisputeType;
+  /** Tìm theo mã hồ sơ, booking, buổi học, người dùng hoặc nội dung phản ánh. */
+  search?: string;
   startDate?: string;
   endDate?: string;
   /** Chỉ lấy phản ánh về buổi học này. */
@@ -522,6 +524,14 @@ export interface DisputeQueryParams {
   sortDirection?: ListSortDirection;
   page?: number;
   pageSize?: number;
+}
+
+/** Nội dung phân trang ổn định của GET /api/admin/disputes. */
+export interface DisputeListPageResponse {
+  items: DisputeForAdmin[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface DisputeStatsDto {

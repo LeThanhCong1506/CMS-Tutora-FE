@@ -48,6 +48,8 @@ const RefundManagementTab = () => {
                 data={mockRefundRequests}
                 rowKey="id"
                 variant="embedded"
+                density="compact"
+                adaptive
                 minWidth={900}
             />
         </div>

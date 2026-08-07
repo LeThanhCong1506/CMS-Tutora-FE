@@ -115,6 +115,8 @@ const LiquidityReconciliationTab = () => {
                     data={mockReconciliationRecords}
                     rowKey="id"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={860}
                 />
             </div>

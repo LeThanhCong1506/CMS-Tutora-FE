@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import {
@@ -39,7 +40,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
-    const [limit] = useState(10);
+    const [limit] = useState(ADMIN_PAGE_SIZE);
 
     // Filters. When the view is locked to a role, that role is the effective
     // filter and the dropdown is hidden.

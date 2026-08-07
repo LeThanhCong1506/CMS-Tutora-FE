@@ -64,6 +64,8 @@ const TutorTaxProfilesTab = () => {
                     rowKey="tutorId"
                     onRowClick={(record) => setSelected(record)}
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={700}
                     rowAriaLabel={(record) => `Xem hồ sơ thuế của ${record.tutorName}`}
                 />
