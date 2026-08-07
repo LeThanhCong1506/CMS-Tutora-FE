@@ -30,13 +30,17 @@ export function useClientPagination<T>(
 ): ClientPagination<T> {
     const [rawPage, setPage] = useState(1);
 
-    const total = items.length;
+    // Vài service của CMS khai kiểu trả về là mảng nhưng thực tế nhận về object phân trang
+    // của BE. Chặn ở đây để một service khai sai kiểu không làm sập cả trang.
+    const safeItems = Array.isArray(items) ? items : [];
+
+    const total = safeItems.length;
     const lastPage = Math.max(1, Math.ceil(total / pageSize));
     const page = Math.min(Math.max(1, rawPage), lastPage);
 
     const pageItems = useMemo(
-        () => items.slice((page - 1) * pageSize, page * pageSize),
-        [items, page, pageSize],
+        () => safeItems.slice((page - 1) * pageSize, page * pageSize),
+        [safeItems, page, pageSize],
     );
 
     return { page, setPage, pageItems, total, pageSize };

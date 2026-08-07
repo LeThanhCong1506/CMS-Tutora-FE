@@ -14,7 +14,7 @@ import type {
   PendingCertificate,
   PendingCertificatesResponse,
   // Disputes (backend-compatible)
-  DisputeForAdmin,
+  DisputePage,
   DisputeDetail,
   DisputeStatsDto,
   DisputeQueryParams,
@@ -336,11 +336,22 @@ export const getPendingCertificates = async (
  * Backend: GET /api/admin/disputes?status=&page=&pageSize=
  * Returns APIResponse<PagedList<DisputeListDto>>
  */
-export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeForAdmin[]> => {
+export const getDisputes = async (
+  params?: DisputeQueryParams,
+): Promise<DisputePage> => {
   try {
     const { data } = await api.get('/admin/disputes', { params });
-    // Backend returns APIResponse<PagedList<T>> where PagedList serializes as array with pagination metadata
-    return data.content || [];
+    // BE trả APIResponse<DisputeListPageResponse> = { items, totalCount, page, pageSize }.
+    // Trước đây hàm này gán thẳng `data.content` vào một mảng — sai kiểu, `items` không bao
+    // giờ được bóc ra. Vẫn nhận cả dạng mảng phòng môi trường chạy bản BE cũ hơn.
+    const content = data.content;
+    if (Array.isArray(content)) {
+      return { items: content, totalCount: content.length };
+    }
+    return {
+      items: content?.items ?? [],
+      totalCount: content?.totalCount ?? content?.items?.length ?? 0,
+    };
   } catch (error) {
     console.error('getDisputes error:', error);
     throw error;

@@ -6,12 +6,10 @@ import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
-import { useClientPagination } from '../../hooks/useClientPagination';
 
 type DisputeTab = 'all' | 'pending' | 'investigating' | 'resolved';
 
-/** Số bản ghi kéo về một lượt để lọc và phân trang phía client. */
-const DISPUTE_FETCH_SIZE = 200;
+const PAGE_SIZE = 20;
 
 const getStatusVariant = (status?: string | null): StatusVariant => {
     switch (status) {
@@ -72,30 +70,33 @@ const AdminDisputesPage = () => {
     const [classSessionInput, setClassSessionInput] = useState('');
     const [classSessionFilter, setClassSessionFilter] = useState<number | undefined>(undefined);
     const [sortDirection, setSortDirection] = useState<ListSortDirection>('desc');
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
 
     const fetchDisputes = useCallback(async () => {
         try {
             setLoading(true);
             const statusFilter = activeTab === 'all' ? undefined : activeTab;
-            const data = await getDisputes({
+            // Phân trang phía server: endpoint trả kèm totalCount nên đếm được tổng thật.
+            // Trước đây trang này cố định page 1 / size 20 mà không render thanh phân trang,
+            // nên hồ sơ thứ 21 trở đi không có cách nào xem được.
+            const { items, totalCount } = await getDisputes({
                 status: statusFilter,
                 classSessionId: classSessionFilter,
                 sortDirection,
-                page: 1,
-                // Lấy nguyên khối rồi phân trang phía client: endpoint trả mảng thuần, không
-                // có tổng số nên không phân trang phía server được. Trước đây cố định 20 mà
-                // lại không có UI phân trang, nên hồ sơ thứ 21 trở đi không cách nào xem được
-                // và ô tìm kiếm cũng chỉ lọc trong 20 dòng đầu.
-                pageSize: DISPUTE_FETCH_SIZE,
+                page,
+                pageSize: PAGE_SIZE,
             });
-            setDisputes(data);
+            setDisputes(items);
+            setTotal(totalCount);
         } catch (err) {
             console.error('Error fetching disputes:', err);
             setDisputes([]);
+            setTotal(0);
         } finally {
             setLoading(false);
         }
-    }, [activeTab, classSessionFilter, sortDirection]);
+    }, [activeTab, classSessionFilter, sortDirection, page]);
 
     const applyClassSessionFilter = () => {
         setClassSessionFilter(parseIdFilter(classSessionInput));
@@ -158,8 +159,10 @@ const AdminDisputesPage = () => {
         });
     }, [disputes, searchQuery]);
 
-    const { page, setPage, pageItems: pagedDisputes, total, pageSize } =
-        useClientPagination(filteredDisputes);
+    // Đổi bộ lọc thì về trang 1, nếu không sẽ đứng ở trang không còn tồn tại.
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, classSessionFilter, sortDirection]);
 
     const disputeColumns: DataTableColumn<DisputeForAdmin>[] = [
         {
@@ -382,7 +385,7 @@ const AdminDisputesPage = () => {
 
                 <DataTable
                     columns={disputeColumns}
-                    data={pagedDisputes}
+                    data={filteredDisputes}
                     rowKey="disputeId"
                     onRowClick={(dispute) => navigate(`/admin-portal/disputes/${dispute.disputeId}`)}
                     rowAriaLabel={(dispute) => `Mở hồ sơ phản ánh ${dispute.disputeId}`}
@@ -401,7 +404,7 @@ const AdminDisputesPage = () => {
                             forum
                         </span>
                     }
-                    pagination={{ current: page, pageSize, total, onChange: setPage }}
+                    pagination={{ current: page, pageSize: PAGE_SIZE, total, onChange: setPage }}
                     minWidth={860}
                     variant="embedded"
                     density="compact"

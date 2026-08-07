@@ -511,6 +511,12 @@ export interface DisputeForAdmin {
 /** Cũ nhất trước / mới nhất trước, theo thời gian tạo. Khớp BE `ListSortDirection`. */
 export type ListSortDirection = 'asc' | 'desc';
 
+/** Khớp `DisputeListPageResponse` ở BE — endpoint trả object có tổng số, không phải mảng. */
+export interface DisputePage {
+  items: DisputeForAdmin[];
+  totalCount: number;
+}
+
 export interface DisputeQueryParams {
   status?: string;
   disputeType?: string;
