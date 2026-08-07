@@ -1,6 +1,7 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useMemo, useState } from 'react';
 
-export const DEFAULT_PAGE_SIZE = 20;
+export const DEFAULT_PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 export interface ClientPagination<T> {
     /** Trang hiện tại, đã kẹp trong khoảng hợp lệ. */

@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TablePagination } from '../DataTable';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -190,6 +191,8 @@ export function SortableDataTable<T extends { id: number }>({
     getRowId: (row) => String(row.id),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Khai rõ thay vì dựa vào mặc định của TanStack, để cùng một con số với DataTable.
+    initialState: { pagination: { pageIndex: 0, pageSize: ADMIN_PAGE_SIZE } },
   });
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {

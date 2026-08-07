@@ -13,9 +13,10 @@ import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
 import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-vetting.css';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 const DEFAULT_ORDER = 'createdat_asc';
 
 // Các cặp field (cũ/đề xuất) để vẽ diff cho tab "Yêu cầu cập nhật hồ sơ".

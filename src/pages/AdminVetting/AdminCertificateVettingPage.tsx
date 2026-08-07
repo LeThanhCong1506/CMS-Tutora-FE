@@ -6,9 +6,10 @@ import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
 import type { PendingCertificate } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-vetting.css';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 type ApiError = {
   response?: { status?: number };

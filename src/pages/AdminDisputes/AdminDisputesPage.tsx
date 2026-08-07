@@ -5,11 +5,12 @@ import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { parseIdFilter } from '../../utils/idFilter';
 
 type DisputeTab = 'all' | 'pending' | 'investigating' | 'resolved';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 const getStatusVariant = (status?: string | null): StatusVariant => {
     switch (status) {

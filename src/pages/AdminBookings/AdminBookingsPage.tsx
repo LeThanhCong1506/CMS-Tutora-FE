@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -21,7 +22,8 @@ export default function AdminBookingsPage() {
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+    // Mặc định theo hằng số chung; ô chọn vẫn cho đổi sang 5 hoặc 20.
+    const [pageSize, setPageSize] = useState<number>(ADMIN_PAGE_SIZE);
 
     const [status, setStatus] = useState('');
     const [from, setFrom] = useState('');

@@ -8,12 +8,13 @@ import type { DataTableColumn } from '../../components/shared';
 import type { StaffListItem } from '../../types/staff.types';
 import type { PermissionGroupSummary } from '../../types/access.types';
 import CreateStaffModal from './components/CreateStaffModal';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 
 import '../../styles/pages/admin-user-management.css';
 import '../../styles/pages/admin-vetting-modal.css';
 import '../../styles/pages/admin-staff.css';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 const avatarFor = (staff: StaffListItem): string =>
   staff.avatarurl ||
