@@ -14,10 +14,11 @@ import type {
   PendingCertificate,
   PendingCertificatesResponse,
   // Disputes (backend-compatible)
-  DisputePage,
+  DisputeForAdmin,
   DisputeDetail,
   DisputeStatsDto,
   DisputeQueryParams,
+  DisputeListPageResponse,
   ResolveDisputeRequest,
   SessionLog,
   TutorReliability,
@@ -333,24 +334,31 @@ export const getPendingCertificates = async (
 
 /**
  * Get list of disputes with optional filtering
- * Backend: GET /api/admin/disputes?status=&page=&pageSize=
- * Returns APIResponse<PagedList<DisputeListDto>>
+ * Backend: GET /api/admin/disputes?search=&status=&disputeType=&classSessionId=&sortDirection=&page=&pageSize=
+ * Returns APIResponse<DisputeListPageResponse>
  */
-export const getDisputes = async (
-  params?: DisputeQueryParams,
-): Promise<DisputePage> => {
+export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeListPageResponse> => {
   try {
     const { data } = await api.get('/admin/disputes', { params });
-    // BE trả APIResponse<DisputeListPageResponse> = { items, totalCount, page, pageSize }.
-    // Trước đây hàm này gán thẳng `data.content` vào một mảng — sai kiểu, `items` không bao
-    // giờ được bóc ra. Vẫn nhận cả dạng mảng phòng môi trường chạy bản BE cũ hơn.
-    const content = data.content;
+    const content = data.content as DisputeListPageResponse | DisputeForAdmin[] | null | undefined;
+
+    // Compatibility for a short staggered rollout: the previous endpoint serialized PagedList<T>
+    // as a bare array and therefore could not expose a reliable total count.
     if (Array.isArray(content)) {
-      return { items: content, totalCount: content.length };
+      return {
+        items: content,
+        totalCount: content.length,
+        page: params?.page ?? 1,
+        pageSize: params?.pageSize ?? 20,
+      };
     }
+
+    const items = Array.isArray(content?.items) ? content.items : [];
     return {
-      items: content?.items ?? [],
-      totalCount: content?.totalCount ?? content?.items?.length ?? 0,
+      items,
+      totalCount: content?.totalCount ?? items.length,
+      page: content?.page ?? params?.page ?? 1,
+      pageSize: content?.pageSize ?? params?.pageSize ?? 20,
     };
   } catch (error) {
     console.error('getDisputes error:', error);
@@ -364,7 +372,8 @@ export const getDisputes = async (
 export const getDisputesLegacy = async (filters?: FilterParams): Promise<DisputeListItem[]> => {
   try {
     const { data } = await api.get('/admin/disputes', { params: filters });
-    return data.content || [];
+    const content = data.content as { items?: DisputeListItem[] } | DisputeListItem[] | null | undefined;
+    return Array.isArray(content) ? content : (content?.items ?? []);
   } catch (error) {
     console.error('getDisputesLegacy error:', error);
     throw error;

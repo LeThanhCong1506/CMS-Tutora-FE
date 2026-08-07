@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   getPendingTutors,
@@ -104,7 +105,12 @@ const AdminVettingPage = () => {
   const [rejectionNote, setRejectionNote] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'new' | 'updates'>(canViewNew ? 'new' : 'updates');
+  const [searchParams] = useSearchParams();
+  // Cho phép deep-link thẳng vào tab "Yêu cầu cập nhật hồ sơ" (?tab=updates) — dùng khi Admin
+  // bấm vào thông báo "Yêu cầu cập nhật hồ sơ gia sư" từ NotificationDropdown.
+  const [activeTab, setActiveTab] = useState<'new' | 'updates'>(
+    searchParams.get('tab') === 'updates' && canViewUpdates ? 'updates' : canViewNew ? 'new' : 'updates',
+  );
   const [updateRequests, setUpdateRequests] = useState<ProfileUpdateRequestFromAPI[]>([]);
   const [updateRequestsLoading, setUpdateRequestsLoading] = useState(canViewUpdates);
   const [updateRequestsError, setUpdateRequestsError] = useState<string | null>(null);

@@ -8,6 +8,46 @@
     max-width: 320px;
 }
 
+.dispute-list-case-link {
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dispute-list-case-link:focus-visible,
+.dispute-list-priority:focus-visible {
+    outline: 2px solid rgba(212, 180, 131, 0.9);
+    outline-offset: 3px;
+}
+
+.dispute-list-priority {
+    display: inline-flex;
+    border-radius: var(--radius-sm);
+}
+
+.dispute-list-toolbar {
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 12px 16px;
+}
+
+.dispute-list-search-form {
+    display: flex;
+    flex: 1 1 520px;
+    align-items: center;
+    gap: 8px;
+    min-width: min(100%, 360px);
+}
+
+.dispute-list-search-form .admin-ui-search {
+    max-width: none;
+}
+
 /* Bộ lọc id buổi học + chọn thứ tự, đặt cùng hàng với ô tìm kiếm trên toolbar. */
 .dispute-list-filter {
     display: flex;
@@ -40,6 +80,10 @@
     width: 128px;
 }
 
+.dispute-list-filter__select {
+    min-width: 148px;
+}
+
 .dispute-list-filter__input::placeholder {
     color: var(--color-navy-40);
 }
@@ -63,12 +107,35 @@
     font-size: 16px;
 }
 
+.dispute-list-load-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(153, 27, 27, 0.12);
+    background: rgba(153, 27, 27, 0.055);
+    color: #7f1d1d;
+    font-size: 13px;
+}
+
+.dispute-list-load-error > span:nth-child(2) {
+    flex: 1;
+}
+
+.dispute-list-load-error > .material-symbols-outlined {
+    font-size: 19px;
+}
+
 @media (max-width: 900px) {
     .dispute-kpi-grid {
         grid-template-columns: repeat(3, minmax(180px, 1fr));
         overflow-x: auto;
         padding-bottom: 3px;
         scrollbar-width: thin;
+    }
+
+    .dispute-list-search-form {
+        flex-basis: 100%;
     }
 }
 
@@ -86,5 +153,33 @@
     .dispute-list-parties .admin-ui-entity:last-child,
     .dispute-list-arrow {
         display: none;
+    }
+
+    .dispute-list-toolbar,
+    .dispute-list-search-form,
+    .dispute-list-filter {
+        width: 100%;
+    }
+
+    .dispute-list-search-form {
+        flex-wrap: wrap;
+    }
+
+    .dispute-list-search-form .admin-ui-search {
+        flex-basis: 100%;
+    }
+
+    .dispute-list-filter__select {
+        flex: 1;
+    }
+
+    .dispute-list-load-error {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding-inline: 16px;
+    }
+
+    .dispute-list-load-error .admin-ui-button {
+        margin-left: 29px;
     }
 }
