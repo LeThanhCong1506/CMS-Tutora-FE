@@ -17,6 +17,8 @@ export interface FilterTabsProps {
     onChange: (key: string) => void;
     /** Custom className */
     className?: string;
+    /** Accessible name for the filter group */
+    ariaLabel?: string;
 }
 
 /**
@@ -40,15 +42,17 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
     activeKey,
     onChange,
     className,
+    ariaLabel = 'Bộ lọc',
 }) => {
     return (
-        <div className={`${styles.tabGroup} ${className || ''}`}>
+        <div className={`${styles.tabGroup} ${className || ''}`} role="group" aria-label={ariaLabel}>
             {tabs.map((tab) => (
                 <button
                     key={tab.key}
                     className={`${styles.tabBtn} ${activeKey === tab.key ? styles.active : ''}`}
                     onClick={() => onChange(tab.key)}
                     type="button"
+                    aria-pressed={activeKey === tab.key}
                 >
                     {tab.label}
                 </button>
