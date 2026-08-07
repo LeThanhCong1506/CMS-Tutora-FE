@@ -1,0 +1,112 @@
+/* ===== ADMIN FEEDBACKS PAGE ===== */
+
+.feedback-toolbar {
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+}
+
+.feedback-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feedback-filter__label {
+    color: var(--color-navy-60);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.feedback-filter__select {
+    min-width: 140px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-navy-60);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.feedback-filter__select:focus-visible {
+    border-color: #94a3b8;
+    outline: none;
+}
+
+.feedback-stars {
+    color: #e2a03f;
+    font-size: 14px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.feedback-stars__dim {
+    color: #d8dbe0;
+}
+
+/* Nhận xét có thể rất dài — cắt một dòng để không phá nhịp bảng. */
+.feedback-comment {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.feedback-action-button {
+    min-width: 64px;
+}
+
+@media (max-width: 720px) {
+    .feedback-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .feedback-filter {
+        justify-content: space-between;
+    }
+}
+
+/* Lý do ẩn hiển thị dưới badge trạng thái — cắt một dòng, hover xem đầy đủ. */
+.feedback-hidden-reason {
+    display: block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Trích đánh giá đang xem xét, hiển thị trong modal ẩn. */
+.feedback-preview {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.feedback-preview__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.feedback-preview__meta {
+    color: var(--color-navy-60);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.feedback-preview__comment {
+    margin: 0;
+    color: var(--color-navy-60);
+    font-size: 13px;
+    line-height: 1.6;
+}
