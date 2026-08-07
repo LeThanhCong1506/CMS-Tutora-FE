@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +13,7 @@ const PendingReviewPage: React.FC = () => {
     const [items, setItems] = useState<PendingReviewItem[]>([]);
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [pageSize, setPageSize] = useState(ADMIN_PAGE_SIZE);
     const navigate = useNavigate();
 
     const fetchPending = useCallback(async () => {

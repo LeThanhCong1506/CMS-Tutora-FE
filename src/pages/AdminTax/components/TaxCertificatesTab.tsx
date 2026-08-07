@@ -66,6 +66,8 @@ const TaxCertificatesTab = () => {
                     rowKey="id"
                     onRowClick={(record) => setSelected(record)}
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={700}
                     rowAriaLabel={(record) => `Xem chứng từ khấu trừ của ${record.tutorName}`}
                 />

@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { DataTable } from '../../../components/shared';
@@ -9,7 +10,7 @@ import { formatCurrency, formatDateTime, formatTransactionType } from '../../../
 // TEMP: mock fallback for local UI preview while the backend is offline — see src/mocks/financialsMockFallback.ts
 import { mockLedgerTransactions } from '../../../mocks/financialsMockFallback';
 
-const ledgerPageSize = 50;
+const ledgerPageSize = ADMIN_PAGE_SIZE;
 
 // Tutora-Backend/MV.DomainLayer/Constants/TransactionType.cs — the only valid values.
 const TRANSACTION_TYPE_OPTIONS = [
@@ -288,6 +289,8 @@ const TransactionLedger = () => {
                 }}
                 minWidth={940}
                 variant="embedded"
+                density="compact"
+                adaptive
             />
         </div>
     );

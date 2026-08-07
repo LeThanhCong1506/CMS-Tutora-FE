@@ -177,6 +177,8 @@ const TaxConfigTab = () => {
                     data={historyRows}
                     rowKey="effectiveFrom"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={720}
                 />
             </div>

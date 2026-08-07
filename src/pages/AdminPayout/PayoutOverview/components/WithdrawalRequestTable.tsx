@@ -146,6 +146,8 @@ const WithdrawalRequestTable: React.FC<Props> = ({
       className="payout-request-table"
       minWidth={1040}
       variant="embedded"
+      density="compact"
+      adaptive
     />
   );
 };

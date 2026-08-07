@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
@@ -28,7 +29,7 @@ const AdminFinancialsPage = () => {
     const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequestItem[]>([]);
     const [withdrawalTotal, setWithdrawalTotal] = useState(0);
     const [withdrawalPage, setWithdrawalPage] = useState(1);
-    const [withdrawalPageSize, setWithdrawalPageSize] = useState(10);
+    const [withdrawalPageSize, setWithdrawalPageSize] = useState(ADMIN_PAGE_SIZE);
     const [withdrawalLoading, setWithdrawalLoading] = useState(true);
 
     const [activeTab, setActiveTab] = useState<FinancialTab>('withdrawals');

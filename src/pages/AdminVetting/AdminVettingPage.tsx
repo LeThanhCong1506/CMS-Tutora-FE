@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ConfigProvider, Pagination } from 'antd';
-import viVN from 'antd/locale/vi_VN';
 import { toast } from 'react-toastify';
 import {
   getPendingTutors,
@@ -16,9 +14,10 @@ import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
 import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-vetting.css';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 const DEFAULT_ORDER = 'createdat_asc';
 
 // Các cặp field (cũ/đề xuất) để vẽ diff cho tab "Yêu cầu cập nhật hồ sơ".
@@ -560,44 +559,9 @@ const AdminVettingPage = () => {
                 </button>
               }
               footer={
-                <div className="certificate-table-footer">
-                  <span>
-                    {searchQuery
-                      ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
-                      : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`}
-                  </span>
-                  {total > PAGE_SIZE && (
-                    <ConfigProvider
-                      locale={viVN}
-                      theme={{
-                        token: {
-                          colorPrimary: '#1a2238',
-                          borderRadius: 8,
-                          fontFamily: "'IBM Plex Sans', sans-serif",
-                        },
-                        components: {
-                          Pagination: {
-                            itemActiveBg: '#1a2238',
-                            itemActiveColor: '#ffffff',
-                            itemActiveColorHover: '#ffffff',
-                            itemBg: 'transparent',
-                            itemLinkBg: 'transparent',
-                          },
-                        },
-                      }}
-                    >
-                      <Pagination
-                        current={page}
-                        pageSize={PAGE_SIZE}
-                        total={total}
-                        onChange={(nextPage) => setPage(nextPage)}
-                        showSizeChanger={false}
-                        showLessItems
-                        responsive
-                      />
-                    </ConfigProvider>
-                  )}
-                </div>
+                searchQuery
+                  ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
+                  : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`
               }
             >
               <div className="certificate-vetting-toolbar">
@@ -674,8 +638,17 @@ const AdminVettingPage = () => {
                     </span>
                   }
                   onRowClick={(tutor) => setSelectedTutor(tutor)}
+                  tableLabel="Hồ sơ gia sư chờ duyệt"
+                  pagination={{
+                    current: page,
+                    pageSize: PAGE_SIZE,
+                    total,
+                    onChange: setPage,
+                  }}
                   minWidth={900}
                   variant="embedded"
+                  density="compact"
+                  adaptive
                 />
               )}
             </SectionCard>
@@ -699,11 +672,7 @@ const AdminVettingPage = () => {
                   Làm mới
                 </button>
               }
-              footer={
-                <div className="certificate-table-footer">
-                  <span>{`Hiển thị ${updateRequests.length} yêu cầu`}</span>
-                </div>
-              }
+              footer={`Hiển thị ${updateRequests.length} yêu cầu`}
             >
               {updateRequestsError && !updateRequestsLoading ? (
                 <div className="vetting-error-state">
@@ -730,8 +699,11 @@ const AdminVettingPage = () => {
                       check_circle
                     </span>
                   }
+                  tableLabel="Yêu cầu cập nhật hồ sơ"
                   minWidth={920}
                   variant="embedded"
+                  density="compact"
+                  adaptive
                 />
               )}
             </SectionCard>

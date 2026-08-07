@@ -11,6 +11,7 @@ import {
     mockRestoreSubject,
 } from '../mockData';
 import SubjectModal from './SubjectModal';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 type FilterStatus = 'all' | 'active' | 'inactive';
 
@@ -88,6 +89,9 @@ const SubjectsManagement = () => {
             return matchesStatus && matchesSearch;
         });
     }, [filterStatus, searchQuery, subjects]);
+
+    const { page, setPage, pageItems: pagedSubjects, total, pageSize } =
+        useClientPagination(filteredSubjects);
 
     const handleAddSubject = () => {
         setEditingSubject(null);
@@ -279,7 +283,7 @@ const SubjectsManagement = () => {
 
                 <DataTable
                     columns={columns}
-                    data={filteredSubjects}
+                    data={pagedSubjects}
                     rowKey="subjectid"
                     loading={loading}
                     loadingText="Đang tải danh sách môn học..."
@@ -290,7 +294,10 @@ const SubjectsManagement = () => {
                             ? 'Không có môn học nào đã xóa'
                             : 'Chưa có môn học nào'
                     }
+                    pagination={{ current: page, pageSize, total, onChange: setPage }}
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={920}
                 />
             </SectionCard>

@@ -6,10 +6,11 @@ import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 
 type DisputeTab = 'all' | DisputeStatus;
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 const getStatusVariant = (status?: string | null): StatusVariant => {
     switch (status) {
@@ -483,6 +484,7 @@ const AdminDisputesPage = () => {
                     minWidth={860}
                     variant="embedded"
                     density="compact"
+                    adaptive
                 />
             </SectionCard>
         </PageContainer>

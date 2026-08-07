@@ -96,7 +96,12 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
-function TablePagination({ config }: { config: PaginationConfig }) {
+/**
+ * Thanh phân trang dùng chung cho mọi bảng danh sách trong admin. Export ra ngoài để
+ * `SortableDataTable` dùng lại — trước đây nó tự dựng thanh riêng nên hai loại bảng
+ * hiển thị phân trang khác hẳn nhau.
+ */
+export function TablePagination({ config }: { config: PaginationConfig }) {
     const { current, pageSize, total, onChange } = config;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 

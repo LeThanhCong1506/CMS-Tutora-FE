@@ -24,7 +24,7 @@ export type { FilterTabsProps, TabItem } from './FilterTabs';
 export { PageContainer } from './PageContainer';
 export type { PageContainerProps } from './PageContainer';
 
-export { DataTable } from './DataTable';
+export { DataTable, TablePagination } from './DataTable';
 export type { DataTableProps, DataTableColumn, PaginationConfig } from './DataTable';
 
 export { SortableDataTable } from './SortableDataTable';

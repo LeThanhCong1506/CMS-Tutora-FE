@@ -62,6 +62,7 @@ const TaxOverviewTab = () => {
                     rowKey="tutorId"
                     variant="embedded"
                     density="compact"
+                    adaptive
                     minWidth={360}
                 />
             </div>
