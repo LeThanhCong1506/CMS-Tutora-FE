@@ -929,8 +929,11 @@ export const getDisputeChatHistory = async (disputeId: string | number): Promise
 export interface DisputeRecording {
   disputeId: number;
   classSessionId?: number;
-  /** available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) | none. */
-  status: 'available' | 'processing' | 'recording' | 'none';
+  /**
+   * available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) |
+   * failed (buổi đã đóng phòng nhưng Agora không trả về file nào — bản ghi hỏng) | none.
+   */
+  status: 'available' | 'processing' | 'recording' | 'failed' | 'none';
   recordingUrl?: string;
   available: boolean;
 }
