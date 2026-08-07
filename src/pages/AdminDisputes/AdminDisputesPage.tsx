@@ -6,8 +6,12 @@ import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
+import { useClientPagination } from '../../hooks/useClientPagination';
 
 type DisputeTab = 'all' | 'pending' | 'investigating' | 'resolved';
+
+/** Số bản ghi kéo về một lượt để lọc và phân trang phía client. */
+const DISPUTE_FETCH_SIZE = 200;
 
 const getStatusVariant = (status?: string | null): StatusVariant => {
     switch (status) {
@@ -78,7 +82,11 @@ const AdminDisputesPage = () => {
                 classSessionId: classSessionFilter,
                 sortDirection,
                 page: 1,
-                pageSize: 20,
+                // Lấy nguyên khối rồi phân trang phía client: endpoint trả mảng thuần, không
+                // có tổng số nên không phân trang phía server được. Trước đây cố định 20 mà
+                // lại không có UI phân trang, nên hồ sơ thứ 21 trở đi không cách nào xem được
+                // và ô tìm kiếm cũng chỉ lọc trong 20 dòng đầu.
+                pageSize: DISPUTE_FETCH_SIZE,
             });
             setDisputes(data);
         } catch (err) {
@@ -149,6 +157,9 @@ const AdminDisputesPage = () => {
             return searchableText.includes(query);
         });
     }, [disputes, searchQuery]);
+
+    const { page, setPage, pageItems: pagedDisputes, total, pageSize } =
+        useClientPagination(filteredDisputes);
 
     const disputeColumns: DataTableColumn<DisputeForAdmin>[] = [
         {
@@ -371,7 +382,7 @@ const AdminDisputesPage = () => {
 
                 <DataTable
                     columns={disputeColumns}
-                    data={filteredDisputes}
+                    data={pagedDisputes}
                     rowKey="disputeId"
                     onRowClick={(dispute) => navigate(`/admin-portal/disputes/${dispute.disputeId}`)}
                     rowAriaLabel={(dispute) => `Mở hồ sơ phản ánh ${dispute.disputeId}`}
@@ -390,6 +401,7 @@ const AdminDisputesPage = () => {
                             forum
                         </span>
                     }
+                    pagination={{ current: page, pageSize, total, onChange: setPage }}
                     minWidth={860}
                     variant="embedded"
                     density="compact"

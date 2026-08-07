@@ -84,6 +84,8 @@ const TaxReportsTab = () => {
                         data={mockTaxDeclarations}
                         rowKey="id"
                         variant="embedded"
+                        density="compact"
+                        adaptive
                         minWidth={420}
                     />
                 </div>
@@ -94,6 +96,8 @@ const TaxReportsTab = () => {
                         data={mockTaxReportByTutor}
                         rowKey="tutorId"
                         variant="embedded"
+                        density="compact"
+                        adaptive
                         minWidth={480}
                     />
                 </div>
