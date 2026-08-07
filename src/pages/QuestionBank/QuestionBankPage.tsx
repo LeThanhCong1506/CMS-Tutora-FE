@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FileText, Plus, Search, ChevronDown, ArrowUpDown, X } from 'lucide-react';
-import { PageContainer } from '../../components/shared';
+import { PageContainer, TablePagination } from '../../components/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -201,8 +201,6 @@ const QuestionBankPage: React.FC = () => {
     setHasSolution(undefined);
     resetPage();
   };
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const chapterName = (id: number) => chapters.find((c) => c.id === id)?.name ?? `Chương #${id}`;
 
@@ -460,35 +458,19 @@ const QuestionBankPage: React.FC = () => {
           </TableBody>
         </Table>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-black">
-          <span>
-            {total} câu · trang {page}/{totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page <= 1}
-              onClick={() => {
-                setPage((p) => p - 1);
-                scrollToTop();
-              }}
-            >
-              Trước
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page >= totalPages}
-              onClick={() => {
-                setPage((p) => p + 1);
-                scrollToTop();
-              }}
-            >
-              Sau
-            </Button>
-          </div>
-        </div>
+        {/* Thanh phân trang dùng chung với các bảng admin khác, thay cho cặp nút Trước/Sau
+            tự dựng trước đây. */}
+        <TablePagination
+          config={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total,
+            onChange: (nextPage) => {
+              setPage(nextPage);
+              scrollToTop();
+            },
+          }}
+        />
       </div>
 
       {(editing || creating) && (

@@ -2,7 +2,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FileText, Loader2, UploadCloud, X } from 'lucide-react';
-import { PageContainer, ConfirmDialog } from '../../components/shared';
+import { PageContainer, ConfirmDialog, TablePagination } from '../../components/shared';
+import { useClientPagination } from '../../hooks/useClientPagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -54,6 +55,8 @@ const sourceTypeLabel = (t: string) => SOURCE_TYPE_LABEL[t?.toLowerCase()] ?? t;
 const KnowledgeBasePage: React.FC = () => {
   const { can } = useAccess();
   const [docs, setDocs] = useState<KbDocument[]>([]);
+  // Danh sách tài liệu trước đây đổ hết ra một trang.
+  const { page, setPage, pageItems: pagedDocs, total, pageSize } = useClientPagination(docs);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -281,7 +284,7 @@ const KnowledgeBasePage: React.FC = () => {
               </TableCell>
             </TableRow>
           ) : (
-            docs.map((d) => {
+            pagedDocs.map((d) => {
               const st = STATUS[d.status] ?? { label: d.status, variant: 'outline' as const };
               return (
                 <TableRow
@@ -321,6 +324,8 @@ const KnowledgeBasePage: React.FC = () => {
           )}
         </TableBody>
       </Table>
+
+      <TablePagination config={{ current: page, pageSize, total, onChange: setPage }} />
       </div>
 
       {/* Modal xem nội dung tài liệu — kiểu trang giấy đọc */}

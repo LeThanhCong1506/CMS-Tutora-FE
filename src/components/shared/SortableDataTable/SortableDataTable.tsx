@@ -264,18 +264,19 @@ export function SortableDataTable<T extends { id: number }>({
             </TableBody>
           </Table>
         </DndContext>
-      </div>
 
-      {/* Dùng chung thanh phân trang với DataTable để mọi bảng danh sách admin trông như một.
-          Bỏ ô "số dòng mỗi trang" vì DataTable không có — giữ lại sẽ lệch trở lại. */}
-      <TablePagination
-        config={{
-          current: table.getState().pagination.pageIndex + 1,
-          pageSize: table.getState().pagination.pageSize,
-          total: data.length,
-          onChange: (page) => table.setPageIndex(page - 1),
-        }}
-      />
+        {/* Dùng chung thanh phân trang với DataTable, và đặt BÊN TRONG thẻ trắng ngay dưới
+            bảng đúng như DataTable — để ngoài thẻ thì trông vẫn lệch dù cùng một control.
+            Bỏ ô "số dòng mỗi trang" vì DataTable không có. */}
+        <TablePagination
+          config={{
+            current: table.getState().pagination.pageIndex + 1,
+            pageSize: table.getState().pagination.pageSize,
+            total: data.length,
+            onChange: (page) => table.setPageIndex(page - 1),
+          }}
+        />
+      </div>
     </div>
   );
 }
