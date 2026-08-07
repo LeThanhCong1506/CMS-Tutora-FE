@@ -474,6 +474,8 @@ const PermissionGroupsPage = () => {
             pagination={{ current: currentPage, pageSize: PAGE_SIZE, total: filtered.length, onChange: setPage }}
             minWidth={820}
             variant="embedded"
+            density="compact"
+            adaptive
           />
         </SectionCard>
       </PageContainer>

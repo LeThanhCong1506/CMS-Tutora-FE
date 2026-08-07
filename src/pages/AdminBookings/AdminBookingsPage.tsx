@@ -320,6 +320,8 @@ export default function AdminBookingsPage() {
                     onRowClick={openDetails}
                     emptyText="Không có lịch đặt nào phù hợp với bộ lọc."
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={900}
                 />
             </SectionCard>

@@ -288,6 +288,8 @@ const TransactionLedger = () => {
                 }}
                 minWidth={940}
                 variant="embedded"
+                density="compact"
+                adaptive
             />
         </div>
     );

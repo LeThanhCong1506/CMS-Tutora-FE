@@ -319,6 +319,8 @@ const AdminWarningsPage: React.FC = () => {
                         }}
                         minWidth={1080}
                         variant="embedded"
+                        density="compact"
+                        adaptive
                     />
                 </SectionCard>
             )}
@@ -425,6 +427,8 @@ const AdminWarningsPage: React.FC = () => {
                                     }
                                     minWidth={760}
                                     variant="embedded"
+                                    density="compact"
+                                    adaptive
                                 />
                             </SectionCard>
                         </>

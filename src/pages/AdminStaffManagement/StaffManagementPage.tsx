@@ -178,6 +178,8 @@ const StaffManagementPage = () => {
             pagination={{ current: page, pageSize: PAGE_SIZE, total: pseudoTotal, onChange: setPage }}
             minWidth={920}
             variant="embedded"
+            density="compact"
+            adaptive
           />
         </SectionCard>
       </PageContainer>
