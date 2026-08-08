@@ -1034,6 +1034,15 @@ const AdminDisputeDetailPage = () => {
                                                 </span>
                                                 <p>Buổi học đang diễn ra — video sẽ có sau khi kết thúc.</p>
                                             </div>
+                                        ) : recording?.status === 'failed' ? (
+                                            // Đã ghi hình nhưng Agora không trả về file nào lúc đóng phòng: không có gì để
+                                            // chờ thêm. Admin cần phân biệt với "chưa từng ghi hình" khi cân nhắc bằng chứng.
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block', color: '#dc2626' }}>
+                                                    videocam_off
+                                                </span>
+                                                <p>Ghi hình không thành công — hệ thống đã bật ghi hình nhưng không tạo được file cho buổi này.</p>
+                                            </div>
                                         ) : recording?.status === 'processing' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
