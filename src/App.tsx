@@ -48,6 +48,7 @@ const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChapters
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
 const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPage'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
+const TransferHistoryPage = lazy(() => import('./pages/AdminPayout/Transfer/TransferHistoryPage'));
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
@@ -206,6 +207,7 @@ function App() {
               <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="ai-credit/settings" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />
+              <Route path="payouts/transfers" element={guard(<TransferHistoryPage />, 'payout.view')} />
               <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
               <Route path="payouts/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />
               <Route path="payout/review" element={guard(<PendingReviewPage />, 'payout.view')} />

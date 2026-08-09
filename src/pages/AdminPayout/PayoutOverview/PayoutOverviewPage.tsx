@@ -68,6 +68,14 @@ const PayoutOverviewPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
+            onClick={() => navigate('/admin-portal/payouts/transfers')}
+          >
+            <span className="material-symbols-outlined">send_money</span>
+            Chuyển tiền chủ động
+          </button>
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-secondary"
             onClick={() => navigate('/admin-portal/payouts/history')}
           >
             <span className="material-symbols-outlined">history</span>

@@ -190,3 +190,33 @@ export interface RejectResult {
     success: boolean;
     message: string;
 }
+
+/**
+ * Chuyển tiền chủ động — cộng thẳng vào ví người nhận, không gắn với yêu cầu rút tiền nào.
+ * Khác payout: không có bước duyệt thứ hai, không cần thông tin ngân hàng hay ảnh biên lai.
+ */
+export interface AdminWalletTransferRequest {
+    recipientUserId: string;
+    amount: number;
+    reason: string;
+}
+
+export interface AdminWalletTransferResult {
+    transferId: number;
+    recipientUserId: string;
+    recipientName?: string;
+    recipientRole?: string;
+    amount: number;
+    reason: string;
+    createdBy: string;
+    createdByName?: string;
+    createdAt: string;
+    recipientNewBalance?: number;
+}
+
+export interface AdminWalletTransferListResponse {
+    items: AdminWalletTransferResult[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
