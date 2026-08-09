@@ -83,10 +83,10 @@ const AdminLayout: React.FC = () => {
         children: [
           { path: '/admin-portal/revenue-reports/overview', label: 'Báo cáo doanh thu', materialIcon: 'insights', permission: 'financial.view' },
           { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
-          { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
           { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
         ]
       },
+      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
       { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
       {
         path: '/admin-portal/resources',
