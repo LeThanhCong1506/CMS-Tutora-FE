@@ -206,6 +206,9 @@ const AdminCertificateVettingPage = () => {
         toast.info(`Hồ sơ của ${row.tutorName} đã đủ điều kiện và được kích hoạt.`);
       }
       await fetchCertificates();
+      // Báo AdminLayout (khung ngoài, không remount khi ở lại trang này) cập nhật lại số badge
+      // "Chứng chỉ" ở sidebar ngay — nếu không, badge đứng yên tới khi Admin rời trang rồi quay lại.
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
       return true;
     } catch (err) {
       console.error('Error verifying certificate:', err);
