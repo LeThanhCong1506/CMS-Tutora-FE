@@ -9,8 +9,8 @@ export interface TabItem {
 }
 
 export interface FilterTabsProps {
-    /** Array of tab items */
-    tabs: TabItem[];
+    /** Array of tab items — `readonly` để nhận được mảng khai báo `as const` */
+    tabs: readonly TabItem[];
     /** Currently active tab key */
     activeKey: string;
     /** Called when a tab is clicked */
