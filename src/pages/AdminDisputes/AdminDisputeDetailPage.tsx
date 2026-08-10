@@ -39,6 +39,7 @@ import type { DisputeMessageDto, RefundPreviewDto } from '../../services/admin.s
 import { signalRService } from '../../services/signalr.service';
 import { formatCurrency, formatDateTime, formatRelativeTime } from '../../utils/formatters';
 import { Can } from '../../contexts/AccessContext';
+import { useTabParam } from '../../hooks/useTabParam';
 import {
     getDisputeStatusLabel,
     getDisputeStatusVariant,
@@ -65,8 +66,10 @@ type DisputeChatMessage = {
     message?: string | null;
 };
 
-type EvidenceTab = 'evidence' | 'sessionLog' | 'recordings' | 'communication' | 'reliability';
-type CommunicationTab = 'lesson' | 'tutor' | 'parent';
+const EVIDENCE_TABS = ['evidence', 'sessionLog', 'recordings', 'communication', 'reliability'] as const;
+const COMMUNICATION_TABS = ['lesson', 'tutor', 'parent'] as const;
+type EvidenceTab = (typeof EVIDENCE_TABS)[number];
+type CommunicationTab = (typeof COMMUNICATION_TABS)[number];
 
 type EvidenceFileCardProps = {
     url: string;
@@ -121,9 +124,12 @@ const AdminDisputeDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Tab states
-    const [activeTab, setActiveTab] = useState<EvidenceTab>('evidence');
-    const [communicationTab, setCommunicationTab] = useState<CommunicationTab>('lesson');
+    // Tab states — cả hai nhóm tab nằm trên URL (`?tab=`, `?chat=`) để reload hoặc
+    // gửi link cho admin khác vẫn mở đúng bằng chứng đang xem.
+    const [activeTab, setActiveTab] = useTabParam<EvidenceTab>(EVIDENCE_TABS, 'evidence');
+    const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'lesson', {
+        paramKey: 'chat',
+    });
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
     const [adminNotes, setAdminNotes] = useState('');
     const [customPercentage, setCustomPercentage] = useState(50);
