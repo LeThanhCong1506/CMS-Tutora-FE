@@ -10,7 +10,10 @@ import type {
     RejectResult,
     AdminPayoutSummary,
     WithdrawalRequestListResponse,
-    ApprovePayoutRequest
+    ApprovePayoutRequest,
+    AdminWalletTransferRequest,
+    AdminWalletTransferResult,
+    AdminWalletTransferListResponse
 } from '../types/adminPayout.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
@@ -160,6 +163,36 @@ export const approvePayoutRequest = async (id: number, request: ApprovePayoutReq
 export const rejectPayoutRequest = async (id: number, reason: string): Promise<RejectResult> => {
     try {
         const { data } = await api.post(`/admin/payouts/${id}/reject`, { reason });
+        return data.content;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Chủ động chuyển tiền vào ví một user (gia sư/phụ huynh/học sinh). Cộng thẳng vào số dư
+ * ngay khi gọi — không có bước duyệt thứ hai như payout.
+ */
+export const transferToUser = async (request: AdminWalletTransferRequest): Promise<AdminWalletTransferResult> => {
+    try {
+        const { data } = await api.post('/admin/payouts/transfers', request);
+        return data.content;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Lịch sử các lần chuyển tiền chủ động, mới nhất trước.
+ */
+export const getTransferHistory = async (
+    page: number = 1,
+    pageSize: number = 20
+): Promise<AdminWalletTransferListResponse> => {
+    try {
+        const { data } = await api.get('/admin/payouts/transfers', {
+            params: { page, pageSize },
+        });
         return data.content;
     } catch (error) {
         throw error;
