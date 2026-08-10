@@ -59,6 +59,8 @@ type DisputeChatMessage = {
     senderName?: string | null;
     senderId?: string | number | null;
     sentAt?: string | null;
+    /** BE `ChatMessageResponse.CreatedAt` — trường thật sự trả về cho "Chat buổi học" (sentAt không tồn tại ở BE). */
+    createdAt?: string | null;
     content?: string | null;
     message?: string | null;
 };
@@ -976,7 +978,7 @@ const AdminDisputeDetailPage = () => {
                                                                 {msg.senderName || msg.senderId || 'Unknown'}
                                                             </span>
                                                             <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                                                {msg.sentAt ? formatDateTime(msg.sentAt) : ''}
+                                                                {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
                                                             </span>
                                                         </div>
                                                         <p style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>
