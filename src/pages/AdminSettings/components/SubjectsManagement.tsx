@@ -12,8 +12,10 @@ import {
 } from '../mockData';
 import SubjectModal from './SubjectModal';
 import { useClientPagination } from '../../../hooks/useClientPagination';
+import { useTabParam } from '../../../hooks/useTabParam';
 
-type FilterStatus = 'all' | 'active' | 'inactive';
+const FILTER_STATUSES = ['all', 'active', 'inactive'] as const;
+type FilterStatus = (typeof FILTER_STATUSES)[number];
 
 const getSubjectIcon = (subjectName: string) => {
     if (subjectName.includes('Toán')) return 'calculate';
@@ -42,7 +44,10 @@ const getSubjectIcon = (subjectName: string) => {
 const SubjectsManagement = () => {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
+    // Param riêng (`?status=`) — trang cha AdminSettings đã dùng `?tab=`.
+    const [filterStatus, setFilterStatus] = useTabParam<FilterStatus>(FILTER_STATUSES, 'active', {
+        paramKey: 'status',
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
