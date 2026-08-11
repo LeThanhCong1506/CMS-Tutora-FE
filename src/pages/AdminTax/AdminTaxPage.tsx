@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
+import { useTabParam } from '../../hooks/useTabParam';
 import { mockTaxOverview } from '../../mocks/taxMockData';
 import { formatCompactNumber } from '../../utils/formatters';
 import TaxOverviewTab from './components/TaxOverviewTab';
@@ -10,8 +10,6 @@ import TaxReportsTab from './components/TaxReportsTab';
 import TaxConfigTab from './components/TaxConfigTab';
 import '../../styles/pages/admin-tax.css';
 
-type TaxTab = 'overview' | 'profiles' | 'withholding' | 'certificates' | 'reports' | 'config';
-
 const taxTabs = [
     { key: 'overview', label: 'Tổng quan' },
     { key: 'profiles', label: 'Hồ sơ thuế gia sư' },
@@ -19,10 +17,13 @@ const taxTabs = [
     { key: 'certificates', label: 'Chứng từ khấu trừ' },
     { key: 'reports', label: 'Báo cáo thuế' },
     { key: 'config', label: 'Cấu hình thuế suất' },
-];
+] as const;
+
+type TaxTab = (typeof taxTabs)[number]['key'];
+const TAX_TAB_KEYS = taxTabs.map((tab) => tab.key);
 
 const AdminTaxPage = () => {
-    const [activeTab, setActiveTab] = useState<TaxTab>('overview');
+    const [activeTab, setActiveTab] = useTabParam<TaxTab>(TAX_TAB_KEYS, 'overview');
     const metrics = mockTaxOverview;
 
     return (

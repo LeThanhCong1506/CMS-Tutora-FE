@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   getPendingTutors,
@@ -16,10 +15,14 @@ import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI, SubjectGradePric
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import { diffWords } from '../../utils/wordDiff';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
+import { useTabParam } from '../../hooks/useTabParam';
 import '../../styles/pages/admin-vetting.css';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 const DEFAULT_ORDER = 'createdat_asc';
+
+const VETTING_TABS = ['new', 'updates'] as const;
+type VettingTab = (typeof VETTING_TABS)[number];
 
 // Các cặp field (cũ/đề xuất) để vẽ diff cho tab "Yêu cầu cập nhật hồ sơ".
 // proposed === null nghĩa là tutor không đụng tới field đó ở lần nộp này.
@@ -194,12 +197,10 @@ const AdminVettingPage = () => {
   const [rejectionNote, setRejectionNote] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
-  const [searchParams] = useSearchParams();
-  // Cho phép deep-link thẳng vào tab "Yêu cầu cập nhật hồ sơ" (?tab=updates) — dùng khi Admin
-  // bấm vào thông báo "Yêu cầu cập nhật hồ sơ gia sư" từ NotificationDropdown.
-  const [activeTab, setActiveTab] = useState<'new' | 'updates'>(
-    searchParams.get('tab') === 'updates' && canViewUpdates ? 'updates' : canViewNew ? 'new' : 'updates',
-  );
+  // Tab nằm trên URL (?tab=new|updates) — vừa cho deep-link từ thông báo "Yêu cầu cập nhật
+  // hồ sơ gia sư" ở NotificationDropdown, vừa giữ đúng tab khi reload.
+  // Quyền xem từng tab được clamp lại ở effect bên dưới.
+  const [activeTab, setActiveTab] = useTabParam<VettingTab>(VETTING_TABS, canViewNew ? 'new' : 'updates');
   const [updateRequests, setUpdateRequests] = useState<ProfileUpdateRequestFromAPI[]>([]);
   const [updateRequestsLoading, setUpdateRequestsLoading] = useState(canViewUpdates);
   const [updateRequestsError, setUpdateRequestsError] = useState<string | null>(null);
@@ -305,12 +306,11 @@ const AdminVettingPage = () => {
 
   useEffect(() => {
     if (activeTab === 'new' && !canViewNew && canViewUpdates) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab('updates');
     } else if (activeTab === 'updates' && !canViewUpdates && canViewNew) {
       setActiveTab('new');
     }
-  }, [activeTab, canViewNew, canViewUpdates]);
+  }, [activeTab, canViewNew, canViewUpdates, setActiveTab]);
 
   /**
    * Gọi lại API lấy bản MỚI NHẤT của request trước khi thực sự Duyệt/Từ chối, vì danh sách

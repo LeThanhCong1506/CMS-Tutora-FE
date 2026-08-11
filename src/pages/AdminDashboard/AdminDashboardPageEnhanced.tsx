@@ -35,11 +35,14 @@ import {
     formatDisputeType,
 } from '../../utils/formatters';
 
+import { useTabParam } from '../../hooks/useTabParam';
+
 import '../../styles/pages/admin-dashboard.css';
 
 // ─── Date range helpers ───
 
-type RangeKey = 'today' | '7d' | '30d';
+const RANGE_KEYS = ['today', '7d', '30d'] as const;
+type RangeKey = (typeof RANGE_KEYS)[number];
 
 const computeRange = (key: RangeKey): { from: Date; to: Date } => {
     const to = new Date();
@@ -119,7 +122,8 @@ const RateChip = ({ label, value, color }: { label: string; value: number | null
 const AdminDashboardPageEnhanced = () => {
     const navigate = useNavigate();
 
-    const [rangeKey, setRangeKey] = useState<RangeKey>('30d');
+    // `?range=` — cùng quy ước với useRevenueRange ở trang báo cáo doanh thu.
+    const [rangeKey, setRangeKey] = useTabParam<RangeKey>(RANGE_KEYS, '30d', { paramKey: 'range' });
 
     const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
     const [stats, setStats] = useState<AdminDashboardStats | null>(null);
