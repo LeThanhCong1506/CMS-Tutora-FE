@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
-import { getPendingTutors, getPendingCertificates } from '../services/admin.service';
+import { getPendingTutors, getPendingCertificates, getPendingProfileUpdateRequests } from '../services/admin.service';
 import { useAccess } from '../contexts/AccessContext';
 
 const BADGE_FETCH_SIZE = 50;
@@ -15,16 +15,23 @@ type SecuredNavItem = Omit<NavItem, 'children'> & {
 
 const AdminLayout: React.FC = () => {
   const [pendingTutors, setPendingTutors] = useState(0);
+  const [pendingProfileUpdates, setPendingProfileUpdates] = useState(0);
   const [pendingCertificates, setPendingCertificates] = useState(0);
   const { isAdmin, isStaff, can, canAny } = useAccess();
 
   useEffect(() => {
-    if (!canAny(['tutor_approval.view', 'certificate.view'])) return;
+    if (!canAny(['tutor_approval.view', 'tutor_profile_update.view', 'certificate.view'])) return;
 
     const fetchBadgeCounts = () => {
       if (can('tutor_approval.view')) {
         getPendingTutors(1, BADGE_FETCH_SIZE)
           .then((res) => setPendingTutors(res?.total || 0))
+          .catch(() => undefined);
+      }
+      if (can('tutor_profile_update.view')) {
+        // Không phân trang (BE không hỗ trợ) — dùng luôn content.length làm tổng số yêu cầu chờ duyệt.
+        getPendingProfileUpdateRequests()
+          .then((res) => setPendingProfileUpdates(res?.content?.length || 0))
           .catch(() => undefined);
       }
       if (can('certificate.view')) {
@@ -65,13 +72,15 @@ const AdminLayout: React.FC = () => {
         path: '/admin-portal/vetting',
         label: 'Kiểm duyệt',
         materialIcon: 'description',
-        badge: pendingTutors + pendingCertificates,
+        badge: pendingTutors + pendingProfileUpdates + pendingCertificates,
         children: [
           {
             path: '/admin-portal/vetting/profiles',
             label: 'Hồ sơ gia sư',
             materialIcon: 'badge',
-            badge: pendingTutors,
+            // Gộp cả "Hồ sơ mới" và "Yêu cầu cập nhật hồ sơ" — 2 tab con của cùng trang này —
+            // để Admin không thấy badge "còn 0 việc" trong khi vẫn còn yêu cầu cập nhật chưa duyệt.
+            badge: pendingTutors + pendingProfileUpdates,
             anyOf: ['tutor_approval.view', 'tutor_profile_update.view'],
           },
           { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates, permission: 'certificate.view' },
@@ -150,7 +159,7 @@ const AdminLayout: React.FC = () => {
       void _adminOnly;
       return [{ ...navItem, children: visibleChildren }];
     });
-  }, [can, canAny, isAdmin, pendingCertificates, pendingTutors]);
+  }, [can, canAny, isAdmin, pendingCertificates, pendingProfileUpdates, pendingTutors]);
 
   const isActive = (path: string, pathname: string) => {
     if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');

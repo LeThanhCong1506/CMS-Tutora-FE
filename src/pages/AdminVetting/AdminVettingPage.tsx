@@ -353,6 +353,8 @@ const AdminVettingPage = () => {
       // — luôn ưu tiên hiển thị message thật từ server thay vì text tĩnh.
       toast.success(response?.message || 'Duyệt cập nhật hồ sơ thành công. Marketplace đã hiển thị thông tin mới.');
       await fetchPendingUpdateRequests();
+      // Đồng bộ với badge "Hồ sơ gia sư" ở sidebar — xem comment ở handleApprove bên dưới.
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error approving profile update request:', err);
       toast.error('Không thể duyệt yêu cầu. Vui lòng thử lại.');
@@ -398,6 +400,7 @@ const AdminVettingPage = () => {
       setShowUpdateRejectModal(null);
       setUpdateRejectionNote('');
       await fetchPendingUpdateRequests();
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error rejecting profile update request:', err);
       toast.error('Không thể từ chối yêu cầu. Vui lòng thử lại.');
