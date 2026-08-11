@@ -6,9 +6,21 @@ import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
+import { useTabParam } from '../../hooks/useTabParam';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 
 type DisputeTab = 'all' | DisputeStatus;
+
+// Nhãn có kèm số liệu (đổi theo `stats`) nên tabs dựng trong component — danh sách
+// key thì cố định, tách ra module-scope để `useTabParam` validate `?tab=`.
+const DISPUTE_TAB_KEYS: readonly DisputeTab[] = [
+    'all',
+    'pending',
+    'investigating',
+    'confirmed_no_show',
+    'resolved',
+    'closed',
+];
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
@@ -60,7 +72,7 @@ const getPriorityVariant = (priority?: string | null): StatusVariant => {
 
 const AdminDisputesPage = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<DisputeTab>('all');
+    const [activeTab, setActiveTab] = useTabParam<DisputeTab>(DISPUTE_TAB_KEYS, 'all');
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [disputes, setDisputes] = useState<DisputeForAdmin[]>([]);

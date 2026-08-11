@@ -9,19 +9,21 @@ import {
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
+import { useTabParam } from '../../hooks/useTabParam';
 import HideFeedbackModal from './HideFeedbackModal';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-feedbacks.css';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
-type VisibilityTab = 'all' | 'visible' | 'hidden';
-
 const tabs = [
     { key: 'all', label: 'Tất cả' },
     { key: 'visible', label: 'Đang hiển thị' },
     { key: 'hidden', label: 'Đã ẩn' },
-];
+] as const;
+
+type VisibilityTab = (typeof tabs)[number]['key'];
+const VISIBILITY_TAB_KEYS = tabs.map((tab) => tab.key);
 
 const VISIBILITY_FILTER: Record<VisibilityTab, boolean | undefined> = {
     all: undefined,
@@ -57,7 +59,7 @@ const AdminFeedbacksPage: React.FC = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [activeTab, setActiveTab] = useState<VisibilityTab>('all');
+    const [activeTab, setActiveTab] = useTabParam<VisibilityTab>(VISIBILITY_TAB_KEYS, 'all');
     const [ratingFilter, setRatingFilter] = useState<number | undefined>(undefined);
     const [togglingId, setTogglingId] = useState<number | null>(null);
     const [hideTarget, setHideTarget] = useState<AdminFeedbackItem | null>(null);

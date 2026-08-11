@@ -6,14 +6,16 @@ import NotificationItem from '../../components/NotificationItem/NotificationItem
 import type { NotificationDTO } from '../../services/notification.service';
 import { getMyNotifications, markAllAsRead, markAsRead } from '../../services/notification.service';
 import { getNotificationTargetPath } from '../../utils/notificationNavigation';
+import { useTabParam } from '../../hooks/useTabParam';
 import styles from './styles.module.css';
 
-type NotificationFilter = 'all' | 'unread' | 'read';
+const NOTIFICATION_FILTERS = ['all', 'unread', 'read'] as const;
+type NotificationFilter = (typeof NOTIFICATION_FILTERS)[number];
 
 const NotificationsPage: React.FC = () => {
     const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
+    const [activeFilter, setActiveFilter] = useTabParam<NotificationFilter>(NOTIFICATION_FILTERS, 'all');
     const navigate = useNavigate();
 
     const fetchNotifications = useCallback(async () => {

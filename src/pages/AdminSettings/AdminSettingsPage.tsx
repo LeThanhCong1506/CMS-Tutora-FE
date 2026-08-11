@@ -2,19 +2,21 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import UnderDevelopment from '../../components/UnderDevelopment/UnderDevelopment';
+import { useTabParam } from '../../hooks/useTabParam';
 import { SubjectsManagement } from './components';
 
 import '../../styles/pages/admin-settings.css';
 
-type SettingsTab = 'subjects' | 'financial';
-
 const SETTINGS_TABS = [
     { key: 'subjects', label: 'Môn học' },
     { key: 'financial', label: 'Logic tài chính' },
-];
+] as const;
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]['key'];
+const SETTINGS_TAB_KEYS = SETTINGS_TABS.map((tab) => tab.key);
 
 export const AdminSettingsPage = () => {
-    const [activeTab, setActiveTab] = useState<SettingsTab>('subjects');
+    const [activeTab, setActiveTab] = useTabParam<SettingsTab>(SETTINGS_TAB_KEYS, 'subjects');
     const [commissionRate, setCommissionRate] = useState<number>(15);
     const [minWithdrawal, setMinWithdrawal] = useState<string>('50,000');
     const [escrowPeriod, setEscrowPeriod] = useState<string>('3 Ngày');
