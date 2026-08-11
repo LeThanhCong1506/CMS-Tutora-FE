@@ -20,16 +20,28 @@ const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     if (!canAny(['tutor_approval.view', 'certificate.view'])) return;
-    if (can('tutor_approval.view')) {
-      getPendingTutors(1, BADGE_FETCH_SIZE)
-        .then((res) => setPendingTutors(res?.total || 0))
-        .catch(() => undefined);
-    }
-    if (can('certificate.view')) {
-      getPendingCertificates(1, BADGE_FETCH_SIZE)
-        .then((res) => setPendingCertificates(res?.total || 0))
-        .catch(() => undefined);
-    }
+
+    const fetchBadgeCounts = () => {
+      if (can('tutor_approval.view')) {
+        getPendingTutors(1, BADGE_FETCH_SIZE)
+          .then((res) => setPendingTutors(res?.total || 0))
+          .catch(() => undefined);
+      }
+      if (can('certificate.view')) {
+        getPendingCertificates(1, BADGE_FETCH_SIZE)
+          .then((res) => setPendingCertificates(res?.total || 0))
+          .catch(() => undefined);
+      }
+    };
+
+    fetchBadgeCounts();
+
+    // AdminLayout ở mức khung, không remount khi điều hướng giữa các trang trong /admin-portal —
+    // nên chỉ fetch 1 lần lúc mount thì số badge (hồ sơ/chứng chỉ chờ duyệt) đứng yên mãi, không
+    // tự trừ khi Admin duyệt/từ chối ngay trên trang con. Trang con phát event này sau khi
+    // duyệt/từ chối thành công để badge cập nhật ngay, không cần rời trang rồi quay lại.
+    window.addEventListener('tutora:admin-badge-refresh', fetchBadgeCounts);
+    return () => window.removeEventListener('tutora:admin-badge-refresh', fetchBadgeCounts);
   }, [can, canAny]);
 
   const navItems = useMemo<NavItem[]>(() => {
