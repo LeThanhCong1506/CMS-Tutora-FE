@@ -339,6 +339,22 @@ export interface TutorApprovalRequest {
   reason?: string;
 }
 
+// 1 dòng giá theo môn + lớp — khớp TutorSubjectGradePriceResponse (BE).
+export interface SubjectGradePriceItem {
+  id?: number;
+  subjectId: number;
+  subjectName: string | null;
+  gradeLevelId: number;
+  gradeLevelName: string | null;
+  pricePerHour: number;
+  durationMinutesPerSession: number;
+  sessionsPerWeek: number;
+  currency: string;
+  isActive: boolean;
+  subjectIsActive: boolean;
+  gradeLevelIsActive: boolean;
+}
+
 // Bản chỉnh sửa hồ sơ (của tutor đã Active) đang chờ Admin duyệt.
 // GET /api/admin/tutor-profile-update-requests
 export interface ProfileUpdateRequestFromAPI {
@@ -363,6 +379,8 @@ export interface ProfileUpdateRequestFromAPI {
   currentVideoIntroUrl: string | null;
   proposedVideoIntroUrl: string | null;
   hasProposedSubjectGradePrices: boolean;
+  currentSubjectGradePrices: SubjectGradePriceItem[];
+  proposedSubjectGradePrices: SubjectGradePriceItem[];
 }
 
 export interface ProfileUpdateRequestsAPIResponse {
