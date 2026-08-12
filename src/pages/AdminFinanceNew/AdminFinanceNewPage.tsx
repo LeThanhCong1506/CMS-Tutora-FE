@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
+import { useTabParam } from '../../hooks/useTabParam';
 import {
     mockCommissionConfig,
     mockEscrowBookings,
@@ -14,18 +14,19 @@ import FinancialReportsTab from './components/FinancialReportsTab';
 import LiquidityReconciliationTab from './components/LiquidityReconciliationTab';
 import '../../styles/pages/admin-finance-new.css';
 
-type FinanceTab = 'liquidity' | 'commission' | 'escrow' | 'refunds' | 'reports';
-
 const financeTabs = [
     { key: 'liquidity', label: 'Thanh khoản & đối soát' },
     { key: 'commission', label: 'Cấu hình hoa hồng' },
     { key: 'escrow', label: 'Escrow' },
     { key: 'refunds', label: 'Hoàn tiền' },
     { key: 'reports', label: 'Báo cáo' },
-];
+] as const;
+
+type FinanceTab = (typeof financeTabs)[number]['key'];
+const FINANCE_TAB_KEYS = financeTabs.map((tab) => tab.key);
 
 const AdminFinanceNewPage = () => {
-    const [activeTab, setActiveTab] = useState<FinanceTab>('liquidity');
+    const [activeTab, setActiveTab] = useTabParam<FinanceTab>(FINANCE_TAB_KEYS, 'liquidity');
 
     const escrowTotal = mockEscrowBookings.reduce((sum, b) => sum + b.amount, 0);
     const refundPending = mockRefundRequests.filter((r) => r.status === 'pending' || r.status === 'investigating').length;

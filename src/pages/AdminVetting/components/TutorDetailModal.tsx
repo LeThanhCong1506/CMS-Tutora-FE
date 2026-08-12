@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { PendingTutorFromAPI } from '../../../types/admin.types';
+import type { AdminUserCccdUrls, PendingTutorFromAPI } from '../../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../../utils/avatar';
 import { getYouTubeEmbedUrl } from '../../../utils/youtube';
-import { Can } from '../../../contexts/AccessContext';
+import { getUserCccdUrls } from '../../../services/admin.service';
+import { Can, useAccess } from '../../../contexts/AccessContext';
 import '../../../styles/pages/admin-vetting.css';
+import '../../../styles/shared/image-preview-overlay.css';
 
 interface TutorDetailModalProps {
   tutor: PendingTutorFromAPI | null;
@@ -121,6 +123,9 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
 }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imagePreviewError, setImagePreviewError] = useState(false);
+  const [cccd, setCccd] = useState<AdminUserCccdUrls | null>(null);
+  const { can } = useAccess();
+  const canViewCccd = can('tutor_cccd.view');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -145,6 +150,27 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
     setImagePreview(null);
     setImagePreviewError(false);
   }, [tutor?.userid]);
+
+  // Ảnh CCCD (mặt trước/sau) — link riêng biệt với portraitImageUrl (ảnh chân dung crop từ eKYC),
+  // lấy từ endpoint admin dùng chung Tutor/Student, chỉ khi có quyền tutor_cccd.view.
+  useEffect(() => {
+    const userId = tutor?.userid;
+    if (!isOpen || !userId || !canViewCccd) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCccd(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    getUserCccdUrls(userId, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setCccd(result);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setCccd(null);
+      });
+    return () => controller.abort();
+  }, [canViewCccd, isOpen, tutor?.userid]);
 
   if (!isOpen || !tutor) return null;
 
@@ -314,6 +340,34 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                     >
                       <img src={identityCard.portraitImageUrl} alt="Ảnh chân dung gia sư" />
                       <span>Xem ảnh</span>
+                    </button>
+                  )}
+                  {cccd?.frontImageUrl && (
+                    <button
+                      type="button"
+                      className="profile-portrait-button"
+                      onClick={() => {
+                        setImagePreviewError(false);
+                        setImagePreview(cccd.frontImageUrl || null);
+                      }}
+                      aria-label="Xem ảnh CCCD mặt trước"
+                    >
+                      <img src={cccd.frontImageUrl} alt="Ảnh CCCD mặt trước" />
+                      <span>CCCD mặt trước</span>
+                    </button>
+                  )}
+                  {cccd?.backImageUrl && (
+                    <button
+                      type="button"
+                      className="profile-portrait-button"
+                      onClick={() => {
+                        setImagePreviewError(false);
+                        setImagePreview(cccd.backImageUrl || null);
+                      }}
+                      aria-label="Xem ảnh CCCD mặt sau"
+                    >
+                      <img src={cccd.backImageUrl} alt="Ảnh CCCD mặt sau" />
+                      <span>CCCD mặt sau</span>
                     </button>
                   )}
                   <dl className="profile-detail-info-grid">

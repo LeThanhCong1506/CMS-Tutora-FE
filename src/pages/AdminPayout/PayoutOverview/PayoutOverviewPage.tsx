@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { getPayoutOverview, getWithdrawalRequests } from '../../../services/adminPayout.service';
 import type { PayoutOverview, WithdrawalRequestItem } from '../../../types/adminPayout.types';
 import { FilterTabs, PageContainer, SectionCard } from '../../../components/shared';
+import { useTabParam } from '../../../hooks/useTabParam';
 import PayoutStatsCards from './components/PayoutStatsCards';
 import WithdrawalRequestTable from './components/WithdrawalRequestTable';
 import '../../../styles/pages/admin-payout.css';
@@ -17,7 +18,10 @@ const payoutTabs = [
   { key: 'approved', label: 'Đang xử lý' },
   { key: 'rejected', label: 'Đã từ chối' },
   { key: 'cancelled', label: 'Đã hủy' },
-];
+] as const;
+
+type PayoutTab = (typeof payoutTabs)[number]['key'];
+const PAYOUT_TAB_KEYS = payoutTabs.map((tab) => tab.key);
 
 const PayoutOverviewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -26,7 +30,7 @@ const PayoutOverviewPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(ADMIN_PAGE_SIZE);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useTabParam<PayoutTab>(PAYOUT_TAB_KEYS, 'all');
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
@@ -53,7 +57,7 @@ const PayoutOverviewPage: React.FC = () => {
   }, [fetchData]);
 
   const handleTabChange = (key: string) => {
-    setActiveTab(key);
+    setActiveTab(key as PayoutTab);
     setCurrentPage(1);
   };
 

@@ -35,6 +35,7 @@ import type {
   // User Management
   UserListItem,
   AdminUserDetail,
+  AdminUserCccdUrls,
   AdminUserWarningSummary,
   AdminSuspensionHistoryItem,
   // Settings
@@ -786,6 +787,22 @@ export const getUserDetail = async (userId: string, signal?: AbortSignal): Promi
   } catch (error) {
     if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
       console.error('getUserDetail error:', error);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Admin xem ảnh CCCD của người dùng (Tutor/Student) — link trả về là signed URL, hết hạn sau ~15 phút.
+ */
+export const getUserCccdUrls = async (userId: string, signal?: AbortSignal): Promise<AdminUserCccdUrls> => {
+  try {
+    const { data } = await api.get<{ content?: AdminUserCccdUrls }>(`/admin/users/${userId}/cccd`, { signal });
+    if (!data.content) throw new Error('Phản hồi CCCD không có dữ liệu.');
+    return data.content;
+  } catch (error) {
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserCccdUrls error:', error);
     }
     throw error;
   }
