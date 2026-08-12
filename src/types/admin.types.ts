@@ -1279,6 +1279,15 @@ export interface AdminUserDetail {
   relationships: AdminUserRelationships;
 }
 
+/** Link xem ảnh CCCD của người dùng (Tutor/Student) — signed URL, hết hạn sau ~15 phút. */
+export interface AdminUserCccdUrls {
+  userId: string;
+  userFullName?: string | null;
+  frontImageUrl?: string | null;
+  backImageUrl?: string | null;
+  isIdentityVerified: boolean;
+}
+
 export interface IssueWarningRequest {
   userid: string;
   warninglevel: number; // 1 = Thấp, 2 = Trung bình, 3 = Cao (tạm ngưng ngay)

@@ -946,6 +946,12 @@
     overflow: hidden;
 }
 
+.um-cccd-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .um-info-item {
     padding: 9px 11px;
     background: var(--um-surface);
