@@ -77,7 +77,7 @@ export default function AdminBookingDetailPage() {
     if (loading) {
         return (
             <div className={styles.detailPage}>
-                <button className={styles.backBtn} onClick={() => navigate('/admin-portal/bookings')}>
+                <button className={styles.backBtn} onClick={() => navigate(-1)}>
                     ← Quay lại danh sách
                 </button>
                 <div className={styles.loadingWrap}>
@@ -91,7 +91,7 @@ export default function AdminBookingDetailPage() {
     if (errorMsg || !data) {
         return (
             <div className={styles.detailPage}>
-                <button className={styles.backBtn} onClick={() => navigate('/admin-portal/bookings')}>
+                <button className={styles.backBtn} onClick={() => navigate(-1)}>
                     ← Quay lại danh sách
                 </button>
                 <div className={styles.errorWrap}>
@@ -102,7 +102,7 @@ export default function AdminBookingDetailPage() {
                         <div className={styles.errorActions}>
                             <button
                                 className={styles.viewBtn}
-                                onClick={() => navigate('/admin-portal/bookings')}
+                                onClick={() => navigate(-1)}
                             >
                                 Về danh sách
                             </button>
@@ -117,7 +117,7 @@ export default function AdminBookingDetailPage() {
 
     return (
         <div className={styles.detailPage}>
-            <button className={styles.backBtn} onClick={() => navigate('/admin-portal/bookings')}>
+            <button className={styles.backBtn} onClick={() => navigate(-1)}>
                 ← Quay lại danh sách
             </button>
 

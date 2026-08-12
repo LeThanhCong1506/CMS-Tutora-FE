@@ -1,26 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import { getDisputes, getDisputeStats } from '../../services/admin.service';
 import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
-import { useTabParam } from '../../hooks/useTabParam';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 
 type DisputeTab = 'all' | DisputeStatus;
-
-// Nhãn có kèm số liệu (đổi theo `stats`) nên tabs dựng trong component — danh sách
-// key thì cố định, tách ra module-scope để `useTabParam` validate `?tab=`.
-const DISPUTE_TAB_KEYS: readonly DisputeTab[] = [
-    'all',
-    'pending',
-    'investigating',
-    'confirmed_no_show',
-    'resolved',
-    'closed',
-];
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
@@ -72,13 +60,16 @@ const getPriorityVariant = (priority?: string | null): StatusVariant => {
 
 const AdminDisputesPage = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useTabParam<DisputeTab>(DISPUTE_TAB_KEYS, 'all');
+    // Tab + trang sống trong URL (không phải useState cục bộ) — để "Xem chi tiết" rồi bấm back
+    // trả về đúng tab/trang đang xem, thay vì luôn reset về "Tất cả"/trang 1.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = (searchParams.get('status') || 'all') as DisputeTab;
+    const page = Number(searchParams.get('page')) || 1;
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [disputes, setDisputes] = useState<DisputeForAdmin[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [stats, setStats] = useState<DisputeStatsDto | null>(null);
 
@@ -90,6 +81,25 @@ const AdminDisputesPage = () => {
     const [sortDirection, setSortDirection] = useState<ListSortDirection>('desc');
     const latestRequest = useRef(0);
     const skipNextPageFetch = useRef(false);
+
+    // Cập nhật status/page trong URL, giữ nguyên các tham số khác đang có.
+    const updateQuery = useCallback(
+        (patch: { status?: string; page?: number }) => {
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                if (patch.status !== undefined) {
+                    if (patch.status && patch.status !== 'all') next.set('status', patch.status);
+                    else next.delete('status');
+                }
+                if (patch.page !== undefined) {
+                    if (patch.page > 1) next.set('page', String(patch.page));
+                    else next.delete('page');
+                }
+                return next;
+            });
+        },
+        [setSearchParams],
+    );
 
     const fetchDisputes = useCallback(async () => {
         const requestId = ++latestRequest.current;
@@ -114,9 +124,9 @@ const AdminDisputesPage = () => {
             setTotalCount(data.totalCount);
             if (data.page !== page) {
                 // BE đã trả đúng dữ liệu của trang được clamp, nên chỉ đồng bộ điều khiển phân trang
-                // và bỏ qua lần fetch kế tiếp do chính setPage này tạo ra.
+                // và bỏ qua lần fetch kế tiếp do chính updateQuery này tạo ra.
                 skipNextPageFetch.current = true;
-                setPage(data.page);
+                updateQuery({ page: data.page });
             }
         } catch (err) {
             if (requestId !== latestRequest.current) return;
@@ -127,43 +137,46 @@ const AdminDisputesPage = () => {
         } finally {
             if (requestId === latestRequest.current) setLoading(false);
         }
-    }, [activeTab, classSessionFilter, disputeTypeFilter, page, searchQuery, sortDirection]);
+    }, [activeTab, classSessionFilter, disputeTypeFilter, page, searchQuery, sortDirection, updateQuery]);
 
     const applySearch = () => {
         setSearchQuery(searchInput.trim());
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const clearSearch = () => {
         setSearchInput('');
         setSearchQuery('');
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const applyClassSessionFilter = () => {
         setClassSessionFilter(parseIdFilter(classSessionInput));
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const clearClassSessionFilter = () => {
         setClassSessionInput('');
         setClassSessionFilter(undefined);
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const handleStatusChange = (key: string) => {
-        setActiveTab(key as DisputeTab);
-        setPage(1);
+        updateQuery({ status: key, page: 1 });
+    };
+
+    const handlePageChange = (newPage: number) => {
+        updateQuery({ page: newPage });
     };
 
     const handleDisputeTypeChange = (value: DisputeType | '') => {
         setDisputeTypeFilter(value);
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const handleSortDirectionChange = (value: ListSortDirection) => {
         setSortDirection(value);
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const fetchStats = useCallback(async () => {
@@ -477,7 +490,7 @@ const AdminDisputesPage = () => {
                         current: page,
                         pageSize: PAGE_SIZE,
                         total: totalCount,
-                        onChange: setPage,
+                        onChange: handlePageChange,
                     }}
                     emptyText={
                         loadError
