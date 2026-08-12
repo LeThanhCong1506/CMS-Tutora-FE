@@ -98,7 +98,6 @@ const PayoutDetailPage: React.FC = () => {
 
   const requestId = Number.parseInt(id || '', 10);
   const isReviewDetail = location.pathname.startsWith('/admin-portal/payout/review/');
-  const backPath = isReviewDetail ? '/admin-portal/payout/review' : '/admin-portal/payouts';
   const backLabel = isReviewDetail ? 'Chờ xét duyệt' : 'Tổng quan';
 
   const fetchDetail = useCallback(async () => {
@@ -212,7 +211,7 @@ const PayoutDetailPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => navigate(backPath)}
+            onClick={() => navigate(-1)}
           >
             <span className="material-symbols-outlined">arrow_back</span>
             {backLabel}
@@ -245,7 +244,7 @@ const PayoutDetailPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => navigate(backPath)}
+            onClick={() => navigate(-1)}
           >
             <span className="material-symbols-outlined">arrow_back</span>
             {backLabel}

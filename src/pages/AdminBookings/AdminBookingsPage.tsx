@@ -1,6 +1,6 @@
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
@@ -21,11 +21,14 @@ export default function AdminBookingsPage() {
     const [bookings, setBookings] = useState<AdminBookingListItem[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
+    // Trạng thái lọc + trang sống trong URL (không phải useState cục bộ) — để "Xem chi tiết"
+    // rồi bấm back trả về đúng tab/trang đang xem, thay vì luôn reset về "Tất cả"/trang 1.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const page = Number(searchParams.get('page')) || 1;
+    const status = searchParams.get('status') || '';
     // Mặc định theo hằng số chung; ô chọn vẫn cho đổi sang 5 hoặc 20.
     const [pageSize, setPageSize] = useState<number>(ADMIN_PAGE_SIZE);
 
-    const [status, setStatus] = useState('');
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [searchInput, setSearchInput] = useState('');
@@ -82,8 +85,21 @@ export default function AdminBookingsPage() {
         return () => fetchAbortRef.current?.abort();
     }, [fetchBookings]);
 
+    // Cập nhật status/page trong URL, giữ nguyên các tham số khác đang có.
+    const updateQuery = (patch: { status?: string; page?: number }) => {
+        const next = new URLSearchParams(searchParams);
+        if (patch.status !== undefined) {
+            if (patch.status) next.set('status', patch.status);
+            else next.delete('status');
+        }
+        if (patch.page !== undefined) {
+            if (patch.page > 1) next.set('page', String(patch.page));
+            else next.delete('page');
+        }
+        setSearchParams(next);
+    };
+
     const resetFilters = () => {
-        setStatus('');
         setFrom('');
         setTo('');
         setSearchInput('');
@@ -92,36 +108,39 @@ export default function AdminBookingsPage() {
         setClassSessionIdInput('');
         setBookingIdFilter(undefined);
         setClassSessionIdFilter(undefined);
-        setPage(1);
+        updateQuery({ status: '', page: 1 });
     };
 
     const handleStatusChange = (value: string) => {
-        setStatus(value);
-        setPage(1);
+        updateQuery({ status: value, page: 1 });
+    };
+
+    const handlePageChange = (newPage: number) => {
+        updateQuery({ page: newPage });
     };
 
     const handleDateRangeChange = (newFrom: string, newTo: string) => {
         setFrom(newFrom);
         setTo(newTo);
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const handleFiltersSubmit = () => {
         setSearchQuery(searchInput.trim());
         setBookingIdFilter(parseIdFilter(bookingIdInput));
         setClassSessionIdFilter(parseIdFilter(classSessionIdInput));
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const handleSortDirectionChange = (value: ListSortDirection) => {
         setSortDirection(value);
         // Trang 2 của thứ tự cũ không tương ứng gì với thứ tự mới.
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
-        setPage(1);
+        updateQuery({ page: 1 });
     };
 
     const openDetails = (record: AdminBookingListItem) => {
@@ -317,7 +336,7 @@ export default function AdminBookingsPage() {
                         current: page,
                         pageSize,
                         total: totalCount,
-                        onChange: setPage,
+                        onChange: handlePageChange,
                     }}
                     onRowClick={openDetails}
                     emptyText="Không có lịch đặt nào phù hợp với bộ lọc."

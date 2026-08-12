@@ -3185,3 +3185,337 @@ iframe.profile-intro-video {
     animation: none;
   }
 }
+
+/* ===== PROFILE UPDATE DIFF MODAL ("Thay đổi hồ sơ đề xuất") ===== */
+.profile-diff-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 880px;
+  max-height: min(86vh, 800px);
+  /* Không có dòng này, thân modal (flex:1) không co lại theo nội dung — phần vượt quá
+     max-height tràn ra ngoài card thay vì cuộn được bên trong .profile-diff-body. */
+  overflow: hidden;
+}
+
+.profile-diff-header {
+  align-items: flex-start;
+  gap: 16px;
+  background: linear-gradient(135deg, #fff 0%, rgba(212, 180, 131, 0.08) 100%);
+}
+
+.profile-diff-header-subtitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-family: var(--font-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.profile-diff-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid rgba(184, 139, 72, 0.3);
+  border-radius: var(--radius-full);
+  background: rgba(212, 180, 131, 0.16);
+  color: #8a5b18;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.profile-diff-body {
+  flex: 1;
+  /* Bắt buộc để flex item này thực sự co lại và cuộn nội bộ, thay vì luôn cao bằng
+     tổng nội dung (mặc định min-height:auto của flex item không tự co theo max-height). */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.profile-diff-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.profile-diff-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-diff-body::-webkit-scrollbar-thumb {
+  background-color: #c3c7cf;
+  border-radius: 4px;
+}
+
+.profile-diff-body::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.profile-diff-field {
+  border: 1px solid #eceae4;
+  border-radius: 16px;
+  background: #fdfcfa;
+  overflow: hidden;
+  /* .profile-diff-body là flex container cột dọc — không có dòng này, flex-shrink mặc định (1)
+     sẽ BÓP NHỎ từng field lại cho vừa khung khi tổng nội dung vượt quá chỗ trống, thay vì để
+     .profile-diff-body cuộn. Đây là nguyên nhân thật của việc field trông như bị cắt/trống. */
+  flex-shrink: 0;
+}
+
+.profile-diff-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid #eceae4;
+  background: #f7f6f2;
+  color: var(--color-navy);
+  font: inherit;
+  font-family: var(--font-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.profile-diff-field-label:hover {
+  background: #efede5;
+}
+
+.profile-diff-field-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-diff-field-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18);
+  flex-shrink: 0;
+}
+
+.profile-diff-field-chevron {
+  font-size: 19px;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+}
+
+.profile-diff-field-chevron-collapsed {
+  transform: rotate(-90deg);
+}
+
+.profile-diff-collapse {
+  overflow: hidden;
+  max-height: 3000px;
+  opacity: 1;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease;
+}
+
+.profile-diff-collapse-closed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.profile-diff-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.profile-diff-column {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-diff-column-current {
+  border-right: 1px solid #eceae4;
+}
+
+.profile-diff-column-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-primary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.profile-diff-column-tag .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.profile-diff-tag-current {
+  background: #f1f2f4;
+  color: #6b7280;
+}
+
+.profile-diff-tag-proposed {
+  background: rgba(5, 150, 105, 0.1);
+  color: #047857;
+}
+
+.profile-diff-text {
+  color: var(--color-navy);
+  font-family: var(--font-primary);
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* Nội dung dài (Bio, Kinh nghiệm...) tự cuộn riêng trong khung của nó, thay vì kéo
+     giãn cả field/modal cao dần theo field dài nhất. */
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.profile-diff-text::-webkit-scrollbar {
+  width: 6px;
+}
+
+.profile-diff-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-diff-text::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+.profile-diff-text::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.profile-diff-removed,
+.profile-diff-added {
+  padding: 1.5px 3px;
+  border-radius: 5px;
+  font-weight: 700;
+  /* Giữ nguyên background liền mạch khi cụm từ đổi màu bị ngắt xuống dòng. */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.profile-diff-removed {
+  background: rgba(220, 38, 38, 0.18);
+  color: #b91c1c;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: rgba(185, 28, 28, 0.65);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.22);
+}
+
+.profile-diff-added {
+  background: rgba(5, 150, 105, 0.22);
+  color: #047857;
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.28);
+}
+
+.profile-diff-empty-value {
+  color: #b3b6bd;
+  font-style: italic;
+}
+
+/* Danh sách chip khối lớp cho diff "Môn học & giá" — dữ liệu có cấu trúc (môn × lớp × giá),
+   khác các field text ở trên nên không dùng word-diff mà hiện từng khối lớp như 1 chip riêng. */
+.profile-diff-grade-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.profile-diff-grade-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.profile-diff-grade-chip-same {
+  background: #f1f2f4;
+  color: #4b5260;
+}
+
+.profile-diff-grade-chip-removed {
+  background: rgba(220, 38, 38, 0.14);
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
+.profile-diff-grade-chip-added {
+  background: rgba(5, 150, 105, 0.16);
+  color: #047857;
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.25);
+}
+
+/* "changed" = lớp vẫn còn nhưng giá/thời lượng/số buổi đổi — khác cả removed (không mất lớp)
+   và added (không phải lớp mới), nên dùng màu thứ 3 (hổ phách) để không lẫn với 2 màu trên. */
+.profile-diff-grade-chip-changed {
+  background: rgba(217, 119, 6, 0.16);
+  color: #92400e;
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.28);
+}
+
+.profile-diff-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.profile-diff-empty-state .material-symbols-outlined {
+  font-size: 40px;
+  color: #b9dec9;
+}
+
+.profile-diff-empty-state p {
+  margin: 0;
+  font-family: var(--font-primary);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .profile-diff-modal {
+    max-height: 92vh;
+  }
+
+  .profile-diff-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-diff-column-current {
+    border-right: none;
+    border-bottom: 1px solid #eceae4;
+  }
+}

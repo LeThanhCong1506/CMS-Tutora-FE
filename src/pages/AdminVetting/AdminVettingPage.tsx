@@ -11,8 +11,9 @@ import TutorDetailModal from './components/TutorDetailModal';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
-import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI } from '../../types/admin.types';
+import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI, SubjectGradePriceItem } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { diffWords } from '../../utils/wordDiff';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useTabParam } from '../../hooks/useTabParam';
 import '../../styles/pages/admin-vetting.css';
@@ -50,6 +51,94 @@ const hasProfileUpdateRequestChanged = (
   known: ProfileUpdateRequestFromAPI,
   fresh: ProfileUpdateRequestFromAPI,
 ): boolean => PROFILE_UPDATE_COMPARE_KEYS.some((key) => known[key] !== fresh[key]);
+
+// BE gửi lại "proposed" cho MỌI field trong form (kể cả field tutor không đụng tới, giá trị
+// trùng "current") nên proposed !== null không có nghĩa là field đó thực sự thay đổi — phải so
+// sánh nội dung đã trim mới biết field nào cần hiển thị trong modal duyệt.
+const normalizeForDiff = (value: unknown): string => (value == null ? '' : String(value)).trim();
+
+// Hai điều kiện PHẢI cùng đúng mới tính là field thực sự thay đổi:
+//  1) proposed !== null — null nghĩa là tutor KHÔNG đụng tới field này ở lần nộp này (tuỳ luồng
+//     nộp, có request để null cho field chưa chạm, có request mirror lại y hệt current). Bỏ qua
+//     điều kiện này sẽ đọc nhầm "chưa chạm tới" (null) thành "đã xoá hết nội dung" (so với current).
+//  2) Nội dung thật (đã trim) khác current — bắt trường hợp proposed mirror lại y hệt current cho
+//     field không đổi (BE trả full snapshot ở một số request, không chỉ riêng phần thay đổi).
+const getChangedProfileUpdateFields = (request: ProfileUpdateRequestFromAPI) =>
+  PROFILE_UPDATE_DIFF_FIELDS.filter(
+    (f) =>
+      request[f.proposed] != null &&
+      normalizeForDiff(request[f.current]) !== normalizeForDiff(request[f.proposed]),
+  );
+
+// ── Diff cho "Môn học & Bảng giá" ──────────────────────────────────────────
+// Khác các field text ở trên: đây là dữ liệu có cấu trúc (nhiều dòng môn × lớp), nên so sánh
+// theo (subjectId, gradeLevelId) thay vì so text. proposedSubjectGradePrices luôn là snapshot
+// TOÀN BỘ giá của tutor ở lần nộp này (không chỉ phần họ vừa sửa) — giống cách currentHeadline/
+// proposedHeadline mirror nhau ở trên — nên phải so sánh nội dung mới biết lớp nào thực sự đổi.
+type GradePriceChangeType = 'added' | 'removed' | 'changed' | 'same';
+
+interface GradePriceChange {
+  gradeLevelId: number;
+  gradeLevelLabel: string;
+  type: GradePriceChangeType;
+  current?: SubjectGradePriceItem;
+  proposed?: SubjectGradePriceItem;
+}
+
+interface SubjectPriceDiffGroup {
+  subjectId: number;
+  subjectName: string;
+  grades: GradePriceChange[];
+}
+
+const priceSpecEqual = (a: SubjectGradePriceItem, b: SubjectGradePriceItem): boolean =>
+  a.pricePerHour === b.pricePerHour &&
+  a.durationMinutesPerSession === b.durationMinutesPerSession &&
+  a.sessionsPerWeek === b.sessionsPerWeek;
+
+const getSubjectPriceDiffGroups = (request: ProfileUpdateRequestFromAPI): SubjectPriceDiffGroup[] => {
+  const current = request.currentSubjectGradePrices ?? [];
+  const proposed = request.proposedSubjectGradePrices ?? [];
+  if (proposed.length === 0) return [];
+
+  const subjectIds = Array.from(new Set([...current.map((c) => c.subjectId), ...proposed.map((p) => p.subjectId)]));
+
+  return subjectIds
+    .map((subjectId): SubjectPriceDiffGroup => {
+      const currentRows = current.filter((c) => c.subjectId === subjectId);
+      const proposedRows = proposed.filter((p) => p.subjectId === subjectId);
+      const subjectName = proposedRows[0]?.subjectName ?? currentRows[0]?.subjectName ?? `Môn #${subjectId}`;
+
+      const gradeLevelIds = Array.from(
+        new Set([...currentRows.map((c) => c.gradeLevelId), ...proposedRows.map((p) => p.gradeLevelId)]),
+      ).sort((a, b) => a - b);
+
+      const grades: GradePriceChange[] = gradeLevelIds.map((gradeLevelId) => {
+        const cur = currentRows.find((c) => c.gradeLevelId === gradeLevelId);
+        const prop = proposedRows.find((p) => p.gradeLevelId === gradeLevelId);
+        const gradeLevelLabel = prop?.gradeLevelName ?? cur?.gradeLevelName ?? `Khối #${gradeLevelId}`;
+        const type: GradePriceChangeType = !cur
+          ? 'added'
+          : !prop
+            ? 'removed'
+            : priceSpecEqual(cur, prop)
+              ? 'same'
+              : 'changed';
+
+        return { gradeLevelId, gradeLevelLabel, type, current: cur, proposed: prop };
+      });
+
+      return { subjectId, subjectName, grades };
+    })
+    .filter((group) => group.grades.some((g) => g.type !== 'same'));
+};
+
+const formatPricePerHour = (n: number): string => `${n.toLocaleString('vi-VN')}đ/giờ`;
+
+const formatGradePriceTitle = (item?: SubjectGradePriceItem): string | undefined =>
+  item
+    ? `${formatPricePerHour(item.pricePerHour)} · ${item.durationMinutesPerSession} phút/buổi · ${item.sessionsPerWeek} buổi/tuần`
+    : undefined;
 
 type ApiError = {
   response?: { status?: number };
@@ -119,6 +208,22 @@ const AdminVettingPage = () => {
   const [updateRejectionNote, setUpdateRejectionNote] = useState('');
   const [showUpdateRejectModal, setShowUpdateRejectModal] = useState<string | null>(null);
   const [selectedUpdateRequest, setSelectedUpdateRequest] = useState<ProfileUpdateRequestFromAPI | null>(null);
+  // Field nào đang thu gọn trong modal diff — theo label field, reset mỗi lần mở request khác.
+  const [collapsedDiffFields, setCollapsedDiffFields] = useState<Set<string>>(new Set());
+
+  const openUpdateRequestModal = (request: ProfileUpdateRequestFromAPI) => {
+    setCollapsedDiffFields(new Set());
+    setSelectedUpdateRequest(request);
+  };
+
+  const toggleDiffFieldCollapsed = (label: string) => {
+    setCollapsedDiffFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const fetchPendingTutors = useCallback(async () => {
     if (!canViewNew) return;
@@ -248,6 +353,8 @@ const AdminVettingPage = () => {
       // — luôn ưu tiên hiển thị message thật từ server thay vì text tĩnh.
       toast.success(response?.message || 'Duyệt cập nhật hồ sơ thành công. Marketplace đã hiển thị thông tin mới.');
       await fetchPendingUpdateRequests();
+      // Đồng bộ với badge "Hồ sơ gia sư" ở sidebar — xem comment ở handleApprove bên dưới.
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error approving profile update request:', err);
       toast.error('Không thể duyệt yêu cầu. Vui lòng thử lại.');
@@ -293,6 +400,7 @@ const AdminVettingPage = () => {
       setShowUpdateRejectModal(null);
       setUpdateRejectionNote('');
       await fetchPendingUpdateRequests();
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error rejecting profile update request:', err);
       toast.error('Không thể từ chối yêu cầu. Vui lòng thử lại.');
@@ -328,6 +436,9 @@ const AdminVettingPage = () => {
       toast.success('Phê duyệt gia sư thành công!');
       setSelectedTutor(null);
       await fetchPendingTutors();
+      // AdminLayout chỉ fetch số badge "Hồ sơ gia sư" ở sidebar 1 lần lúc mount — báo nó cập nhật
+      // lại ngay, không để badge đứng yên tới khi Admin rời trang rồi quay lại.
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error approving tutor:', err);
       toast.error('Không thể phê duyệt gia sư. Vui lòng thử lại.');
@@ -356,6 +467,7 @@ const AdminVettingPage = () => {
       setRejectionNote('');
       setSelectedTutor(null);
       await fetchPendingTutors();
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error rejecting tutor:', err);
       toast.error('Không thể từ chối hồ sơ. Vui lòng thử lại.');
@@ -508,7 +620,7 @@ const AdminVettingPage = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => setSelectedUpdateRequest(req)}
+            onClick={() => openUpdateRequestModal(req)}
           >
             Xem thay đổi
           </button>
@@ -775,50 +887,201 @@ const AdminVettingPage = () => {
         </div>
       )}
 
-      {canViewUpdates && selectedUpdateRequest && (
-        <div className="vetting-modal-overlay" onClick={() => setSelectedUpdateRequest(null)}>
-          <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="vetting-modal-header">
-              <h3>Thay đổi hồ sơ đề xuất — {selectedUpdateRequest.tutorFullName || 'Chưa rõ tên'}</h3>
-              <button className="vetting-modal-close" onClick={() => setSelectedUpdateRequest(null)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="vetting-modal-body">
-              {PROFILE_UPDATE_DIFF_FIELDS.filter((f) => selectedUpdateRequest[f.proposed] !== null).map((f) => (
-                <div key={f.label} style={{ marginBottom: 14 }}>
-                  <strong>{f.label}</strong>
-                  <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                    <div style={{ flex: 1, opacity: 0.6 }}>
-                      <div className="admin-ui-entity-secondary">Hiện tại</div>
-                      <div>{String(selectedUpdateRequest[f.current] ?? '—')}</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="admin-ui-entity-secondary">Đề xuất</div>
-                      <div>{String(selectedUpdateRequest[f.proposed] ?? '—')}</div>
-                    </div>
-                  </div>
+      {canViewUpdates && selectedUpdateRequest && (() => {
+        const changedFields = getChangedProfileUpdateFields(selectedUpdateRequest);
+        const subjectPriceDiffGroups = getSubjectPriceDiffGroups(selectedUpdateRequest);
+        const changeCount = changedFields.length + subjectPriceDiffGroups.length;
+
+        return (
+          <div className="vetting-modal-overlay" onClick={() => setSelectedUpdateRequest(null)}>
+            <div className="vetting-modal profile-diff-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="vetting-modal-header profile-diff-header">
+                <div>
+                  <h3>Thay đổi hồ sơ đề xuất</h3>
+                  <p className="profile-diff-header-subtitle">
+                    {selectedUpdateRequest.tutorFullName || 'Chưa rõ tên'}
+                    <span className="profile-diff-count-badge">
+                      {changeCount} thay đổi
+                    </span>
+                  </p>
                 </div>
-              ))}
-              {selectedUpdateRequest.hasProposedSubjectGradePrices && (
-                <p className="vetting-modal-description">
-                  Tutor cũng đề xuất thay đổi Môn học &amp; Bảng giá — xem chi tiết bảng giá hiện tại của tutor trong hồ
-                  sơ đầy đủ trước khi duyệt.
-                </p>
-              )}
-              {PROFILE_UPDATE_DIFF_FIELDS.every((f) => selectedUpdateRequest[f.proposed] === null) &&
-                !selectedUpdateRequest.hasProposedSubjectGradePrices && (
-                  <p className="vetting-modal-description">Không có thay đổi nào được ghi nhận.</p>
+                <button className="vetting-modal-close" onClick={() => setSelectedUpdateRequest(null)}>
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div className="vetting-modal-body profile-diff-body">
+                {changedFields.map((f) => {
+                  const beforeText = String(selectedUpdateRequest[f.current] ?? '');
+                  const afterText = String(selectedUpdateRequest[f.proposed] ?? '');
+                  const { before, after } = diffWords(beforeText, afterText);
+                  const isCollapsed = collapsedDiffFields.has(f.label);
+                  return (
+                    <div key={f.label} className="profile-diff-field">
+                      <button
+                        type="button"
+                        className="profile-diff-field-label"
+                        onClick={() => toggleDiffFieldCollapsed(f.label)}
+                        aria-expanded={!isCollapsed}
+                      >
+                        <span className="profile-diff-field-label-text">
+                          <span className="profile-diff-field-dot" aria-hidden="true" />
+                          {f.label}
+                        </span>
+                        <span
+                          className={`material-symbols-outlined profile-diff-field-chevron ${
+                            isCollapsed ? 'profile-diff-field-chevron-collapsed' : ''
+                          }`}
+                        >
+                          expand_more
+                        </span>
+                      </button>
+                      <div
+                        className={`profile-diff-collapse ${isCollapsed ? 'profile-diff-collapse-closed' : ''}`}
+                        aria-hidden={isCollapsed}
+                      >
+                        <div className="profile-diff-columns">
+                          <div className="profile-diff-column profile-diff-column-current">
+                            <span className="profile-diff-column-tag profile-diff-tag-current">
+                              <span className="material-symbols-outlined">history</span>
+                              Hiện tại
+                            </span>
+                            <div className="profile-diff-text">
+                              {before.length ? (
+                                before.map((token, idx) => (
+                                  <span
+                                    key={idx}
+                                    className={token.type === 'removed' ? 'profile-diff-removed' : undefined}
+                                  >
+                                    {token.text}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="profile-diff-empty-value">—</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="profile-diff-column profile-diff-column-proposed">
+                            <span className="profile-diff-column-tag profile-diff-tag-proposed">
+                              <span className="material-symbols-outlined">edit_note</span>
+                              Đề xuất
+                            </span>
+                            <div className="profile-diff-text">
+                              {after.length ? (
+                                after.map((token, idx) => (
+                                  <span
+                                    key={idx}
+                                    className={token.type === 'added' ? 'profile-diff-added' : undefined}
+                                  >
+                                    {token.text}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="profile-diff-empty-value">—</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {subjectPriceDiffGroups.map((group) => {
+                  const fieldKey = `subject_price_${group.subjectId}`;
+                  const isCollapsed = collapsedDiffFields.has(fieldKey);
+                  const currentGrades = group.grades.filter((g) => g.type !== 'added');
+                  const proposedGrades = group.grades.filter((g) => g.type !== 'removed');
+                  const gradeChipClass = (type: GradePriceChangeType) =>
+                    `profile-diff-grade-chip profile-diff-grade-chip-${type}`;
+                  return (
+                    <div key={fieldKey} className="profile-diff-field">
+                      <button
+                        type="button"
+                        className="profile-diff-field-label"
+                        onClick={() => toggleDiffFieldCollapsed(fieldKey)}
+                        aria-expanded={!isCollapsed}
+                      >
+                        <span className="profile-diff-field-label-text">
+                          <span className="profile-diff-field-dot" aria-hidden="true" />
+                          Môn học &amp; giá — {group.subjectName}
+                        </span>
+                        <span
+                          className={`material-symbols-outlined profile-diff-field-chevron ${
+                            isCollapsed ? 'profile-diff-field-chevron-collapsed' : ''
+                          }`}
+                        >
+                          expand_more
+                        </span>
+                      </button>
+                      <div
+                        className={`profile-diff-collapse ${isCollapsed ? 'profile-diff-collapse-closed' : ''}`}
+                        aria-hidden={isCollapsed}
+                      >
+                        <div className="profile-diff-columns">
+                          <div className="profile-diff-column profile-diff-column-current">
+                            <span className="profile-diff-column-tag profile-diff-tag-current">
+                              <span className="material-symbols-outlined">history</span>
+                              Hiện tại
+                            </span>
+                            <div className="profile-diff-grade-list">
+                              {currentGrades.length ? (
+                                currentGrades.map((g) => (
+                                  <span
+                                    key={g.gradeLevelId}
+                                    className={gradeChipClass(g.type)}
+                                    title={formatGradePriceTitle(g.current)}
+                                  >
+                                    {g.gradeLevelLabel}
+                                    {g.current ? ` · ${formatPricePerHour(g.current.pricePerHour)}` : ''}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="profile-diff-empty-value">— (môn mới)</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="profile-diff-column profile-diff-column-proposed">
+                            <span className="profile-diff-column-tag profile-diff-tag-proposed">
+                              <span className="material-symbols-outlined">edit_note</span>
+                              Đề xuất
+                            </span>
+                            <div className="profile-diff-grade-list">
+                              {proposedGrades.length ? (
+                                proposedGrades.map((g) => (
+                                  <span
+                                    key={g.gradeLevelId}
+                                    className={gradeChipClass(g.type)}
+                                    title={formatGradePriceTitle(g.proposed)}
+                                  >
+                                    {g.gradeLevelLabel}
+                                    {g.proposed ? ` · ${formatPricePerHour(g.proposed.pricePerHour)}` : ''}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="profile-diff-empty-value">— (bỏ hết môn này)</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {changeCount === 0 && (
+                  <div className="profile-diff-empty-state">
+                    <span className="material-symbols-outlined">task_alt</span>
+                    <p>Không có thay đổi nào được ghi nhận.</p>
+                  </div>
                 )}
-            </div>
-            <div className="vetting-modal-footer">
-              <button className="vetting-btn vetting-btn-outline" onClick={() => setSelectedUpdateRequest(null)}>
-                Đóng
-              </button>
+              </div>
+              <div className="vetting-modal-footer">
+                <button className="vetting-btn vetting-btn-outline" onClick={() => setSelectedUpdateRequest(null)}>
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {canViewUpdates && showUpdateRejectModal && (
         <div className="vetting-modal-overlay" onClick={() => setShowUpdateRejectModal(null)}>

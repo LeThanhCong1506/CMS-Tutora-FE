@@ -538,7 +538,7 @@ const AdminDisputeDetailPage = () => {
                                 <button
                                     type="button"
                                     className="dispute-back-button"
-                                    onClick={() => navigate('/admin-portal/disputes')}
+                                    onClick={() => navigate(-1)}
                                 >
                                     <span className="material-symbols-outlined">arrow_back</span>
                                     Danh sách phản ánh
