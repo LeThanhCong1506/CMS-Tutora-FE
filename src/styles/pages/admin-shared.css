@@ -68,6 +68,33 @@
     background: rgba(61, 74, 62, 0.92);
 }
 
+/* Trước đây không có style disabled: nút bị khoá trông y hệt nút bấm được, người dùng bấm
+   mãi mà không hiểu vì sao không có phản ứng. */
+.admin-ui-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Giữ nguyên nền của từng biến thể khi bị khoá — không chặn thì hover vẫn đổi màu, nút khoá
+   lại trông như đang bấm được. */
+.admin-ui-button-primary:disabled:hover {
+    background: var(--color-navy);
+}
+
+.admin-ui-button-secondary:disabled:hover {
+    background: var(--color-white);
+    border-color: var(--color-stone-100);
+}
+
+.admin-ui-button-danger:disabled:hover {
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.admin-ui-button-success:disabled:hover {
+    background: var(--color-green);
+}
+
 .admin-ui-button:focus-visible,
 .admin-ui-search-input:focus-visible {
     outline: 2px solid rgba(212, 180, 131, 0.9);
