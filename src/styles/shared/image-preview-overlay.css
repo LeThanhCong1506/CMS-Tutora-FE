@@ -1,0 +1,106 @@
+/* Overlay xem ảnh phóng to (click-outside-to-close, Esc, fallback lỗi ảnh) — dùng chung cho mọi trang
+   cần preview 1 ảnh (chân dung tutor, ảnh CCCD...). Tách ra từ admin-vetting.css để dùng lại được ở
+   các trang khác (vd AdminUserManagement) không import file đó. */
+
+.detail-image-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: imagePreviewFadeIn 0.2s ease;
+  cursor: zoom-out;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.detail-image-preview-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(90vw, 1000px);
+  height: min(85vh, 760px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(17, 24, 39, 0.75);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.detail-image-preview-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  background: rgba(17, 24, 39, 0.72);
+  border: none;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.detail-image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.detail-image-preview-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.detail-image-preview-error {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  color: #fff;
+  text-align: center;
+}
+
+.detail-image-preview-error > .material-symbols-outlined {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 52px;
+}
+
+.detail-image-preview-error strong {
+  font-size: 15px;
+}
+
+.detail-image-preview-error a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detail-image-preview-error a .material-symbols-outlined {
+  font-size: 16px;
+}
+
+@keyframes imagePreviewFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
