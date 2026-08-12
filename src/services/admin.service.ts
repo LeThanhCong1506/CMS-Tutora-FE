@@ -793,6 +793,22 @@ export const getUserDetail = async (userId: string, signal?: AbortSignal): Promi
 };
 
 /**
+ * Tải ảnh từ endpoint file private rồi đổi sang blob URL để hiển thị.
+ *
+ * Không gán thẳng link vào <img src> được: endpoint đòi JWT + đúng quyền, mà thẻ img của trình
+ * duyệt không gửi header Authorization nên sẽ nhận 401. Dùng `api` để interceptor tự gắn token.
+ * Nơi gọi phải revokeObjectURL khi đóng ảnh, nếu không blob nằm lại trong bộ nhớ.
+ */
+export const fetchProtectedImage = async (url: string): Promise<string> => {
+  const { data } = await api.get<Blob>(url, { responseType: 'blob' });
+  return URL.createObjectURL(data);
+};
+
+export const releaseProtectedImage = (objectUrl: string | null | undefined): void => {
+  if (objectUrl?.startsWith('blob:')) URL.revokeObjectURL(objectUrl);
+};
+
+/**
  * Admin xem ảnh CCCD của người dùng (Tutor/Student) — link trả về là signed URL, hết hạn sau ~15 phút.
  */
 export const getUserCccdUrls = async (userId: string, signal?: AbortSignal): Promise<AdminUserCccdUrls> => {
