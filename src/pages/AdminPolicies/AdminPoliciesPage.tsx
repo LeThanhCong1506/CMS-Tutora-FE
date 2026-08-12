@@ -90,6 +90,9 @@ const AdminPoliciesPage = () => {
     }, [isArchiveView]);
 
     useEffect(() => {
+        // Loading remote policy state is the synchronization this effect owns; the callback
+        // also drives the table's loading indicator before awaiting the request.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchDocuments();
     }, [fetchDocuments]);
 
