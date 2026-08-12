@@ -27,6 +27,21 @@ export const formatDate = (dateString: string | null): string => {
 };
 
 /**
+ * "dd/MM/yyyy" cho ngày lịch thuần — kiểu `DateOnly` bên backend, gửi về dạng "2026-08-07".
+ *
+ * Cố ý KHÔNG đi qua `new Date()` như `formatDate`: hàm đó gắn thêm "Z" rồi đổi sang giờ máy,
+ * nên nửa đêm UTC bị lùi một ngày ở múi giờ âm. Với ngày hiệu lực của văn bản pháp lý thì lệch
+ * một ngày là sai thông tin. Ngày lịch không có múi giờ — đã là 07/08 thì ở đâu cũng là 07/08.
+ *
+ * Bản sao của `formatCalendarDate` trong Tutora-FE/src/utils/datetime.ts: hai repo phải in ra
+ * y hệt nhau, nếu không màn CMS và trang công khai sẽ hiện hai chuỗi khác nhau cho cùng một ngày.
+ */
+export const formatCalendarDate = (value: string | null | undefined): string => {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
+  return parts ? `${parts[3]}/${parts[2]}/${parts[1]}` : '';
+};
+
+/**
  * Format ISO datetime to Vietnamese locale with time
  * @param dateString - ISO datetime string
  * @returns Formatted datetime (DD/MM/YYYY HH:MM)
