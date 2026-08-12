@@ -8,7 +8,14 @@ import type {
     AdminUserRelationships,
     AdminWarningHistoryItem,
 } from '../../../types/admin.types';
-import { getUserCccdUrls, getUserDetail, getUserSuspensions, getUserWarnings } from '../../../services/admin.service';
+import {
+    fetchProtectedImage,
+    getUserCccdUrls,
+    getUserDetail,
+    getUserSuspensions,
+    getUserWarnings,
+    releaseProtectedImage,
+} from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
 import { Can, useAccess } from '../../../contexts/AccessContext';
 import '../../../styles/shared/image-preview-overlay.css';
@@ -350,18 +357,40 @@ const UserDetailModal = ({
     }, [canViewCccd, fetchCccd, isOpen, supportsCccd, userId]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    // Endpoint file private đòi JWT + đúng quyền nên phải tải bằng JS rồi đổi sang blob URL,
+    // không gán thẳng link vào <img src> được (thẻ img không gửi được token).
+    const openCccdImage = useCallback(async (signedUrl?: string | null) => {
+        if (!signedUrl) return;
+        setImagePreviewError(false);
+        try {
+            const objectUrl = await fetchProtectedImage(signedUrl);
+            setImagePreview((prev) => {
+                releaseProtectedImage(prev);
+                return objectUrl;
+            });
+        } catch {
+            setImagePreview(signedUrl);
+            setImagePreviewError(true);
+        }
+    }, []);
+
+    const closeImagePreview = useCallback(() => {
+        setImagePreview((prev) => {
+            releaseProtectedImage(prev);
+            return null;
+        });
+        setImagePreviewError(false);
+    }, []);
+
     // Đóng overlay xem ảnh CCCD bằng Escape (không đóng luôn cả modal chi tiết).
     useEffect(() => {
         if (!imagePreview) return undefined;
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setImagePreview(null);
-                setImagePreviewError(false);
-            }
+            if (event.key === 'Escape') closeImagePreview();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [imagePreview]);
+    }, [closeImagePreview, imagePreview]);
 
     if (!isOpen || !user) return null;
 
@@ -498,10 +527,7 @@ const UserDetailModal = ({
                                         <button
                                             type="button"
                                             className="um-btn um-btn-secondary"
-                                            onClick={() => {
-                                                setImagePreviewError(false);
-                                                setImagePreview(cccd.frontImageUrl ?? null);
-                                            }}
+                                            onClick={() => void openCccdImage(cccd.frontImageUrl)}
                                         >
                                             <span className="material-symbols-outlined">visibility</span>
                                             Xem mặt trước
@@ -511,10 +537,7 @@ const UserDetailModal = ({
                                         <button
                                             type="button"
                                             className="um-btn um-btn-secondary"
-                                            onClick={() => {
-                                                setImagePreviewError(false);
-                                                setImagePreview(cccd.backImageUrl ?? null);
-                                            }}
+                                            onClick={() => void openCccdImage(cccd.backImageUrl)}
                                         >
                                             <span className="material-symbols-outlined">visibility</span>
                                             Xem mặt sau
@@ -898,19 +921,13 @@ const UserDetailModal = ({
         {imagePreview && (
             <div
                 className="detail-image-preview-overlay"
-                onMouseDown={() => {
-                    setImagePreview(null);
-                    setImagePreviewError(false);
-                }}
+                onMouseDown={closeImagePreview}
             >
                 <div className="detail-image-preview-container" onMouseDown={(event) => event.stopPropagation()}>
                     <button
                         type="button"
                         className="detail-image-preview-close"
-                        onClick={() => {
-                            setImagePreview(null);
-                            setImagePreviewError(false);
-                        }}
+                        onClick={closeImagePreview}
                         aria-label="Đóng ảnh xem trước"
                     >
                         <span className="material-symbols-outlined">close</span>
