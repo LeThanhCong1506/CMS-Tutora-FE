@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
+import { ConfirmDialog, DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import {
   createPermissionGroup,
@@ -319,6 +319,8 @@ const PermissionGroupsPage = () => {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<PermissionGroupSummary | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [confirming, setConfirming] = useState<PermissionGroupSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     try {
@@ -361,24 +363,32 @@ const PermissionGroupsPage = () => {
     }
   };
 
-  const remove = async (group: PermissionGroupSummary) => {
+  const requestRemove = (group: PermissionGroupSummary) => {
     if (group.staffCount > 0) {
       toast.warning('Nhóm đang được gán cho ' + group.staffCount + ' nhân viên. Hãy chuyển nhóm trước khi xóa.');
       return;
     }
-    if (!window.confirm('Xóa nhóm quyền “' + group.name + '”?')) return;
+    setConfirming(group);
+  };
 
+  const confirmRemove = async () => {
+    if (!confirming) return;
+    setDeleting(true);
     try {
-      await deletePermissionGroup(group.id, group.version);
+      await deletePermissionGroup(confirming.id, confirming.version);
       toast.success('Đã xóa nhóm quyền.');
+      setConfirming(null);
       await load();
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         toast.warning('Nhóm quyền đã thay đổi hoặc đang được sử dụng. Danh sách sẽ được tải lại.');
+        setConfirming(null);
         await load();
         return;
       }
       toast.error(apiErrorMessage(error, 'Không thể xóa nhóm quyền.'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -420,7 +430,7 @@ const PermissionGroupsPage = () => {
           <button type="button" onClick={() => void openEdit(group)} title="Sửa nhóm">
             <span className="material-symbols-outlined">edit</span>
           </button>
-          <button type="button" className="danger" onClick={() => void remove(group)} title="Xóa nhóm">
+          <button type="button" className="danger" onClick={() => requestRemove(group)} title="Xóa nhóm">
             <span className="material-symbols-outlined">delete</span>
           </button>
         </div>
@@ -496,6 +506,20 @@ const PermissionGroupsPage = () => {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirming}
+        title="Xóa nhóm quyền?"
+        description={
+          <>
+            Nhóm quyền <strong>{confirming?.name}</strong> sẽ bị xóa vĩnh viễn và không thể khôi phục.
+          </>
+        }
+        confirmLabel="Xóa nhóm quyền"
+        busy={deleting}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => setConfirming(null)}
+      />
     </>
   );
 };
