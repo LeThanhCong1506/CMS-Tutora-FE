@@ -196,6 +196,7 @@ export const SubjectFormModal: React.FC<Props> = ({ subject, onClose, onSaved })
                 id="subject-order"
                 type="number"
                 value={form.displayOrder}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => set('displayOrder', Number(e.target.value) || 0)}
               />
             </div>
