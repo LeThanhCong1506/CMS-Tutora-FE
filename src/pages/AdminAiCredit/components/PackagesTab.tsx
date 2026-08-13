@@ -22,6 +22,11 @@ import { formatVNDNumber } from '../../../utils/formatters';
 import '../../../styles/pages/admin-shared.css';
 import '../../../styles/pages/admin-ai-credit.css';
 
+// Input số luôn khởi tạo/lưu ở "0"; nếu không cắt số 0 thừa, gõ "1" vào ô đang hiện
+// "0" sẽ nối thành "01" thay vì thay thế. Giữ chuỗi rỗng nguyên trạng để người dùng
+// xóa hết rồi gõ lại được bình thường.
+const stripLeadingZeros = (raw: string) => (raw === '' ? '' : raw.replace(/^0+(?=\d)/, ''));
+
 const formatPrice = (price: number, currency: string) =>
   price === 0
     ? 'Miễn phí'
@@ -254,7 +259,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
                 type="number"
                 min={0}
                 value={form.creditAmount}
-                onChange={(e) => setField('creditAmount', e.target.value)}
+                onChange={(e) => setField('creditAmount', stripLeadingZeros(e.target.value))}
               />
               {errors.creditAmount && (
                 <span className="ai-credit-form-hint" style={{ color: '#dc2626' }}>
@@ -274,7 +279,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
                 min={0}
                 step={1000}
                 value={form.price}
-                onChange={(e) => setField('price', e.target.value)}
+                onChange={(e) => setField('price', stripLeadingZeros(e.target.value))}
               />
               {errors.price && (
                 <span className="ai-credit-form-hint" style={{ color: '#dc2626' }}>{errors.price}</span>
@@ -293,7 +298,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
                 type="number"
                 min={0}
                 value={form.sortOrder}
-                onChange={(e) => setField('sortOrder', e.target.value)}
+                onChange={(e) => setField('sortOrder', stripLeadingZeros(e.target.value))}
               />
             </div>
           </div>
