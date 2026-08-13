@@ -29,6 +29,7 @@ import type {
     SessionLogSummary,
 } from '../../types/admin.types';
 import {
+    ConfirmDialog,
     PageContainer,
     SectionCard,
     SessionLogPanel,
@@ -170,6 +171,8 @@ const AdminDisputeDetailPage = () => {
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
     const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+    const [investigateConfirmOpen, setInvestigateConfirmOpen] = useState(false);
+    const [noShowConfirmOpen, setNoShowConfirmOpen] = useState(false);
 
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -370,21 +373,14 @@ const AdminDisputeDetailPage = () => {
         }
     };
 
-    const handleInvestigate = async () => {
+    const runInvestigate = async (beforeDeadline: boolean) => {
         if (!disputeDetail || !disputeId) return;
-
-        const beforeDeadline = isBeforeTutorResponseDeadline(disputeDetail.tutorResponseDeadline, Date.now());
-        if (beforeDeadline) {
-            const confirmed = window.confirm(
-                `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi. Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?`,
-            );
-            if (!confirmed) return;
-        }
 
         try {
             setIsSubmitting(true);
             await investigateDispute(disputeDetail.disputeId, beforeDeadline);
             toast.success('Đã chuyển hồ sơ sang bước xem xét');
+            setInvestigateConfirmOpen(false);
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error investigating dispute:', err);
@@ -394,17 +390,24 @@ const AdminDisputeDetailPage = () => {
         }
     };
 
-    const handleConfirmNoShow = async () => {
+    const handleInvestigate = () => {
+        if (!disputeDetail) return;
+        const beforeDeadline = isBeforeTutorResponseDeadline(disputeDetail.tutorResponseDeadline, Date.now());
+        if (beforeDeadline) {
+            setInvestigateConfirmOpen(true);
+            return;
+        }
+        void runInvestigate(false);
+    };
+
+    const runConfirmNoShow = async () => {
         if (!disputeDetail || !disputeId) return;
-        const confirmed = window.confirm(
-            'Xác nhận gia sư thực sự vắng mặt? Sau bước này, phụ huynh/học sinh có thể tự chọn phương án hoàn tiền, học bù hoặc hủy khóa học.',
-        );
-        if (!confirmed) return;
 
         try {
             setIsSubmitting(true);
             await confirmTutorNoShow(disputeDetail.disputeId);
             toast.success('Đã xác nhận gia sư vắng mặt. Người học có thể chọn phương án xử lý.');
+            setNoShowConfirmOpen(false);
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error confirming tutor no-show:', err);
@@ -602,7 +605,7 @@ const AdminDisputeDetailPage = () => {
                                     <button
                                         type="button"
                                         className="admin-ui-button admin-ui-button-primary"
-                                        onClick={handleConfirmNoShow}
+                                        onClick={() => setNoShowConfirmOpen(true)}
                                         disabled={isSubmitting}
                                     >
                                         <span className="material-symbols-outlined">verified</span>
@@ -1461,6 +1464,36 @@ const AdminDisputeDetailPage = () => {
                 onClose={() => setIsLockModalOpen(false)}
                 user={managementTutor}
                 onBlock={handleDeactivateTutor}
+            />
+
+            <ConfirmDialog
+                open={investigateConfirmOpen}
+                title="Chuyển sang xem xét sớm?"
+                description={
+                    disputeDetail.tutorResponseDeadline ? (
+                        <>
+                            Gia sư còn thời gian đến <strong>{formatDateTime(disputeDetail.tutorResponseDeadline)}</strong> để
+                            phản hồi. Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?
+                        </>
+                    ) : (
+                        'Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?'
+                    )
+                }
+                confirmLabel="Xem xét sớm"
+                destructive={false}
+                busy={isSubmitting}
+                onConfirm={() => void runInvestigate(true)}
+                onCancel={() => setInvestigateConfirmOpen(false)}
+            />
+
+            <ConfirmDialog
+                open={noShowConfirmOpen}
+                title="Xác nhận gia sư vắng mặt?"
+                description="Sau bước này, phụ huynh/học sinh có thể tự chọn phương án hoàn tiền, học bù hoặc hủy khóa học."
+                confirmLabel="Xác nhận vắng mặt"
+                busy={isSubmitting}
+                onConfirm={() => void runConfirmNoShow()}
+                onCancel={() => setNoShowConfirmOpen(false)}
             />
         </>
     );
