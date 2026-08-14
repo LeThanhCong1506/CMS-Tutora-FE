@@ -48,6 +48,7 @@ const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjects
 const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChaptersPage'));
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
 const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPage'));
+const AdminSupportInboxPage = lazy(() => import('./pages/AdminSupport/AdminSupportInboxPage'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
 const TransferHistoryPage = lazy(() => import('./pages/AdminPayout/Transfer/TransferHistoryPage'));
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
@@ -72,6 +73,7 @@ const PortalIndexRedirect = () => {
     ['tutor_profile_update.view', '/admin-portal/vetting/profiles'],
     ['certificate.view', '/admin-portal/vetting/certificates'],
     ['dispute.view', '/admin-portal/disputes'],
+    ['support.view', '/admin-portal/support'],
     ['warning.view', '/admin-portal/warnings'],
     ['feedback.view', '/admin-portal/feedbacks'],
     ['policy.view', '/admin-portal/policies'],
@@ -205,6 +207,7 @@ function App() {
               <Route path="knowledge-base" element={guard(<KnowledgeBasePage />, 'knowledge_base.view')} />
               <Route path="disputes" element={guard(<AdminDisputesPage />, 'dispute.view')} />
               <Route path="disputes/:id" element={guard(<AdminDisputeDetailPage />, 'dispute.view')} />
+              <Route path="support" element={guard(<AdminSupportInboxPage />, 'support.view')} />
               <Route path="settings" element={guard(<AdminSettingsPage />, 'lookup.view')} />
               <Route path="notifications" element={guard(<NotificationsPage />, 'notification.view')} />
               <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
