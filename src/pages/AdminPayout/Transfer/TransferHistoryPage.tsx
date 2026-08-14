@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { getTransferHistory } from '../../../services/adminPayout.service';
-import type { AdminWalletTransferResult } from '../../../types/adminPayout.types';
+import { getTransferHistory, getFundBalance } from '../../../services/adminPayout.service';
+import type { AdminWalletTransferResult, SystemFund } from '../../../types/adminPayout.types';
 import { DataTable, PageContainer, SectionCard } from '../../../components/shared';
 import type { DataTableColumn } from '../../../components/shared';
 import { Can } from '../../../contexts/AccessContext';
 import { formatCurrency, formatDateTime } from '../../../utils/formatters';
 import TransferMoneyModal from './TransferMoneyModal';
+import TopUpFundModal from './TopUpFundModal';
 
 const PAGE_SIZE = 20;
 
@@ -25,6 +26,8 @@ const TransferHistoryPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [fund, setFund] = useState<SystemFund | null>(null);
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
 
     const fetchHistory = useCallback(async () => {
         try {
@@ -39,13 +42,30 @@ const TransferHistoryPage: React.FC = () => {
         }
     }, [currentPage]);
 
+    const fetchFund = useCallback(async () => {
+        try {
+            setFund(await getFundBalance());
+        } catch {
+            toast.error('Không thể tải số dư quỹ hệ thống.');
+        }
+    }, []);
+
     useEffect(() => {
         void fetchHistory();
     }, [fetchHistory]);
 
+    useEffect(() => {
+        void fetchFund();
+    }, [fetchFund]);
+
     const handleTransferSuccess = () => {
         setCurrentPage(1);
         void fetchHistory();
+        void fetchFund();
+    };
+
+    const handleTopUpSuccess = () => {
+        void fetchFund();
     };
 
     const columns = useMemo<DataTableColumn<AdminWalletTransferResult>[]>(() => [
@@ -101,18 +121,47 @@ const TransferHistoryPage: React.FC = () => {
             subtitle="Cộng thẳng tiền vào ví một gia sư, phụ huynh hoặc học sinh — không gắn với yêu cầu rút tiền nào. Tiền vào ví ngay khi xác nhận, không có bước duyệt thứ hai."
             maxWidth="wide"
             headerAction={
-                <Can permission="payout.transfer">
-                    <button
-                        type="button"
-                        className="admin-ui-button admin-ui-button-primary"
-                        onClick={() => setShowTransferModal(true)}
-                    >
-                        <span className="material-symbols-outlined">send_money</span>
-                        Chuyển tiền mới
-                    </button>
-                </Can>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <Can permission="payout.fund_topup">
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-secondary"
+                            onClick={() => setShowTopUpModal(true)}
+                        >
+                            <span className="material-symbols-outlined">savings</span>
+                            Nạp quỹ
+                        </button>
+                    </Can>
+                    <Can permission="payout.transfer">
+                        <button
+                            type="button"
+                            className="admin-ui-button admin-ui-button-primary"
+                            onClick={() => setShowTransferModal(true)}
+                        >
+                            <span className="material-symbols-outlined">send_money</span>
+                            Chuyển tiền mới
+                        </button>
+                    </Can>
+                </div>
             }
         >
+            <SectionCard
+                title="Quỹ hệ thống"
+                subtitle="Nguồn duy nhất mà chuyển tiền chủ động được phép trừ vào — hết quỹ thì bị chặn."
+                padded
+            >
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <strong style={{ fontSize: 28 }} className="admin-ui-amount">
+                        {fund ? formatCurrency(fund.balance) : '—'}
+                    </strong>
+                    {fund && (
+                        <span className="admin-ui-table-meta">
+                            cập nhật lúc {formatDateTime(fund.updatedAt)}
+                        </span>
+                    )}
+                </div>
+            </SectionCard>
+
             <SectionCard
                 title="Lịch sử chuyển tiền"
                 subtitle="Mới nhất trước."
@@ -148,6 +197,12 @@ const TransferHistoryPage: React.FC = () => {
                 isOpen={showTransferModal}
                 onClose={() => setShowTransferModal(false)}
                 onSuccess={handleTransferSuccess}
+            />
+
+            <TopUpFundModal
+                isOpen={showTopUpModal}
+                onClose={() => setShowTopUpModal(false)}
+                onSuccess={handleTopUpSuccess}
             />
         </PageContainer>
     );
