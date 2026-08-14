@@ -127,7 +127,8 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
       { path: '/admin-portal/knowledge-base', label: 'Thông tin Hệ thống', materialIcon: 'auto_stories', permission: 'knowledge_base.view' },
-      { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
+      // 'Cài đặt' (settings) nav entry removed: AdminSettingsPage is 100% mock local state,
+      // not wired to any backend config — see src/pages/AdminSettings/AdminSettingsPage.tsx.
     ];
 
     const isVisible = (item: SecuredNavItem) => item.adminOnly
