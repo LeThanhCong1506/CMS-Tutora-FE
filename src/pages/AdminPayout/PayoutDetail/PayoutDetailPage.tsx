@@ -64,6 +64,38 @@ const DetailItem = ({
   </div>
 );
 
+/**
+ * Số tài khoản là thứ duy nhất trên trang này phải gõ lại sang app ngân hàng — gõ tay dễ sai một
+ * chữ số mà hậu quả là chuyển nhầm người, nên cho copy thẳng.
+ */
+const CopyableAccountNumber = ({ value }: { value: string | null }) => {
+  const [copied, setCopied] = useState(false);
+
+  if (!value) return <strong>Chưa có số tài khoản</strong>;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Trình duyệt không cho phép sao chép tự động');
+    }
+  };
+
+  return (
+    <div className="payout-account-copy">
+      <strong>{value}</strong>
+      <button type="button" onClick={() => void copy()} aria-label="Sao chép số tài khoản">
+        <span className="material-symbols-outlined" aria-hidden="true">
+          {copied ? 'check' : 'content_copy'}
+        </span>
+        {copied ? 'Đã chép' : 'Chép'}
+      </button>
+    </div>
+  );
+};
+
 const SummaryFact = ({
   icon,
   label,
@@ -253,34 +285,26 @@ const PayoutDetailPage: React.FC = () => {
         </div>
       }
     >
-      <section className="payout-detail-summary" aria-label="Tóm tắt yêu cầu rút tiền">
+      {/* Khối này là thông tin cần để đi chuyển khoản: số tiền, người nhận, số tài khoản.
+          Các mốc thời gian và dấu vết xử lý nằm ở "Nhật ký xử lý" bên dưới, không lặp lại ở đây. */}
+      <section className="payout-detail-summary" aria-label="Thông tin chuyển khoản">
         <div className="payout-detail-summary__amount">
-          <div className="payout-detail-summary__topline">
-            <span className="payout-detail-summary__id">#{requestInfo.withdrawalId}</span>
-            <WithdrawalStatusBadge status={requestInfo.status} />
-          </div>
-          <span className="payout-detail-summary__label">Số tiền yêu cầu</span>
+          <span className="payout-detail-summary__label">Số tiền cần chuyển</span>
           <strong>{formatCurrency(requestInfo.amount)}</strong>
-          <small>{requestInfo.accountHolderName || 'Chưa cập nhật chủ tài khoản'}</small>
+          <small>Yêu cầu lúc {formatDateTime(requestInfo.createdAt)}</small>
         </div>
 
         <div className="payout-detail-summary__facts">
-          <SummaryFact icon="person" label="Người dùng">
+          <SummaryFact icon="person" label="Người nhận">
             <strong>{tutorInfo.name}</strong>
             <small>{tutorInfo.email || tutorInfo.phone || 'Chưa có thông tin liên hệ'}</small>
           </SummaryFact>
-          <SummaryFact icon="account_balance" label="Tài khoản nhận">
+          <SummaryFact icon="account_balance" label="Ngân hàng">
             <strong>{requestInfo.bankName || 'Chưa cập nhật'}</strong>
-            <small>{requestInfo.accountNumber || 'Chưa có số tài khoản'}</small>
+            <small>{requestInfo.accountHolderName || 'Chưa cập nhật chủ tài khoản'}</small>
           </SummaryFact>
-          <SummaryFact icon="calendar_month" label="Thời điểm yêu cầu" className="payout-detail-fact--wide-mobile">
-            <strong>{formatDateTime(requestInfo.createdAt)}</strong>
-            <small>Thời gian hệ thống ghi nhận</small>
-          </SummaryFact>
-          <SummaryFact icon="verified_user" label="Hình thức duyệt" className="payout-detail-fact--wide-mobile">
-            <StatusBadge variant={decisionVariant(requestInfo.decision)} shape="tag">
-              {formatApprovalDecision(requestInfo.decision)}
-            </StatusBadge>
+          <SummaryFact icon="tag" label="Số tài khoản">
+            <CopyableAccountNumber value={requestInfo.accountNumber} />
           </SummaryFact>
         </div>
       </section>
@@ -384,26 +408,19 @@ const PayoutDetailPage: React.FC = () => {
         <div className="payout-detail-main">
           <SectionCard
             className="payout-detail-card"
-            title="Thông tin xử lý"
-            subtitle="Mốc thời gian, quyết định xử lý và tài khoản nhận tiền."
-            headerAction={<WithdrawalStatusBadge status={requestInfo.status} />}
+            title="Nhật ký xử lý"
+            subtitle="Ai đã nhận, ai đã duyệt và bằng chứng chuyển khoản."
             padded
           >
             <div className="payout-info-grid">
-              <DetailItem label="Ngày tạo">{formatDateTime(requestInfo.createdAt)}</DetailItem>
-              <DetailItem label="Ngày xử lý">
-                {requestInfo.processedAt ? formatDateTime(requestInfo.processedAt) : '---'}
-              </DetailItem>
               <DetailItem label="Người nhận xử lý">{requestInfo.claimedBy || '---'}</DetailItem>
               <DetailItem label="Thời gian nhận">
                 {requestInfo.claimedAt ? formatDateTime(requestInfo.claimedAt) : '---'}
               </DetailItem>
-              <DetailItem label="Hình thức duyệt">
-                <StatusBadge variant={decisionVariant(requestInfo.decision)} shape="tag">
-                  {formatApprovalDecision(requestInfo.decision)}
-                </StatusBadge>
-              </DetailItem>
               <DetailItem label="Người xử lý">{requestInfo.processedBy || '---'}</DetailItem>
+              <DetailItem label="Ngày xử lý">
+                {requestInfo.processedAt ? formatDateTime(requestInfo.processedAt) : '---'}
+              </DetailItem>
               <DetailItem label="Mã giao dịch ngân hàng">
                 {requestInfo.transactionId ? (
                   <span className="admin-ui-code-chip">{requestInfo.transactionId}</span>
@@ -411,6 +428,11 @@ const PayoutDetailPage: React.FC = () => {
               </DetailItem>
               <DetailItem label="Thời gian chuyển khoản">
                 {requestInfo.paidAt ? formatDateTime(requestInfo.paidAt) : '---'}
+              </DetailItem>
+              <DetailItem label="Hình thức duyệt">
+                <StatusBadge variant={decisionVariant(requestInfo.decision)} shape="tag">
+                  {formatApprovalDecision(requestInfo.decision)}
+                </StatusBadge>
               </DetailItem>
               <DetailItem label="Ghi chú đối soát" wide>
                 {requestInfo.completionNote ? (
@@ -436,38 +458,22 @@ const PayoutDetailPage: React.FC = () => {
                 </DetailItem>
               )}
             </div>
-
-            <div className="payout-bank-panel">
-              <div className="payout-subsection-title">
-                <span className="material-symbols-outlined">account_balance</span>
-                Thông tin tài khoản nhận
-              </div>
-              <div className="payout-info-grid compact">
-                <DetailItem label="Ngân hàng">{requestInfo.bankName || 'N/A'}</DetailItem>
-                <DetailItem label="Số tài khoản">
-                  <strong>{requestInfo.accountNumber || 'N/A'}</strong>
-                </DetailItem>
-                <DetailItem label="Chủ tài khoản" wide>
-                  {requestInfo.accountHolderName || 'N/A'}
-                </DetailItem>
-              </div>
-            </div>
           </SectionCard>
 
           <SectionCard
             className="payout-detail-card"
-            title="Thông tin người dùng & ví"
+            title="Hồ sơ người dùng & ví"
             subtitle="Đối chiếu hồ sơ người dùng với số dư ví trước khi ra quyết định."
             padded
           >
             <div className="payout-split-grid">
               <div className="payout-info-grid compact">
-                <DetailItem label="Họ tên">
-                  <strong>{tutorInfo.name}</strong>
-                </DetailItem>
                 <DetailItem label="Email">{tutorInfo.email || 'N/A'}</DetailItem>
                 <DetailItem label="Số điện thoại">{tutorInfo.phone || 'N/A'}</DetailItem>
                 <DetailItem label="Ngày tham gia">{formatDateTime(tutorInfo.joinedAt)}</DetailItem>
+                <DetailItem label="Tuổi tài khoản">
+                  {(tutorInfo.accountAgeDays ?? 0).toLocaleString('vi-VN')} ngày
+                </DetailItem>
               </div>
               <div className="payout-wallet-panel">
                 <div className="payout-subsection-title">
@@ -482,9 +488,6 @@ const PayoutDetailPage: React.FC = () => {
                 <DetailItem label="Tổng tiền đã nhận">{formatCurrency(tutorInfo.totalEarnings)}</DetailItem>
                 <DetailItem label="Buổi học hoàn thành">
                   {(tutorInfo.completedClassSessions ?? 0).toLocaleString('vi-VN')}
-                </DetailItem>
-                <DetailItem label="Tuổi tài khoản">
-                  {(tutorInfo.accountAgeDays ?? 0).toLocaleString('vi-VN')} ngày
                 </DetailItem>
               </div>
             </div>
