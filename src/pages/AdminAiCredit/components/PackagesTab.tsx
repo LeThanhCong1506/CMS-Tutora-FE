@@ -18,6 +18,7 @@ import type {
 } from '../../../types/aiCredit.types';
 import { PACKAGE_FORM_DEFAULT } from '../../../types/aiCredit.types';
 import { formatVNDNumber } from '../../../utils/formatters';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 import '../../../styles/pages/admin-shared.css';
 import '../../../styles/pages/admin-ai-credit.css';
@@ -26,6 +27,10 @@ import '../../../styles/pages/admin-ai-credit.css';
 // "0" sẽ nối thành "01" thay vì thay thế. Giữ chuỗi rỗng nguyên trạng để người dùng
 // xóa hết rồi gõ lại được bình thường.
 const stripLeadingZeros = (raw: string) => (raw === '' ? '' : raw.replace(/^0+(?=\d)/, ''));
+
+// Ô Giá đổi sang type="text" để hiện được dấu phẩy ngăn cách nghìn — bóc lại còn thuần chữ số
+// trước khi lưu vào state (state luôn giữ chuỗi số thô, không có dấu phẩy).
+const digitsOnly = (raw: string) => stripLeadingZeros(raw.replace(/[^\d]/g, ''));
 
 const formatPrice = (price: number, currency: string) =>
   price === 0
@@ -63,6 +68,8 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // Đang focus ô Giá: hiện số thô để gõ tự nhiên. Rời focus: hiện có dấu phẩy ngăn cách cho dễ đọc.
+  const [priceFocused, setPriceFocused] = useState(false);
 
   const setField = (key: keyof PackageFormValues, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -275,11 +282,12 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
               <input
                 id="pkg-price"
                 className={`ai-credit-form-input${errors.price ? ' error' : ''}`}
-                type="number"
-                min={0}
-                step={1000}
-                value={form.price}
-                onChange={(e) => setField('price', stripLeadingZeros(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                value={priceFocused ? form.price : form.price ? formatVNDNumber(Number(form.price)) : ''}
+                onFocus={() => setPriceFocused(true)}
+                onBlur={() => setPriceFocused(false)}
+                onChange={(e) => setField('price', digitsOnly(e.target.value))}
               />
               {errors.price && (
                 <span className="ai-credit-form-hint" style={{ color: '#dc2626' }}>{errors.price}</span>
@@ -436,16 +444,17 @@ export const PackagesTab: React.FC = () => {
   // Bảng này trước đây đổ thẳng toàn bộ danh sách, không có phân trang nào.
   const { page, setPage, pageItems, total, pageSize } = useClientPagination(filtered);
 
-  const handleSoftDelete = async () => {
+  const handleDelete = async () => {
     if (!deleteConfirm.pkg) return;
     setDeleting(true);
     try {
-      await deleteAiCreditPackage(deleteConfirm.pkg.packageId);
-      toast.success('Đã vô hiệu hóa gói.');
+      const res = await deleteAiCreditPackage(deleteConfirm.pkg.packageId);
+      toast.success(res.message || 'Đã xóa gói.');
       setDeleteConfirm({ open: false });
       await loadPackages();
-    } catch {
-      toast.error('Không thể vô hiệu hóa gói. Vui lòng thử lại.');
+    } catch (err) {
+      // BE chặn xóa (409) khi gói đã có giao dịch — hiện đúng lý do BE trả về thay vì câu chung chung.
+      toast.error(apiErrorMessage(err, 'Không thể xóa gói. Vui lòng thử lại.'));
     } finally {
       setDeleting(false);
     }
@@ -624,16 +633,14 @@ export const PackagesTab: React.FC = () => {
                           >
                             <span className="material-symbols-outlined">edit</span>
                           </button>
-                          {pkg.isActive && (
-                            <button
-                              id={`ai-credit-disable-pkg-${pkg.packageId}`}
-                              className="ai-credit-action-btn danger"
-                              title="Vô hiệu hóa gói"
-                              onClick={() => setDeleteConfirm({ open: true, pkg })}
-                            >
-                              <span className="material-symbols-outlined">block</span>
-                            </button>
-                          )}
+                          <button
+                            id={`ai-credit-delete-pkg-${pkg.packageId}`}
+                            className="ai-credit-action-btn danger"
+                            title="Xóa gói"
+                            onClick={() => setDeleteConfirm({ open: true, pkg })}
+                          >
+                            <span className="material-symbols-outlined">delete</span>
+                          </button>
                         </div>
                       )}
                     </td>
@@ -661,21 +668,20 @@ export const PackagesTab: React.FC = () => {
 
       <ConfirmDialog
         open={deleteConfirm.open}
-        title="Vô hiệu hóa gói"
+        title="Xóa gói"
         description={
           <span>
-            Bạn chắc chắn muốn vô hiệu hóa gói{' '}
-            <strong>{deleteConfirm.pkg?.name}</strong>?
+            Gói <strong>{deleteConfirm.pkg?.name}</strong> sẽ bị xóa vĩnh viễn và không thể khôi phục.
             <br />
             <span style={{ fontSize: 13, color: 'var(--color-navy-50)' }}>
-              Gói sẽ không còn xuất hiện để mua. Lịch sử giao dịch vẫn được giữ nguyên.
+              Gói đã có giao dịch sẽ bị chặn xóa — dùng "Sửa" để tắt "Đang hoạt động" nếu chỉ muốn ẩn gói.
             </span>
           </span>
         }
-        confirmLabel="Vô hiệu hóa"
+        confirmLabel="Xóa gói"
         destructive
         busy={deleting}
-        onConfirm={handleSoftDelete}
+        onConfirm={handleDelete}
         onCancel={() => setDeleteConfirm({ open: false })}
       />
     </>
