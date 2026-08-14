@@ -2,7 +2,7 @@ import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { getPayoutOverview, getWithdrawalRequests } from '../../../services/adminPayout.service';
+import { getPayoutOverview, getAllPayoutRequests } from '../../../services/adminPayout.service';
 import type { PayoutOverview, WithdrawalRequestItem } from '../../../types/adminPayout.types';
 import { FilterTabs, PageContainer, SectionCard } from '../../../components/shared';
 import PayoutStatsCards from './components/PayoutStatsCards';
@@ -24,19 +24,26 @@ const PayoutOverviewPage: React.FC = () => {
   const [overview, setOverview] = useState<PayoutOverview | null>(null);
   const [requests, setRequests] = useState<WithdrawalRequestItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   // Tab + trang sống trong URL (không phải useState cục bộ) — để "Xem chi tiết" rồi bấm back
   // trả về đúng tab/trang đang xem, thay vì luôn reset về "Tất cả"/trang 1.
   const [searchParams, setSearchParams] = useSearchParams();
   const currentPage = Number(searchParams.get('page')) || 1;
   const activeTab = searchParams.get('status') || 'all';
+  const searchQuery = searchParams.get('q') || '';
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [pageSize, setPageSize] = useState(ADMIN_PAGE_SIZE);
   const navigate = useNavigate();
 
-  const updateQuery = (patch: { status?: string; page?: number }) => {
+  const updateQuery = (patch: { status?: string; page?: number; q?: string }) => {
     const next = new URLSearchParams(searchParams);
     if (patch.status !== undefined) {
       if (patch.status && patch.status !== 'all') next.set('status', patch.status);
       else next.delete('status');
+    }
+    if (patch.q !== undefined) {
+      if (patch.q) next.set('q', patch.q);
+      else next.delete('q');
     }
     if (patch.page !== undefined) {
       if (patch.page > 1) next.set('page', String(patch.page));
@@ -50,18 +57,24 @@ const PayoutOverviewPage: React.FC = () => {
     try {
       const [overviewRes, reqResponse] = await Promise.all([
         getPayoutOverview(),
-        getWithdrawalRequests(currentPage, pageSize, activeTab === 'all' ? undefined : activeTab),
+        getAllPayoutRequests({
+          page: currentPage,
+          pageSize,
+          status: activeTab === 'all' ? undefined : activeTab,
+          search: searchQuery || undefined,
+        }),
       ]);
       setOverview(overviewRes);
       setRequests(reqResponse.items);
       setTotal(reqResponse.total);
+      setLastLoadedAt(new Date());
     } catch (error) {
       console.error('Failed to fetch payout data:', error);
       toast.error('Không thể tải dữ liệu thanh toán');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, currentPage, pageSize]);
+  }, [activeTab, currentPage, pageSize, searchQuery]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,6 +96,15 @@ const PayoutOverviewPage: React.FC = () => {
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
+            onClick={() => void fetchData()}
+            disabled={loading}
+          >
+            <span className="material-symbols-outlined">refresh</span>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </button>
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-secondary"
             onClick={() => navigate('/admin-portal/payouts/transfers')}
           >
             <span className="material-symbols-outlined">send_money</span>
@@ -99,36 +121,69 @@ const PayoutOverviewPage: React.FC = () => {
         </div>
       }
     >
-      <PayoutStatsCards overview={overview} loading={loading} />
+      <PayoutStatsCards
+        overview={overview}
+        loading={loading}
+        onSelectStatus={(status) => updateQuery({ status, page: 1 })}
+      />
 
       <SectionCard
         className="payout-requests-card"
         title="Yêu cầu rút tiền"
         headerAction={
-          <span className="payout-section-queue">
-            <span className="payout-section-queue__dot" aria-hidden="true" />
-            {loading
-              ? 'Đang tải...'
-              : `${(overview?.processingStats.pendingCount ?? 0).toLocaleString('vi-VN')} đang chờ`}
-          </span>
+          lastLoadedAt ? (
+            <span className="payout-last-updated">
+              Cập nhật lúc{' '}
+              {lastLoadedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          ) : undefined
         }
+        footer={`Hiển thị ${requests.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
       >
         <div className="admin-ui-toolbar payout-filter-toolbar">
+          <form
+            className="payout-search-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              updateQuery({ q: searchInput.trim(), page: 1 });
+            }}
+          >
+            <div className="admin-ui-search">
+              <span className="material-symbols-outlined admin-ui-search-icon">search</span>
+              <input
+                className="admin-ui-search-input"
+                aria-label="Tìm yêu cầu rút tiền"
+                placeholder="Mã yêu cầu, tên người dùng hoặc email..."
+                type="search"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+              />
+            </div>
+            <button type="submit" className="admin-ui-button admin-ui-button-secondary">
+              Tìm kiếm
+            </button>
+            {(searchInput || searchQuery) && (
+              <button
+                type="button"
+                className="admin-ui-button admin-ui-button-secondary"
+                onClick={() => {
+                  setSearchInput('');
+                  updateQuery({ q: '', page: 1 });
+                }}
+              >
+                Xóa
+              </button>
+            )}
+          </form>
           <div className="payout-filter-tabs">
             <FilterTabs
               tabs={payoutTabs}
               activeKey={activeTab}
               onChange={handleTabChange}
               className="payout-status-tabs"
+              ariaLabel="Lọc yêu cầu theo trạng thái"
             />
           </div>
-          <span className="payout-request-total">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              receipt_long
-            </span>
-            <strong>{total.toLocaleString('vi-VN')}</strong>
-            yêu cầu
-          </span>
         </div>
         <WithdrawalRequestTable
           data={requests}
