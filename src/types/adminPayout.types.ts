@@ -220,3 +220,35 @@ export interface AdminWalletTransferListResponse {
     page: number;
     pageSize: number;
 }
+
+/**
+ * Quỹ hệ thống — nguồn duy nhất "Chuyển tiền chủ động" được phép trừ vào.
+ */
+export interface SystemFund {
+    balance: number;
+    updatedAt: string;
+}
+
+export interface SystemFundTopupRequest {
+    amount: number;
+    reason: string;
+    proofImage: File;
+}
+
+export interface SystemFundTopupResult {
+    topupId: number;
+    amount: number;
+    reason: string;
+    proofImageUrl?: string;
+    createdBy: string;
+    createdByName?: string;
+    createdAt: string;
+    fundBalanceAfter?: number;
+}
+
+export interface SystemFundTopupListResponse {
+    items: SystemFundTopupResult[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}

@@ -13,7 +13,11 @@ import type {
     ApprovePayoutRequest,
     AdminWalletTransferRequest,
     AdminWalletTransferResult,
-    AdminWalletTransferListResponse
+    AdminWalletTransferListResponse,
+    SystemFund,
+    SystemFundTopupRequest,
+    SystemFundTopupResult,
+    SystemFundTopupListResponse
 } from '../types/adminPayout.types';
 
 const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5166') + '/api';
@@ -191,6 +195,52 @@ export const getTransferHistory = async (
 ): Promise<AdminWalletTransferListResponse> => {
     try {
         const { data } = await api.get('/admin/payouts/transfers', {
+            params: { page, pageSize },
+        });
+        return data.content;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Số dư hiện tại của quỹ hệ thống.
+ */
+export const getFundBalance = async (): Promise<SystemFund> => {
+    try {
+        const { data } = await api.get('/admin/payouts/fund');
+        return data.content;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Nạp tiền thật (kèm ảnh chứng minh) vào quỹ hệ thống.
+ */
+export const topUpFund = async (request: SystemFundTopupRequest): Promise<SystemFundTopupResult> => {
+    try {
+        const formData = new FormData();
+        formData.append('amount', String(request.amount));
+        formData.append('reason', request.reason);
+        formData.append('proofImage', request.proofImage);
+
+        const { data } = await api.post('/admin/payouts/fund/topup', formData);
+        return data.content;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Lịch sử các lần nạp quỹ, mới nhất trước.
+ */
+export const getFundTopupHistory = async (
+    page: number = 1,
+    pageSize: number = 20
+): Promise<SystemFundTopupListResponse> => {
+    try {
+        const { data } = await api.get('/admin/payouts/fund/topups', {
             params: { page, pageSize },
         });
         return data.content;
