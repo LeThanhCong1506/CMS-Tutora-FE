@@ -66,6 +66,15 @@ export const deleteSubject = async (id: number): Promise<string> => {
   return res.data.message;
 };
 
+/**
+ * Xóa vĩnh viễn. BE chặn 409 nếu môn học đang bật (chưa ngừng hoạt động) hoặc đang được
+ * chương/câu hỏi/bảng giá gia sư/hồ sơ học sinh tham chiếu.
+ */
+export const hardDeleteSubject = async (id: number): Promise<string> => {
+  const res = await api.delete<ApiResponse<object>>(`${BASE}/subjects/${id}/permanent`, auth());
+  return res.data.message;
+};
+
 /* Grade levels */
 export const getAdminGradeLevels = async (): Promise<AdminGradeLevel[]> => {
   const res = await api.get<ApiResponse<AdminGradeLevel[]>>(`${BASE}/grade-levels`, auth());

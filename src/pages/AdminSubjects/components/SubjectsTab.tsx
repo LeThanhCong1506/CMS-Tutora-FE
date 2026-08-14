@@ -8,6 +8,7 @@ import {
   getAdminSubjects,
   getAdminGradeLevels,
   deleteSubject,
+  hardDeleteSubject,
   updateSubject,
   reorderSubjects,
 } from '../../../services/adminLookup.service';
@@ -35,6 +36,8 @@ export const SubjectsTab: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<AdminSubject | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hardDeleting, setHardDeleting] = useState<AdminSubject | null>(null);
+  const [hardDeleteBusy, setHardDeleteBusy] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -129,6 +132,20 @@ export const SubjectsTab: React.FC = () => {
     }
   };
 
+  const confirmHardDelete = async () => {
+    if (!hardDeleting) return;
+    setHardDeleteBusy(true);
+    try {
+      toast.success(await hardDeleteSubject(hardDeleting.subjectId));
+      setHardDeleting(null);
+      void fetchData();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Xóa vĩnh viễn môn học thất bại.'));
+    } finally {
+      setHardDeleteBusy(false);
+    }
+  };
+
   const columns = useMemo<ColumnDef<SubjectRow>[]>(
     () => [
       {
@@ -204,6 +221,13 @@ export const SubjectsTab: React.FC = () => {
         separatorBefore: true,
         onSelect: (s) => setConfirming(s),
       });
+      list.push({
+        label: 'Xóa vĩnh viễn',
+        disabled: (s) => s.isActive,
+        disabledReason: 'Ngừng hoạt động trước khi xóa vĩnh viễn',
+        destructive: true,
+        onSelect: (s) => setHardDeleting(s),
+      });
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,6 +291,22 @@ export const SubjectsTab: React.FC = () => {
         busy={busy}
         onConfirm={() => void confirmDeactivate()}
         onCancel={() => setConfirming(null)}
+      />
+
+      <ConfirmDialog
+        open={!!hardDeleting}
+        title="Xóa vĩnh viễn môn học?"
+        description={
+          <>
+            Môn <strong>{hardDeleting?.subjectName}</strong> sẽ bị xóa hoàn toàn khỏi hệ thống,
+            không thể khôi phục. Chỉ xóa được nếu môn này chưa từng có chương, câu hỏi, bảng giá
+            gia sư hoặc hồ sơ học sinh nào tham chiếu.
+          </>
+        }
+        confirmLabel="Xóa vĩnh viễn"
+        busy={hardDeleteBusy}
+        onConfirm={() => void confirmHardDelete()}
+        onCancel={() => setHardDeleting(null)}
       />
     </div>
   );
