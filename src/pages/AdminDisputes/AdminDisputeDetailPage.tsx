@@ -498,15 +498,20 @@ const AdminDisputeDetailPage = () => {
         );
     }
 
-    // Evidence from backend (string array of URLs)
+    // Evidence from backend (string array of URLs) — thuộc về bên nào phụ thuộc ai TẠO dispute
+    // này (gia sư giờ cũng tạo được), không còn mặc định luôn là "người học" như trước.
     const evidenceUrls = disputeDetail.evidence || [];
+    const createdByTutor = Boolean(disputeDetail.createdBy?.userId) && disputeDetail.createdBy?.userId === disputeDetail.tutor?.tutorId;
+    const learnerInitialEvidence = createdByTutor ? [] : evidenceUrls;
+    const tutorInitialEvidence = createdByTutor ? evidenceUrls : [];
     const additionalEvidence: DisputeEvidenceItemDto[] = disputeDetail.additionalEvidence || [];
     const learnerAdditionalEvidence = additionalEvidence.filter((item) => item.source === 'learner');
     // `unknown` keeps compatibility while FE/BE deployments overlap. The updated API classifies
     // every persisted row from uploadedBy, including historical records.
     const tutorEvidence = additionalEvidence.filter((item) => item.source !== 'learner');
-    const learnerEvidenceCount = evidenceUrls.length + learnerAdditionalEvidence.length;
-    const totalEvidenceCount = learnerEvidenceCount + tutorEvidence.length;
+    const learnerEvidenceCount = learnerInitialEvidence.length + learnerAdditionalEvidence.length;
+    const tutorEvidenceCount = tutorInitialEvidence.length + tutorEvidence.length;
+    const totalEvidenceCount = learnerEvidenceCount + tutorEvidenceCount;
     const classSession = disputeDetail.classSession;
     const tutor = disputeDetail.tutor;
     const createdBy = disputeDetail.createdBy;
@@ -855,9 +860,19 @@ const AdminDisputeDetailPage = () => {
                                                     <span className="dispute-evidence-group__count">{learnerEvidenceCount}</span>
                                                 </header>
 
+                                                {disputeDetail.respondentResponse && (
+                                                    <div className="dispute-evidence-response">
+                                                        <span className="dispute-evidence-response__label">Phản hồi của phụ huynh/học sinh</span>
+                                                        <p>{disputeDetail.respondentResponse}</p>
+                                                        {disputeDetail.respondentRespondedAt && (
+                                                            <small>Gửi {formatRelativeTime(disputeDetail.respondentRespondedAt)}</small>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 {learnerEvidenceCount > 0 ? (
                                                     <div className="dispute-evidence-files">
-                                                        {evidenceUrls.map((url, index) => (
+                                                        {learnerInitialEvidence.map((url, index) => (
                                                             <EvidenceFileCard
                                                                 key={`initial-${url}-${index}`}
                                                                 url={url}
@@ -876,10 +891,12 @@ const AdminDisputeDetailPage = () => {
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="dispute-evidence-empty">
-                                                        <span className="material-symbols-outlined">folder_off</span>
-                                                        <p>Phía người học chưa gửi bằng chứng.</p>
-                                                    </div>
+                                                    !disputeDetail.respondentResponse && (
+                                                        <div className="dispute-evidence-empty">
+                                                            <span className="material-symbols-outlined">folder_off</span>
+                                                            <p>Phía người học chưa gửi bằng chứng.</p>
+                                                        </div>
+                                                    )
                                                 )}
                                             </section>
 
@@ -889,7 +906,7 @@ const AdminDisputeDetailPage = () => {
                                                         <span className="material-symbols-outlined">school</span>
                                                     </span>
                                                     <h4>Gia sư</h4>
-                                                    <span className="dispute-evidence-group__count">{tutorEvidence.length}</span>
+                                                    <span className="dispute-evidence-group__count">{tutorEvidenceCount}</span>
                                                 </header>
 
                                                 {disputeDetail.tutorResponse && (
@@ -902,8 +919,16 @@ const AdminDisputeDetailPage = () => {
                                                     </div>
                                                 )}
 
-                                                {tutorEvidence.length > 0 && (
+                                                {tutorEvidenceCount > 0 && (
                                                     <div className="dispute-evidence-files">
+                                                        {tutorInitialEvidence.map((url, index) => (
+                                                            <EvidenceFileCard
+                                                                key={`initial-${url}-${index}`}
+                                                                url={url}
+                                                                label={`Bằng chứng từ gia sư ${index + 1}`}
+                                                                tone="tutor"
+                                                            />
+                                                        ))}
                                                         {tutorEvidence.map((item, index) => item.fileUrl && (
                                                             <EvidenceFileCard
                                                                 key={item.disputeEvidenceId}
@@ -916,7 +941,7 @@ const AdminDisputeDetailPage = () => {
                                                     </div>
                                                 )}
 
-                                                {!disputeDetail.tutorResponse && tutorEvidence.length === 0 && (
+                                                {!disputeDetail.tutorResponse && tutorEvidenceCount === 0 && (
                                                     <div className="dispute-evidence-empty">
                                                         <span className="material-symbols-outlined">folder_off</span>
                                                         <p>Gia sư chưa gửi phản hồi hoặc bằng chứng.</p>
