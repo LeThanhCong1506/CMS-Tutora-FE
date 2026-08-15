@@ -20,6 +20,21 @@
     gap: 16px;
 }
 
+.session-log-panel__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    color: var(--color-navy);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.session-log-panel__title .material-symbols-outlined {
+    color: var(--color-burgundy);
+    font-size: 20px;
+}
+
 .session-log-panel__snapshot {
     margin: 0 0 6px;
     color: #64748b;

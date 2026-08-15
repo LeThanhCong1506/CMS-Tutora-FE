@@ -88,7 +88,10 @@ const TutorReliabilityCard = ({ tutorUserId, days = 90 }: TutorReliabilityCardPr
     return (
         <div className="tutor-reliability">
             <div className="tutor-reliability__head">
-                <h3 className="tutor-reliability__title">📊 Độ tin cậy của gia sư</h3>
+                <h3 className="tutor-reliability__title">
+                    <span className="material-symbols-outlined" aria-hidden="true">monitoring</span>
+                    Độ tin cậy của gia sư
+                </h3>
                 <span className="tutor-reliability__range">{days} ngày gần nhất</span>
             </div>
 
