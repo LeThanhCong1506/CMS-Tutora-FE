@@ -17,10 +17,18 @@
 }
 
 .tutor-reliability__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
     color: var(--color-navy);
     font-size: 16px;
     font-weight: 700;
+}
+
+.tutor-reliability__title .material-symbols-outlined {
+    color: var(--color-burgundy);
+    font-size: 20px;
 }
 
 .tutor-reliability__range {

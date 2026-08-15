@@ -56,6 +56,35 @@ export const getPriorityVariant = (priority?: string | null): StatusVariant => {
     }
 };
 
+/** Emoji dẫn đầu chuỗi BE trả về (`PriorityDisplay` = "🟡 Trung bình"). */
+const LEADING_EMOJI = /^[\p{Extended_Pictographic}️\s]+/u;
+
+const PRIORITY_LABELS: Record<string, string> = {
+    high: 'Cao',
+    medium: 'Trung bình',
+    low: 'Thấp',
+};
+
+const PRIORITY_ICONS: Record<string, string> = {
+    high: 'keyboard_double_arrow_up',
+    medium: 'horizontal_rule',
+    low: 'keyboard_double_arrow_down',
+};
+
+/**
+ * Nhãn + icon cho mức ưu tiên. BE nhét emoji vào `PriorityDisplay` ("🟡 Trung bình"),
+ * nhưng badge đã có màu theo mức nên emoji vừa thừa vừa lạc tông so với bộ Material
+ * Symbols dùng khắp CMS — FE tự dựng nhãn từ `priority`, chỉ dùng chuỗi BE (đã gỡ
+ * emoji) khi gặp mức lạ chưa được map.
+ */
+export const getPriorityMeta = (priority?: string | null, display?: string | null) => ({
+    label: PRIORITY_LABELS[priority ?? '']
+        || display?.replace(LEADING_EMOJI, '').trim()
+        || 'Chưa phân loại',
+    icon: PRIORITY_ICONS[priority ?? ''] || 'pending',
+    variant: getPriorityVariant(priority),
+});
+
 // ── Xem bằng chứng ──────────────────────────────────────────────────────────
 
 /**

@@ -228,8 +228,9 @@ const SessionLogPanel = ({ classSessionId, onSummaryChange }: SessionLogPanelPro
         <div className="session-log-panel">
             <div className="session-log-panel__heading">
                 <div>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 6px' }}>
-                        🛰️ Nhật ký bằng chứng buổi học
+                    <h3 className="session-log-panel__title">
+                        <span className="material-symbols-outlined" aria-hidden="true">satellite_alt</span>
+                        Nhật ký bằng chứng buổi học
                     </h3>
                     <p className="session-log-panel__snapshot">
                         Snapshot lúc {formatClock(summary.snapshotAt)}

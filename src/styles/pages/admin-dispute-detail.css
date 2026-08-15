@@ -367,6 +367,34 @@
     font-family: 'Bricolage Grotesque', sans-serif;
 }
 
+/* Tiêu đề từng khối bằng chứng — icon Material Symbols thay cho emoji để đồng bộ
+   với thanh tab và các nút hành động của trang. */
+.dispute-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-navy);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.dispute-section-title .material-symbols-outlined {
+    color: var(--color-burgundy);
+    font-size: 20px;
+}
+
+/* Số liệu có icon dẫn (đánh giá sao, điểm danh). */
+.dispute-stat-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dispute-stat-icon .material-symbols-outlined {
+    font-size: 16px;
+}
+
 .dispute-evidence-heading {
     display: flex;
     align-items: center;
@@ -621,11 +649,34 @@
     font-size: 12px;
 }
 
+/* Tab "Trao đổi": chat buổi học (trái) và chat riêng của admin (phải) đứng cạnh nhau
+   để đối chiếu lời khai riêng với những gì đôi bên đã nói trong buổi học. */
+.dispute-communication-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+}
+
+.dispute-chat-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dispute-chat-panel + .dispute-chat-panel {
+    border-left: 1.2px solid var(--color-stone-100);
+}
+
 .dispute-communication-tabs {
     display: flex;
     gap: 6px;
     padding: 14px 20px 0;
     background: var(--color-white);
+}
+
+/* Bên trong panel đã có padding riêng — chỉ cần khoảng cách xuống nội dung chat. */
+.dispute-chat-panel .dispute-communication-tabs {
+    padding: 0 0 16px;
 }
 
 .dispute-communication-tabs button {
@@ -887,6 +938,16 @@
 @media (max-width: 1180px) {
     .dispute-col-left {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Cột center hẹp lại: hai khung chat xếp chồng thay vì bóp ngang bong bóng tin nhắn. */
+    .dispute-communication-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dispute-chat-panel + .dispute-chat-panel {
+        border-top: 1.2px solid var(--color-stone-100);
+        border-left: none;
     }
 
     .dispute-party-card--session {
