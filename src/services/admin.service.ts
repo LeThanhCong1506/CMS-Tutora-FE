@@ -20,6 +20,7 @@ import type {
   DisputeQueryParams,
   DisputeListPageResponse,
   ResolveDisputeRequest,
+  CloseDisputeRequest,
   SessionLog,
   TutorReliability,
   AgoraNcsDiagnostics,
@@ -481,6 +482,23 @@ export const resolveDispute = async (
     return data.content;
   } catch (error) {
     console.error('resolveDispute error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Đóng phản ánh khi hai bên đã hoà giải và muốn học tiếp — không phân xử, không hoàn tiền.
+ * Backend: PUT /api/admin/disputes/{disputeId}/close
+ */
+export const closeDispute = async (
+  disputeId: string | number,
+  request: CloseDisputeRequest,
+): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/close`, request);
+    return data.content;
+  } catch (error) {
+    console.error('closeDispute error:', error);
     throw error;
   }
 };
