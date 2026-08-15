@@ -337,8 +337,12 @@ export const formatWithdrawalStatusV2 = (status: string): string => {
  */
 export const formatApprovalDecision = (decision: string | null): string => {
   if (!decision) return 'Chờ xử lý';
+  // ADMIN_APPROVED/STAFF_APPROVED là giá trị BE ghi lại khi duyệt (AdminPayoutService.ApproveAsync);
+  // thiếu hai key này thì màn chi tiết in thẳng mã hoa cho admin đọc.
   const decisionMap: Record<string, string> = {
     AUTO_APPROVE: 'Tự động duyệt',
+    ADMIN_APPROVED: 'Admin duyệt',
+    STAFF_APPROVED: 'Staff duyệt',
     DELAYED: 'Cần kiểm tra',
     MANUAL_REVIEW: 'Chờ Admin duyệt',
     AUTO_REJECT: 'Tự động từ chối',
