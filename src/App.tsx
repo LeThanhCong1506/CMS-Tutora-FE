@@ -52,6 +52,7 @@ const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/P
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
 const AdminAiCreditPage = lazy(() => import('./pages/AdminAiCredit/AdminAiCreditPage'));
+const AdminSupportInboxPage = lazy(() => import('./pages/AdminSupport/AdminSupportInboxPage'));
 
 const guard = (element: ReactNode, permission?: string, adminOnly = false) => (
   <PermissionRoute permission={permission} adminOnly={adminOnly}>{element}</PermissionRoute>
@@ -76,6 +77,7 @@ const PortalIndexRedirect = () => {
     ['payout.view', '/admin-portal/payouts'],
     ['lookup.view', '/admin-portal/resources/subjects'],
     ['notification.view', '/admin-portal/notifications'],
+    ['support.view', '/admin-portal/support'],
   ].find(([permission]) => can(permission));
 
   return <Navigate to={firstAllowed?.[1] ?? '/admin-portal/no-access'} replace />;
@@ -200,6 +202,7 @@ function App() {
               <Route path="disputes/:id" element={guard(<AdminDisputeDetailPage />, 'dispute.view')} />
               <Route path="settings" element={guard(<AdminSettingsPage />, 'lookup.view')} />
               <Route path="notifications" element={guard(<NotificationsPage />, 'notification.view')} />
+              <Route path="support" element={guard(<AdminSupportInboxPage />, 'support.view')} />
               <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="ai-credit/settings" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />

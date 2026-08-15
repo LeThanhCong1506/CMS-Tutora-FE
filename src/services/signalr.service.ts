@@ -33,6 +33,7 @@ class SignalRService {
   private chatMessageSubscribers: Set<(message: any) => void> = new Set();
   private notificationSubscribers: Set<(notification: any) => void> = new Set();
   private disputeMessageSubscribers: Set<(message: any) => void> = new Set();
+  private supportMessageSubscribers: Set<(message: any) => void> = new Set();
 
   // ==================== CONNECT / DISCONNECT ====================
 
@@ -270,6 +271,17 @@ class SignalRService {
     return () => { this.disputeMessageSubscribers.delete(handler); };
   }
 
+  /**
+   * Multi-subscriber cho tin nhắn hỗ trợ mới ("supportMessageReceived") — payload là
+   * `SupportMessageBroadcast { userId, supportThreadId, message }`. Dùng ở trang Nhắn tin hỗ
+   * trợ để chèn tin nhắn trực tiếp vào hội thoại đang mở, hoặc cập nhật preview/unread trong
+   * danh sách khi hội thoại khác nhận tin.
+   */
+  subscribeToSupportMessages(handler: (message: any) => void): () => void {
+    this.supportMessageSubscribers.add(handler);
+    return () => { this.supportMessageSubscribers.delete(handler); };
+  }
+
   onNotificationCountUpdated(handler: (count: number) => void): void {
     this.notificationHandlers.set('NotificationCountUpdated', handler);
     if (this.notificationConnection) {
@@ -429,6 +441,13 @@ class SignalRService {
       console.log('💬 Dispute message received:', message);
       this.disputeMessageSubscribers.forEach((fn) => {
         try { fn(message); } catch (err) { console.error('dispute message subscriber failed:', err); }
+      });
+    });
+
+    this.notificationConnection.on('supportMessageReceived', (message: any) => {
+      console.log('💬 Support message received:', message);
+      this.supportMessageSubscribers.forEach((fn) => {
+        try { fn(message); } catch (err) { console.error('support message subscriber failed:', err); }
       });
     });
 
