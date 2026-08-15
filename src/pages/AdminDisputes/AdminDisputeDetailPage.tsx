@@ -4,10 +4,12 @@ import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
 import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
 import TutorAccessModal from '../AdminUserManagement/components/BlockUserModal';
+import CloseDisputeModal from './components/CloseDisputeModal';
 import type { FlatUserDetail } from '../AdminUserManagement/userTypes';
 import {
     getDisputeDetail,
     resolveDispute,
+    closeDispute,
     investigateDispute,
     confirmTutorNoShow,
     getDisputeChatHistory,
@@ -26,6 +28,7 @@ import type {
     DisputeDetail,
     DisputeEvidenceItemDto,
     ResolutionType,
+    CloseDisputeOutcome,
     SessionLogSummary,
 } from '../../types/admin.types';
 import {
@@ -170,6 +173,7 @@ const AdminDisputeDetailPage = () => {
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
     const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
 
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -368,6 +372,13 @@ const AdminDisputeDetailPage = () => {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    /** Đóng phản ánh do hai bên hoà giải — không phân xử, không hoàn tiền. Modal tự hiện toast/đóng. */
+    const handleCloseDispute = async (outcome: CloseDisputeOutcome, note: string) => {
+        if (!disputeDetail || !disputeId) return;
+        await closeDispute(disputeDetail.disputeId, { classSessionOutcome: outcome, note });
+        await fetchDisputeDetail(disputeId);
     };
 
     const handleInvestigate = async () => {
@@ -612,6 +623,20 @@ const AdminDisputeDetailPage = () => {
                                     >
                                         <span className="material-symbols-outlined">verified</span>
                                         Xác nhận gia sư vắng mặt
+                                    </button>
+                                </Can>
+                            )}
+                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
+                                <Can permission="dispute.resolve">
+                                    <button
+                                        type="button"
+                                        className="admin-ui-button admin-ui-button-secondary"
+                                        onClick={() => setIsCloseModalOpen(true)}
+                                        disabled={isSubmitting}
+                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
+                                    >
+                                        <span className="material-symbols-outlined">handshake</span>
+                                        Đóng do hoà giải
                                     </button>
                                 </Can>
                             )}
@@ -1466,6 +1491,12 @@ const AdminDisputeDetailPage = () => {
             </main>
 
             {/* Admin Action Modals */}
+            <CloseDisputeModal
+                isOpen={isCloseModalOpen}
+                onClose={() => setIsCloseModalOpen(false)}
+                disputeId={disputeDetail.disputeId}
+                onConfirm={handleCloseDispute}
+            />
             <TutorWarningModal
                 isOpen={isWarningModalOpen}
                 onClose={() => setIsWarningModalOpen(false)}
