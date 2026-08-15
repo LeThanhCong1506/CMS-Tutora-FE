@@ -143,6 +143,13 @@
     box-shadow: 0 0 0 4px rgba(99, 27, 27, 0.1);
 }
 
+/* Ẩn icon reveal/clear mật khẩu mặc định của trình duyệt (Edge) — component đã có nút
+   toggle riêng ở .input-group__password-toggle, nếu không ẩn sẽ bị chồng 2 icon mắt. */
+.input-group__input::-ms-reveal,
+.input-group__input::-ms-clear {
+    display: none;
+}
+
 /* Autofill styling fix */
 .input-group__input:-webkit-autofill,
 .input-group__input:-webkit-autofill:hover,

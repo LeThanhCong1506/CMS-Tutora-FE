@@ -38,9 +38,17 @@ export function getNotificationTargetPath(notification: NotificationDTO): string
         return `${prefix}/bookings/${refId}`;
     }
 
+    // ── Tutor profile update deep-link (type-based) ──
+    if (type === 'tutor_profile_update') {
+        return `${prefix}/vetting/profiles?tab=updates`;
+    }
+
     // ── Keyword fallback ──
     if (combined.includes('booking') || combined.includes('đặt lịch') || combined.includes('cọc')) {
         return refId ? `${prefix}/bookings/${refId}` : `${prefix}/bookings`;
+    }
+    if (combined.includes('cập nhật hồ sơ')) {
+        return `${prefix}/vetting/profiles?tab=updates`;
     }
 
     // ── Default ──

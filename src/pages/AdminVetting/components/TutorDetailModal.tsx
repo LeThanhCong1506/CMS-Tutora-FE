@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import type { PendingTutorFromAPI } from '../../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../../utils/avatar';
 import { getYouTubeEmbedUrl } from '../../../utils/youtube';
-import { Can } from '../../../contexts/AccessContext';
+import { fetchProtectedImage, getUserCccdUrls, releaseProtectedImage } from '../../../services/admin.service';
+import { Can, useAccess } from '../../../contexts/AccessContext';
 import '../../../styles/pages/admin-vetting.css';
+import '../../../styles/shared/image-preview-overlay.css';
 
 interface TutorDetailModalProps {
   tutor: PendingTutorFromAPI | null;
@@ -121,6 +123,13 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
 }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imagePreviewError, setImagePreviewError] = useState(false);
+  // Blob URL của ảnh CCCD đã tải kèm token — null nếu chưa có ảnh hoặc tải lỗi.
+  const [cccdImages, setCccdImages] = useState<{ front: string | null; back: string | null }>({
+    front: null,
+    back: null,
+  });
+  const { can } = useAccess();
+  const canViewCccd = can('tutor_cccd.view');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -145,6 +154,47 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
     setImagePreview(null);
     setImagePreviewError(false);
   }, [tutor?.userid]);
+
+  // Ảnh CCCD (mặt trước/sau) — link riêng biệt với portraitImageUrl (ảnh chân dung crop từ eKYC),
+  // lấy từ endpoint admin dùng chung Tutor/Student, chỉ khi có quyền tutor_cccd.view.
+  // Endpoint file private đòi JWT nên phải tải bằng JS ra blob URL; dùng chung blob đó cho cả
+  // ảnh thu nhỏ lẫn ảnh phóng to, tránh gọi mạng 2 lần cho cùng 1 file.
+  useEffect(() => {
+    const userId = tutor?.userid;
+    if (!isOpen || !userId || !canViewCccd) return undefined;
+
+    const controller = new AbortController();
+    const created: string[] = [];
+
+    void (async () => {
+      try {
+        const result = await getUserCccdUrls(userId, controller.signal);
+        if (controller.signal.aborted) return;
+
+        const [front, back] = await Promise.all([
+          result.frontImageUrl ? fetchProtectedImage(result.frontImageUrl).catch(() => null) : null,
+          result.backImageUrl ? fetchProtectedImage(result.backImageUrl).catch(() => null) : null,
+        ]);
+
+        if (controller.signal.aborted) {
+          releaseProtectedImage(front);
+          releaseProtectedImage(back);
+          return;
+        }
+        if (front) created.push(front);
+        if (back) created.push(back);
+        setCccdImages({ front, back });
+      } catch {
+        /* không có quyền / lỗi mạng → không hiện nút CCCD */
+      }
+    })();
+
+    return () => {
+      controller.abort();
+      created.forEach(releaseProtectedImage);
+      setCccdImages({ front: null, back: null });
+    };
+  }, [canViewCccd, isOpen, tutor?.userid]);
 
   if (!isOpen || !tutor) return null;
 
@@ -314,6 +364,34 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                     >
                       <img src={identityCard.portraitImageUrl} alt="Ảnh chân dung gia sư" />
                       <span>Xem ảnh</span>
+                    </button>
+                  )}
+                  {cccdImages.front && (
+                    <button
+                      type="button"
+                      className="profile-portrait-button"
+                      onClick={() => {
+                        setImagePreviewError(false);
+                        setImagePreview(cccdImages.front);
+                      }}
+                      aria-label="Xem ảnh CCCD mặt trước"
+                    >
+                      <img src={cccdImages.front} alt="Ảnh CCCD mặt trước" />
+                      <span>CCCD mặt trước</span>
+                    </button>
+                  )}
+                  {cccdImages.back && (
+                    <button
+                      type="button"
+                      className="profile-portrait-button"
+                      onClick={() => {
+                        setImagePreviewError(false);
+                        setImagePreview(cccdImages.back);
+                      }}
+                      aria-label="Xem ảnh CCCD mặt sau"
+                    >
+                      <img src={cccdImages.back} alt="Ảnh CCCD mặt sau" />
+                      <span>CCCD mặt sau</span>
                     </button>
                   )}
                   <dl className="profile-detail-info-grid">

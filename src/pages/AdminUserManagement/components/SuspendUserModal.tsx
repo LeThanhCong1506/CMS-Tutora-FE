@@ -16,6 +16,7 @@ interface SuspendUserModalProps {
 const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModalProps) => {
     const [reason, setReason] = useState('');
     const [durationDays, setDurationDays] = useState(7);
+    const [durationDaysText, setDurationDaysText] = useState('7');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -24,6 +25,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
         if (!isOpen) return;
         setReason('');
         setDurationDays(7);
+        setDurationDaysText('7');
         setError('');
     }, [isOpen]);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -117,6 +119,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                                     className={`um-chip ${durationDays === days ? 'um-chip-active' : ''}`}
                                     onClick={() => {
                                         setDurationDays(days);
+                                        setDurationDaysText(String(days));
                                         setError('');
                                     }}
                                 >
@@ -134,12 +137,16 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                             <input
                                 id="susp-days"
                                 className={`um-input ${durationInvalid ? 'um-input-error' : ''}`}
-                                type="number"
-                                min={1}
-                                max={365}
-                                value={durationDays}
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={durationDaysText}
                                 onChange={(e) => {
-                                    setDurationDays(parseInt(e.target.value, 10) || 0);
+                                    // Bỏ ký tự không phải số và số 0 thừa ở đầu (để "1" không hiển thành "01").
+                                    const digitsOnly = e.target.value.replace(/\D/g, '');
+                                    const normalized = digitsOnly.replace(/^0+(?=\d)/, '');
+                                    setDurationDaysText(normalized);
+                                    setDurationDays(normalized === '' ? 0 : parseInt(normalized, 10));
                                     setError('');
                                 }}
                             />

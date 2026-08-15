@@ -53,6 +53,8 @@
   max-width: 1200px;
   max-height: 90vh;
   padding: 0;
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-medium, 0 20px 60px rgba(26, 34, 56, 0.2));
   border: 1px solid rgba(212, 180, 131, 0.2);
   animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
-import { getPendingTutors, getPendingCertificates } from '../services/admin.service';
+import { getPendingTutors, getPendingCertificates, getPendingProfileUpdateRequests } from '../services/admin.service';
 import { useAccess } from '../contexts/AccessContext';
 
 const BADGE_FETCH_SIZE = 50;
@@ -15,21 +15,40 @@ type SecuredNavItem = Omit<NavItem, 'children'> & {
 
 const AdminLayout: React.FC = () => {
   const [pendingTutors, setPendingTutors] = useState(0);
+  const [pendingProfileUpdates, setPendingProfileUpdates] = useState(0);
   const [pendingCertificates, setPendingCertificates] = useState(0);
   const { isAdmin, isStaff, can, canAny } = useAccess();
 
   useEffect(() => {
-    if (!canAny(['tutor_approval.view', 'certificate.view'])) return;
-    if (can('tutor_approval.view')) {
-      getPendingTutors(1, BADGE_FETCH_SIZE)
-        .then((res) => setPendingTutors(res?.total || 0))
-        .catch(() => undefined);
-    }
-    if (can('certificate.view')) {
-      getPendingCertificates(1, BADGE_FETCH_SIZE)
-        .then((res) => setPendingCertificates(res?.total || 0))
-        .catch(() => undefined);
-    }
+    if (!canAny(['tutor_approval.view', 'tutor_profile_update.view', 'certificate.view'])) return;
+
+    const fetchBadgeCounts = () => {
+      if (can('tutor_approval.view')) {
+        getPendingTutors(1, BADGE_FETCH_SIZE)
+          .then((res) => setPendingTutors(res?.total || 0))
+          .catch(() => undefined);
+      }
+      if (can('tutor_profile_update.view')) {
+        // Không phân trang (BE không hỗ trợ) — dùng luôn content.length làm tổng số yêu cầu chờ duyệt.
+        getPendingProfileUpdateRequests()
+          .then((res) => setPendingProfileUpdates(res?.content?.length || 0))
+          .catch(() => undefined);
+      }
+      if (can('certificate.view')) {
+        getPendingCertificates(1, BADGE_FETCH_SIZE)
+          .then((res) => setPendingCertificates(res?.total || 0))
+          .catch(() => undefined);
+      }
+    };
+
+    fetchBadgeCounts();
+
+    // AdminLayout ở mức khung, không remount khi điều hướng giữa các trang trong /admin-portal —
+    // nên chỉ fetch 1 lần lúc mount thì số badge (hồ sơ/chứng chỉ chờ duyệt) đứng yên mãi, không
+    // tự trừ khi Admin duyệt/từ chối ngay trên trang con. Trang con phát event này sau khi
+    // duyệt/từ chối thành công để badge cập nhật ngay, không cần rời trang rồi quay lại.
+    window.addEventListener('tutora:admin-badge-refresh', fetchBadgeCounts);
+    return () => window.removeEventListener('tutora:admin-badge-refresh', fetchBadgeCounts);
   }, [can, canAny]);
 
   const navItems = useMemo<NavItem[]>(() => {
@@ -53,13 +72,15 @@ const AdminLayout: React.FC = () => {
         path: '/admin-portal/vetting',
         label: 'Kiểm duyệt',
         materialIcon: 'description',
-        badge: pendingTutors + pendingCertificates,
+        badge: pendingTutors + pendingProfileUpdates + pendingCertificates,
         children: [
           {
             path: '/admin-portal/vetting/profiles',
             label: 'Hồ sơ gia sư',
             materialIcon: 'badge',
-            badge: pendingTutors,
+            // Gộp cả "Hồ sơ mới" và "Yêu cầu cập nhật hồ sơ" — 2 tab con của cùng trang này —
+            // để Admin không thấy badge "còn 0 việc" trong khi vẫn còn yêu cầu cập nhật chưa duyệt.
+            badge: pendingTutors + pendingProfileUpdates,
             anyOf: ['tutor_approval.view', 'tutor_profile_update.view'],
           },
           { path: '/admin-portal/vetting/certificates', label: 'Chứng chỉ', materialIcon: 'workspace_premium', badge: pendingCertificates, permission: 'certificate.view' },
@@ -74,6 +95,8 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
         ]
       },
+      { path: '/admin-portal/feedbacks', label: 'Đánh giá', materialIcon: 'reviews', permission: 'feedback.view' },
+      { path: '/admin-portal/policies', label: 'Văn bản chính sách', materialIcon: 'gavel', permission: 'policy.view' },
       {
         path: '/admin-portal/reports',
         label: 'Báo cáo',
@@ -82,14 +105,14 @@ const AdminLayout: React.FC = () => {
         children: [
           { path: '/admin-portal/revenue-reports/overview', label: 'Báo cáo doanh thu', materialIcon: 'insights', permission: 'financial.view' },
           { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
-          { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
           { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
         ]
       },
+      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
       { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
       {
         path: '/admin-portal/resources',
-        label: 'Cấu hình câu hỏi',
+        label: 'Cấu hình chương trình',
         materialIcon: 'folder',
         sectionLabel: 'Tài nguyên',
         children: [
@@ -138,7 +161,7 @@ const AdminLayout: React.FC = () => {
       void _adminOnly;
       return [{ ...navItem, children: visibleChildren }];
     });
-  }, [can, canAny, isAdmin, pendingCertificates, pendingTutors]);
+  }, [can, canAny, isAdmin, pendingCertificates, pendingProfileUpdates, pendingTutors]);
 
   const isActive = (path: string, pathname: string) => {
     if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');

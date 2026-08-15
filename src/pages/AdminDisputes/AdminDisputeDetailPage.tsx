@@ -4,10 +4,12 @@ import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
 import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
 import TutorAccessModal from '../AdminUserManagement/components/BlockUserModal';
+import CloseDisputeModal from './components/CloseDisputeModal';
 import type { FlatUserDetail } from '../AdminUserManagement/userTypes';
 import {
     getDisputeDetail,
     resolveDispute,
+    closeDispute,
     investigateDispute,
     confirmTutorNoShow,
     getDisputeChatHistory,
@@ -26,6 +28,7 @@ import type {
     DisputeDetail,
     DisputeEvidenceItemDto,
     ResolutionType,
+    CloseDisputeOutcome,
     SessionLogSummary,
 } from '../../types/admin.types';
 import {
@@ -39,6 +42,7 @@ import type { DisputeMessageDto, RefundPreviewDto } from '../../services/admin.s
 import { signalRService } from '../../services/signalr.service';
 import { formatCurrency, formatDateTime, formatRelativeTime } from '../../utils/formatters';
 import { Can } from '../../contexts/AccessContext';
+import { useTabParam } from '../../hooks/useTabParam';
 import {
     getDisputeStatusLabel,
     getDisputeStatusVariant,
@@ -59,12 +63,16 @@ type DisputeChatMessage = {
     senderName?: string | null;
     senderId?: string | number | null;
     sentAt?: string | null;
+    /** BE `ChatMessageResponse.CreatedAt` — trường thật sự trả về cho "Chat buổi học" (sentAt không tồn tại ở BE). */
+    createdAt?: string | null;
     content?: string | null;
     message?: string | null;
 };
 
-type EvidenceTab = 'evidence' | 'sessionLog' | 'recordings' | 'communication' | 'reliability';
-type CommunicationTab = 'lesson' | 'tutor' | 'parent';
+const EVIDENCE_TABS = ['evidence', 'sessionLog', 'recordings', 'communication', 'reliability'] as const;
+const COMMUNICATION_TABS = ['lesson', 'tutor', 'parent'] as const;
+type EvidenceTab = (typeof EVIDENCE_TABS)[number];
+type CommunicationTab = (typeof COMMUNICATION_TABS)[number];
 
 type EvidenceFileCardProps = {
     url: string;
@@ -119,9 +127,12 @@ const AdminDisputeDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Tab states
-    const [activeTab, setActiveTab] = useState<EvidenceTab>('evidence');
-    const [communicationTab, setCommunicationTab] = useState<CommunicationTab>('lesson');
+    // Tab states — cả hai nhóm tab nằm trên URL (`?tab=`, `?chat=`) để reload hoặc
+    // gửi link cho admin khác vẫn mở đúng bằng chứng đang xem.
+    const [activeTab, setActiveTab] = useTabParam<EvidenceTab>(EVIDENCE_TABS, 'evidence');
+    const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'lesson', {
+        paramKey: 'chat',
+    });
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
     const [adminNotes, setAdminNotes] = useState('');
     const [customPercentage, setCustomPercentage] = useState(50);
@@ -162,6 +173,7 @@ const AdminDisputeDetailPage = () => {
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
     const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
 
     // Submitting state
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -362,6 +374,13 @@ const AdminDisputeDetailPage = () => {
         }
     };
 
+    /** Đóng phản ánh do hai bên hoà giải — không phân xử, không hoàn tiền. Modal tự hiện toast/đóng. */
+    const handleCloseDispute = async (outcome: CloseDisputeOutcome, note: string) => {
+        if (!disputeDetail || !disputeId) return;
+        await closeDispute(disputeDetail.disputeId, { classSessionOutcome: outcome, note });
+        await fetchDisputeDetail(disputeId);
+    };
+
     const handleInvestigate = async () => {
         if (!disputeDetail || !disputeId) return;
 
@@ -490,15 +509,20 @@ const AdminDisputeDetailPage = () => {
         );
     }
 
-    // Evidence from backend (string array of URLs)
+    // Evidence from backend (string array of URLs) — thuộc về bên nào phụ thuộc ai TẠO dispute
+    // này (gia sư giờ cũng tạo được), không còn mặc định luôn là "người học" như trước.
     const evidenceUrls = disputeDetail.evidence || [];
+    const createdByTutor = Boolean(disputeDetail.createdBy?.userId) && disputeDetail.createdBy?.userId === disputeDetail.tutor?.tutorId;
+    const learnerInitialEvidence = createdByTutor ? [] : evidenceUrls;
+    const tutorInitialEvidence = createdByTutor ? evidenceUrls : [];
     const additionalEvidence: DisputeEvidenceItemDto[] = disputeDetail.additionalEvidence || [];
     const learnerAdditionalEvidence = additionalEvidence.filter((item) => item.source === 'learner');
     // `unknown` keeps compatibility while FE/BE deployments overlap. The updated API classifies
     // every persisted row from uploadedBy, including historical records.
     const tutorEvidence = additionalEvidence.filter((item) => item.source !== 'learner');
-    const learnerEvidenceCount = evidenceUrls.length + learnerAdditionalEvidence.length;
-    const totalEvidenceCount = learnerEvidenceCount + tutorEvidence.length;
+    const learnerEvidenceCount = learnerInitialEvidence.length + learnerAdditionalEvidence.length;
+    const tutorEvidenceCount = tutorInitialEvidence.length + tutorEvidence.length;
+    const totalEvidenceCount = learnerEvidenceCount + tutorEvidenceCount;
     const classSession = disputeDetail.classSession;
     const tutor = disputeDetail.tutor;
     const createdBy = disputeDetail.createdBy;
@@ -530,7 +554,7 @@ const AdminDisputeDetailPage = () => {
                                 <button
                                     type="button"
                                     className="dispute-back-button"
-                                    onClick={() => navigate('/admin-portal/disputes')}
+                                    onClick={() => navigate(-1)}
                                 >
                                     <span className="material-symbols-outlined">arrow_back</span>
                                     Danh sách phản ánh
@@ -599,6 +623,20 @@ const AdminDisputeDetailPage = () => {
                                     >
                                         <span className="material-symbols-outlined">verified</span>
                                         Xác nhận gia sư vắng mặt
+                                    </button>
+                                </Can>
+                            )}
+                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
+                                <Can permission="dispute.resolve">
+                                    <button
+                                        type="button"
+                                        className="admin-ui-button admin-ui-button-secondary"
+                                        onClick={() => setIsCloseModalOpen(true)}
+                                        disabled={isSubmitting}
+                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
+                                    >
+                                        <span className="material-symbols-outlined">handshake</span>
+                                        Đóng do hoà giải
                                     </button>
                                 </Can>
                             )}
@@ -847,9 +885,19 @@ const AdminDisputeDetailPage = () => {
                                                     <span className="dispute-evidence-group__count">{learnerEvidenceCount}</span>
                                                 </header>
 
+                                                {disputeDetail.respondentResponse && (
+                                                    <div className="dispute-evidence-response">
+                                                        <span className="dispute-evidence-response__label">Phản hồi của phụ huynh/học sinh</span>
+                                                        <p>{disputeDetail.respondentResponse}</p>
+                                                        {disputeDetail.respondentRespondedAt && (
+                                                            <small>Gửi {formatRelativeTime(disputeDetail.respondentRespondedAt)}</small>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 {learnerEvidenceCount > 0 ? (
                                                     <div className="dispute-evidence-files">
-                                                        {evidenceUrls.map((url, index) => (
+                                                        {learnerInitialEvidence.map((url, index) => (
                                                             <EvidenceFileCard
                                                                 key={`initial-${url}-${index}`}
                                                                 url={url}
@@ -868,10 +916,12 @@ const AdminDisputeDetailPage = () => {
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="dispute-evidence-empty">
-                                                        <span className="material-symbols-outlined">folder_off</span>
-                                                        <p>Phía người học chưa gửi bằng chứng.</p>
-                                                    </div>
+                                                    !disputeDetail.respondentResponse && (
+                                                        <div className="dispute-evidence-empty">
+                                                            <span className="material-symbols-outlined">folder_off</span>
+                                                            <p>Phía người học chưa gửi bằng chứng.</p>
+                                                        </div>
+                                                    )
                                                 )}
                                             </section>
 
@@ -881,7 +931,7 @@ const AdminDisputeDetailPage = () => {
                                                         <span className="material-symbols-outlined">school</span>
                                                     </span>
                                                     <h4>Gia sư</h4>
-                                                    <span className="dispute-evidence-group__count">{tutorEvidence.length}</span>
+                                                    <span className="dispute-evidence-group__count">{tutorEvidenceCount}</span>
                                                 </header>
 
                                                 {disputeDetail.tutorResponse && (
@@ -894,8 +944,16 @@ const AdminDisputeDetailPage = () => {
                                                     </div>
                                                 )}
 
-                                                {tutorEvidence.length > 0 && (
+                                                {tutorEvidenceCount > 0 && (
                                                     <div className="dispute-evidence-files">
+                                                        {tutorInitialEvidence.map((url, index) => (
+                                                            <EvidenceFileCard
+                                                                key={`initial-${url}-${index}`}
+                                                                url={url}
+                                                                label={`Bằng chứng từ gia sư ${index + 1}`}
+                                                                tone="tutor"
+                                                            />
+                                                        ))}
                                                         {tutorEvidence.map((item, index) => item.fileUrl && (
                                                             <EvidenceFileCard
                                                                 key={item.disputeEvidenceId}
@@ -908,7 +966,7 @@ const AdminDisputeDetailPage = () => {
                                                     </div>
                                                 )}
 
-                                                {!disputeDetail.tutorResponse && tutorEvidence.length === 0 && (
+                                                {!disputeDetail.tutorResponse && tutorEvidenceCount === 0 && (
                                                     <div className="dispute-evidence-empty">
                                                         <span className="material-symbols-outlined">folder_off</span>
                                                         <p>Gia sư chưa gửi phản hồi hoặc bằng chứng.</p>
@@ -976,7 +1034,7 @@ const AdminDisputeDetailPage = () => {
                                                                 {msg.senderName || msg.senderId || 'Unknown'}
                                                             </span>
                                                             <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                                                {msg.sentAt ? formatDateTime(msg.sentAt) : ''}
+                                                                {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
                                                             </span>
                                                         </div>
                                                         <p style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>
@@ -1033,6 +1091,15 @@ const AdminDisputeDetailPage = () => {
                                                     schedule
                                                 </span>
                                                 <p>Buổi học đang diễn ra — video sẽ có sau khi kết thúc.</p>
+                                            </div>
+                                        ) : recording?.status === 'failed' ? (
+                                            // Đã ghi hình nhưng Agora không trả về file nào lúc đóng phòng: không có gì để
+                                            // chờ thêm. Admin cần phân biệt với "chưa từng ghi hình" khi cân nhắc bằng chứng.
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block', color: '#dc2626' }}>
+                                                    videocam_off
+                                                </span>
+                                                <p>Ghi hình không thành công — hệ thống đã bật ghi hình nhưng không tạo được file cho buổi này.</p>
                                             </div>
                                         ) : recording?.status === 'processing' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -1424,6 +1491,12 @@ const AdminDisputeDetailPage = () => {
             </main>
 
             {/* Admin Action Modals */}
+            <CloseDisputeModal
+                isOpen={isCloseModalOpen}
+                onClose={() => setIsCloseModalOpen(false)}
+                disputeId={disputeDetail.disputeId}
+                onConfirm={handleCloseDispute}
+            />
             <TutorWarningModal
                 isOpen={isWarningModalOpen}
                 onClose={() => setIsWarningModalOpen(false)}

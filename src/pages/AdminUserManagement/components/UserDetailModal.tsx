@@ -4,12 +4,21 @@ import type { FlatUserDetail } from '../userTypes';
 import type {
     AdminLinkedUser,
     AdminSuspensionHistoryItem,
+    AdminUserCccdUrls,
     AdminUserRelationships,
     AdminWarningHistoryItem,
 } from '../../../types/admin.types';
-import { getUserDetail, getUserSuspensions, getUserWarnings } from '../../../services/admin.service';
+import {
+    fetchProtectedImage,
+    getUserCccdUrls,
+    getUserDetail,
+    getUserSuspensions,
+    getUserWarnings,
+    releaseProtectedImage,
+} from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
 import { Can, useAccess } from '../../../contexts/AccessContext';
+import '../../../styles/shared/image-preview-overlay.css';
 
 interface UserDetailModalProps {
     isOpen: boolean;
@@ -111,16 +120,25 @@ const UserDetailModal = ({
     const [relationships, setRelationships] = useState<AdminUserRelationships>(createEmptyRelationships);
     const [relationshipLoading, setRelationshipLoading] = useState(false);
     const [relationshipError, setRelationshipError] = useState<string | null>(null);
+    const [cccd, setCccd] = useState<AdminUserCccdUrls | null>(null);
+    const [cccdLoading, setCccdLoading] = useState(false);
+    const [cccdError, setCccdError] = useState<string | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imagePreviewError, setImagePreviewError] = useState(false);
     const relationshipRequestRef = useRef<AbortController | null>(null);
     const warningRequestRef = useRef<AbortController | null>(null);
     const suspensionRequestRef = useRef<AbortController | null>(null);
+    const cccdRequestRef = useRef<AbortController | null>(null);
 
     const userId = user?.userid;
     const normalizedRole = user?.primaryrole?.toLowerCase();
     const supportsRelationships = normalizedRole === 'parent' || normalizedRole === 'student';
+    // CCCD chỉ áp dụng cho Tutor/Student tự đăng ký (Parent không xác minh CCCD).
+    const supportsCccd = normalizedRole === 'tutor' || normalizedRole === 'student';
     // GET /admin/warnings/users/{id} yêu cầu quyền warning.view — không có quyền
     // thì đừng gọi để khỏi nhận 403 rồi hiện lỗi vô nghĩa.
     const canViewWarnings = can('warning.view');
+    const canViewCccd = can('tutor_cccd.view');
 
     const fetchWarnings = useCallback(async () => {
         if (!userId || !canViewWarnings) return;
@@ -217,6 +235,36 @@ const UserDetailModal = ({
         }
     }, [supportsRelationships, userId]);
 
+    const fetchCccd = useCallback(async () => {
+        if (!userId || !supportsCccd || !canViewCccd) return;
+
+        cccdRequestRef.current?.abort();
+        const controller = new AbortController();
+        cccdRequestRef.current = controller;
+
+        setCccdError(null);
+        setCccdLoading(true);
+
+        try {
+            const result = await getUserCccdUrls(userId, controller.signal);
+            if (!controller.signal.aborted) setCccd(result);
+        } catch (error: unknown) {
+            const isCanceled =
+                controller.signal.aborted ||
+                (error as { code?: string; name?: string })?.code === 'ERR_CANCELED' ||
+                (error as { name?: string })?.name === 'AbortError';
+            if (!isCanceled) {
+                setCccd(null);
+                setCccdError('Không thể tải ảnh CCCD. Vui lòng thử lại.');
+            }
+        } finally {
+            if (cccdRequestRef.current === controller) {
+                cccdRequestRef.current = null;
+                setCccdLoading(false);
+            }
+        }
+    }, [canViewCccd, supportsCccd, userId]);
+
     // Lịch sử tạm ngưng dùng chung quyền warning.view với cảnh cáo, nhưng tách
     // request riêng để một bên lỗi không giấu mất bên còn lại.
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -286,6 +334,64 @@ const UserDetailModal = ({
     }, [fetchRelationships, isOpen, supportsRelationships, userId]);
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    // Ảnh CCCD là dữ liệu private/nhạy cảm — tải riêng, huỷ khi admin đóng modal hoặc
+    // chuyển nhanh sang user khác, không giữ signed URL cũ lâu hơn cần thiết.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!isOpen || !userId || !supportsCccd || !canViewCccd) {
+            const activeRequest = cccdRequestRef.current;
+            cccdRequestRef.current = null;
+            activeRequest?.abort();
+            setCccd(null);
+            setCccdError(null);
+            setCccdLoading(false);
+            return undefined;
+        }
+
+        void fetchCccd();
+        return () => {
+            const activeRequest = cccdRequestRef.current;
+            cccdRequestRef.current = null;
+            activeRequest?.abort();
+        };
+    }, [canViewCccd, fetchCccd, isOpen, supportsCccd, userId]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    // Endpoint file private đòi JWT + đúng quyền nên phải tải bằng JS rồi đổi sang blob URL,
+    // không gán thẳng link vào <img src> được (thẻ img không gửi được token).
+    const openCccdImage = useCallback(async (signedUrl?: string | null) => {
+        if (!signedUrl) return;
+        setImagePreviewError(false);
+        try {
+            const objectUrl = await fetchProtectedImage(signedUrl);
+            setImagePreview((prev) => {
+                releaseProtectedImage(prev);
+                return objectUrl;
+            });
+        } catch {
+            setImagePreview(signedUrl);
+            setImagePreviewError(true);
+        }
+    }, []);
+
+    const closeImagePreview = useCallback(() => {
+        setImagePreview((prev) => {
+            releaseProtectedImage(prev);
+            return null;
+        });
+        setImagePreviewError(false);
+    }, []);
+
+    // Đóng overlay xem ảnh CCCD bằng Escape (không đóng luôn cả modal chi tiết).
+    useEffect(() => {
+        if (!imagePreview) return undefined;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') closeImagePreview();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [closeImagePreview, imagePreview]);
+
     if (!isOpen || !user) return null;
 
     const isTutor = normalizedRole === 'tutor';
@@ -305,6 +411,7 @@ const UserDetailModal = ({
     const status = STATUS_META[user.accountstatus] ?? { label: user.accountstatus, variant: 'neutral' };
 
     return (
+        <>
         <div className="um-overlay" onClick={onClose} onKeyDown={(event) => event.key === 'Escape' && onClose()}>
             <div
                 className="um-modal um-modal-lg"
@@ -380,6 +487,66 @@ const UserDetailModal = ({
                             </div>
                         </div>
                     </section>
+
+                    {/* Ảnh CCCD — chỉ Tutor/Student (Parent không tự xác minh CCCD). Link là signed URL,
+                        hết hạn sau ~15 phút, chỉ Admin có quyền tutor_cccd.view mới xem được. */}
+                    {supportsCccd && (
+                        <section className="um-section" aria-labelledby="user-cccd-title">
+                            <div className="um-section-head">
+                                <h3 id="user-cccd-title" className="um-section-title">
+                                    <span className="material-symbols-outlined">badge</span>
+                                    Xác minh CCCD
+                                </h3>
+                            </div>
+
+                            {!canViewCccd ? (
+                                <div className="um-empty">Bạn không có quyền xem ảnh CCCD người dùng.</div>
+                            ) : cccdLoading ? (
+                                <p className="um-loading">Đang tải…</p>
+                            ) : cccdError ? (
+                                <div className="um-relationship-error" role="alert">
+                                    <span className="material-symbols-outlined">cloud_off</span>
+                                    <div>
+                                        <strong>Chưa thể tải ảnh CCCD</strong>
+                                        <span>{cccdError}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="um-btn um-btn-secondary"
+                                        onClick={() => void fetchCccd()}
+                                    >
+                                        <span className="material-symbols-outlined">refresh</span>
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : !cccd?.frontImageUrl && !cccd?.backImageUrl ? (
+                                <div className="um-empty">Chưa có ảnh CCCD được lưu trong hệ thống.</div>
+                            ) : (
+                                <div className="um-cccd-actions">
+                                    {cccd.frontImageUrl && (
+                                        <button
+                                            type="button"
+                                            className="um-btn um-btn-secondary"
+                                            onClick={() => void openCccdImage(cccd.frontImageUrl)}
+                                        >
+                                            <span className="material-symbols-outlined">visibility</span>
+                                            Xem mặt trước
+                                        </button>
+                                    )}
+                                    {cccd.backImageUrl && (
+                                        <button
+                                            type="button"
+                                            className="um-btn um-btn-secondary"
+                                            onClick={() => void openCccdImage(cccd.backImageUrl)}
+                                        >
+                                            <span className="material-symbols-outlined">visibility</span>
+                                            Xem mặt sau
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    )}
 
                     {/* Quan hệ Parent ↔ Student được lấy từ student_profiles. */}
                     {supportsRelationships && (
@@ -750,6 +917,42 @@ const UserDetailModal = ({
                 </div>
             </div>
         </div>
+
+        {imagePreview && (
+            <div
+                className="detail-image-preview-overlay"
+                onMouseDown={closeImagePreview}
+            >
+                <div className="detail-image-preview-container" onMouseDown={(event) => event.stopPropagation()}>
+                    <button
+                        type="button"
+                        className="detail-image-preview-close"
+                        onClick={closeImagePreview}
+                        aria-label="Đóng ảnh xem trước"
+                    >
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                    {imagePreviewError ? (
+                        <div className="detail-image-preview-error">
+                            <span className="material-symbols-outlined">broken_image</span>
+                            <strong>Không thể tải ảnh xem trước</strong>
+                            <a href={imagePreview} target="_blank" rel="noopener noreferrer">
+                                Mở ảnh ở tab mới
+                                <span className="material-symbols-outlined">open_in_new</span>
+                            </a>
+                        </div>
+                    ) : (
+                        <img
+                            src={imagePreview}
+                            alt="Ảnh CCCD xem trước"
+                            className="detail-image-preview-img"
+                            onError={() => setImagePreviewError(true)}
+                        />
+                    )}
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 

@@ -65,6 +65,8 @@ const FinancialReportsTab = () => {
                     data={mockReportPreview}
                     rowKey="label"
                     variant="embedded"
+                    density="compact"
+                    adaptive
                     minWidth={640}
                 />
             </div>

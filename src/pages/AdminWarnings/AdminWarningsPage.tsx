@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { getActiveSuspensions, getUserWarnings, unsuspendUser } from '../../services/admin.service';
@@ -5,6 +6,7 @@ import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadg
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import type { AdminUserWarningSummary, AdminWarningHistoryItem } from '../../types/admin.types';
 import { Can } from '../../contexts/AccessContext';
+import { useTabParam } from '../../hooks/useTabParam';
 import '../../styles/pages/admin-warnings.css';
 
 interface SuspensionListItem {
@@ -39,7 +41,9 @@ type PagedContent<T> = T[] | {
 const tabs = [
     { key: 'suspensions', label: 'Đình chỉ đang hoạt động' },
     { key: 'lookup', label: 'Tra cứu cảnh báo' },
-];
+] as const;
+
+const TAB_KEYS = tabs.map((tab) => tab.key);
 
 const unwrapContent = <T,>(response: unknown): T | undefined => {
     const envelope = response as ApiEnvelope<T>;
@@ -78,12 +82,12 @@ const getWarningVariant = (level: number): StatusVariant => (
 );
 
 const AdminWarningsPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<TabKey>('suspensions');
+    const [activeTab, setActiveTab] = useTabParam<TabKey>(TAB_KEYS, 'suspensions');
     const [suspensions, setSuspensions] = useState<SuspensionListItem[]>([]);
     const [suspensionsTotal, setSuspensionsTotal] = useState(0);
     const [suspensionsLoading, setSuspensionsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10;
+    const pageSize = ADMIN_PAGE_SIZE;
     const [searchUserId, setSearchUserId] = useState('');
     const [warningSummary, setWarningSummary] = useState<AdminUserWarningSummary | null>(null);
     const [lookupLoading, setLookupLoading] = useState(false);
@@ -319,6 +323,8 @@ const AdminWarningsPage: React.FC = () => {
                         }}
                         minWidth={1080}
                         variant="embedded"
+                        density="compact"
+                        adaptive
                     />
                 </SectionCard>
             )}
@@ -425,6 +431,8 @@ const AdminWarningsPage: React.FC = () => {
                                     }
                                     minWidth={760}
                                     variant="embedded"
+                                    density="compact"
+                                    adaptive
                                 />
                             </SectionCard>
                         </>

@@ -1,5 +1,6 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getPayoutOverview, getWithdrawalRequests } from '../../../services/adminPayout.service';
 import type { PayoutOverview, WithdrawalRequestItem } from '../../../types/adminPayout.types';
@@ -23,10 +24,26 @@ const PayoutOverviewPage: React.FC = () => {
   const [overview, setOverview] = useState<PayoutOverview | null>(null);
   const [requests, setRequests] = useState<WithdrawalRequestItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [activeTab, setActiveTab] = useState('all');
+  // Tab + trang sống trong URL (không phải useState cục bộ) — để "Xem chi tiết" rồi bấm back
+  // trả về đúng tab/trang đang xem, thay vì luôn reset về "Tất cả"/trang 1.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPage = Number(searchParams.get('page')) || 1;
+  const activeTab = searchParams.get('status') || 'all';
+  const [pageSize, setPageSize] = useState(ADMIN_PAGE_SIZE);
   const navigate = useNavigate();
+
+  const updateQuery = (patch: { status?: string; page?: number }) => {
+    const next = new URLSearchParams(searchParams);
+    if (patch.status !== undefined) {
+      if (patch.status && patch.status !== 'all') next.set('status', patch.status);
+      else next.delete('status');
+    }
+    if (patch.page !== undefined) {
+      if (patch.page > 1) next.set('page', String(patch.page));
+      else next.delete('page');
+    }
+    setSearchParams(next);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -52,8 +69,7 @@ const PayoutOverviewPage: React.FC = () => {
   }, [fetchData]);
 
   const handleTabChange = (key: string) => {
-    setActiveTab(key);
-    setCurrentPage(1);
+    updateQuery({ status: key, page: 1 });
   };
 
   return (
@@ -64,6 +80,14 @@ const PayoutOverviewPage: React.FC = () => {
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">
+          <button
+            type="button"
+            className="admin-ui-button admin-ui-button-secondary"
+            onClick={() => navigate('/admin-portal/payouts/transfers')}
+          >
+            <span className="material-symbols-outlined">send_money</span>
+            Chuyển tiền chủ động
+          </button>
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
@@ -113,7 +137,7 @@ const PayoutOverviewPage: React.FC = () => {
           currentPage={currentPage}
           pageSize={pageSize}
           onPageChange={(page, size) => {
-            setCurrentPage(page);
+            updateQuery({ page });
             setPageSize(size);
           }}
         />

@@ -190,3 +190,65 @@ export interface RejectResult {
     success: boolean;
     message: string;
 }
+
+/**
+ * Chuyển tiền chủ động — cộng thẳng vào ví người nhận, không gắn với yêu cầu rút tiền nào.
+ * Khác payout: không có bước duyệt thứ hai, không cần thông tin ngân hàng hay ảnh biên lai.
+ */
+export interface AdminWalletTransferRequest {
+    recipientUserId: string;
+    amount: number;
+    reason: string;
+}
+
+export interface AdminWalletTransferResult {
+    transferId: number;
+    recipientUserId: string;
+    recipientName?: string;
+    recipientRole?: string;
+    amount: number;
+    reason: string;
+    createdBy: string;
+    createdByName?: string;
+    createdAt: string;
+    recipientNewBalance?: number;
+}
+
+export interface AdminWalletTransferListResponse {
+    items: AdminWalletTransferResult[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
+
+/**
+ * Quỹ hệ thống — nguồn duy nhất "Chuyển tiền chủ động" được phép trừ vào.
+ */
+export interface SystemFund {
+    balance: number;
+    updatedAt: string;
+}
+
+export interface SystemFundTopupRequest {
+    amount: number;
+    reason: string;
+    proofImage: File;
+}
+
+export interface SystemFundTopupResult {
+    topupId: number;
+    amount: number;
+    reason: string;
+    proofImageUrl?: string;
+    createdBy: string;
+    createdByName?: string;
+    createdAt: string;
+    fundBalanceAfter?: number;
+}
+
+export interface SystemFundTopupListResponse {
+    items: SystemFundTopupResult[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}

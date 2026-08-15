@@ -339,6 +339,22 @@ export interface TutorApprovalRequest {
   reason?: string;
 }
 
+// 1 dòng giá theo môn + lớp — khớp TutorSubjectGradePriceResponse (BE).
+export interface SubjectGradePriceItem {
+  id?: number;
+  subjectId: number;
+  subjectName: string | null;
+  gradeLevelId: number;
+  gradeLevelName: string | null;
+  pricePerHour: number;
+  durationMinutesPerSession: number;
+  sessionsPerWeek: number;
+  currency: string;
+  isActive: boolean;
+  subjectIsActive: boolean;
+  gradeLevelIsActive: boolean;
+}
+
 // Bản chỉnh sửa hồ sơ (của tutor đã Active) đang chờ Admin duyệt.
 // GET /api/admin/tutor-profile-update-requests
 export interface ProfileUpdateRequestFromAPI {
@@ -363,6 +379,8 @@ export interface ProfileUpdateRequestFromAPI {
   currentVideoIntroUrl: string | null;
   proposedVideoIntroUrl: string | null;
   hasProposedSubjectGradePrices: boolean;
+  currentSubjectGradePrices: SubjectGradePriceItem[];
+  proposedSubjectGradePrices: SubjectGradePriceItem[];
 }
 
 export interface ProfileUpdateRequestsAPIResponse {
@@ -512,8 +530,10 @@ export interface DisputeForAdmin {
 export type ListSortDirection = 'asc' | 'desc';
 
 export interface DisputeQueryParams {
-  status?: string;
-  disputeType?: string;
+  status?: DisputeStatus;
+  disputeType?: DisputeType;
+  /** Tìm theo mã hồ sơ, booking, buổi học, người dùng hoặc nội dung phản ánh. */
+  search?: string;
   startDate?: string;
   endDate?: string;
   /** Chỉ lấy phản ánh về buổi học này. */
@@ -522,6 +542,14 @@ export interface DisputeQueryParams {
   sortDirection?: ListSortDirection;
   page?: number;
   pageSize?: number;
+}
+
+/** Nội dung phân trang ổn định của GET /api/admin/disputes. */
+export interface DisputeListPageResponse {
+  items: DisputeForAdmin[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface DisputeStatsDto {
@@ -595,6 +623,9 @@ export interface DisputeDetail {
   refundPercentage: number | null;
   tutorResponse: string | null;
   tutorRespondedAt: string | null;
+  /** Phản hồi của phụ huynh/học sinh khi dispute do GIA SƯ tạo (chiều ngược với tutorResponse). */
+  respondentResponse: string | null;
+  respondentRespondedAt: string | null;
   additionalEvidence: DisputeEvidenceItemDto[] | null;
   noShowConfirmedAt: string | null;
   noShowConfirmedBy: string | null;
@@ -890,6 +921,18 @@ export interface ResolveDisputeRequest {
   resolutionNote: string;
   createTutorWarning?: boolean;
   warningLevel?: number;
+}
+
+/**
+ * Buổi học về trạng thái nào khi đóng phản ánh do hai bên hoà giải.
+ * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư như bình thường.
+ * - 'reschedule': hai bên thống nhất học lại buổi này — buổi về 'scheduled', chưa quyết toán.
+ */
+export type CloseDisputeOutcome = 'completed' | 'reschedule';
+
+export interface CloseDisputeRequest {
+  classSessionOutcome: CloseDisputeOutcome;
+  note: string;
 }
 
 // Legacy types kept for backward compatibility
@@ -1249,6 +1292,15 @@ export interface AdminUserDetail {
     avatarurl: string | null;
   };
   relationships: AdminUserRelationships;
+}
+
+/** Link xem ảnh CCCD của người dùng (Tutor/Student) — signed URL, hết hạn sau ~15 phút. */
+export interface AdminUserCccdUrls {
+  userId: string;
+  userFullName?: string | null;
+  frontImageUrl?: string | null;
+  backImageUrl?: string | null;
+  isIdentityVerified: boolean;
 }
 
 export interface IssueWarningRequest {

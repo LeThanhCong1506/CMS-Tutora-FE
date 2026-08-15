@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -12,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 // Trạng thái của quá trình TRÍCH XUẤT PDF (không liên quan duyệt câu hỏi).
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {

@@ -17,13 +17,14 @@ import type {
   SavePermissionGroupRequest,
 } from '../../types/access.types';
 import { formatDateTime } from '../../utils/formatters';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import {
   addPermissionsWithRequirements,
   removePermissionsWithDependents,
 } from '../../utils/permissionAccess';
 import './PermissionGroupsPage.css';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 const actionLabels: Record<string, string> = {
   view: 'Xem',
@@ -474,6 +475,8 @@ const PermissionGroupsPage = () => {
             pagination={{ current: currentPage, pageSize: PAGE_SIZE, total: filtered.length, onChange: setPage }}
             minWidth={820}
             variant="embedded"
+            density="compact"
+            adaptive
           />
         </SectionCard>
       </PageContainer>

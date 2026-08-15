@@ -1,3 +1,4 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
@@ -6,6 +7,7 @@ import type { WithdrawalRequestItem } from '../../types/adminPayout.types';
 import { getFinancialMetrics } from '../../services/admin.service';
 import { getWithdrawalRequests } from '../../services/adminPayout.service';
 import { formatCompactNumber } from '../../utils/formatters';
+import { useTabParam } from '../../hooks/useTabParam';
 import WithdrawalRequestTable from '../AdminPayout/PayoutOverview/components/WithdrawalRequestTable';
 import TransactionLedger from './components/TransactionLedger';
 // TEMP: mock fallback for local UI preview while the backend is offline — see src/mocks/financialsMockFallback.ts
@@ -13,6 +15,7 @@ import { mockFinancialMetrics, mockWithdrawalRequests } from '../../mocks/financ
 import '../../styles/pages/admin-financial.css';
 
 type FinancialTab = 'withdrawals' | 'ledger' | 'commission';
+const FINANCIAL_TAB_KEYS: readonly FinancialTab[] = ['withdrawals', 'ledger', 'commission'];
 
 const financialTabs = [
     { key: 'withdrawals', label: 'Yêu cầu rút tiền' },
@@ -28,10 +31,10 @@ const AdminFinancialsPage = () => {
     const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequestItem[]>([]);
     const [withdrawalTotal, setWithdrawalTotal] = useState(0);
     const [withdrawalPage, setWithdrawalPage] = useState(1);
-    const [withdrawalPageSize, setWithdrawalPageSize] = useState(10);
+    const [withdrawalPageSize, setWithdrawalPageSize] = useState(ADMIN_PAGE_SIZE);
     const [withdrawalLoading, setWithdrawalLoading] = useState(true);
 
-    const [activeTab, setActiveTab] = useState<FinancialTab>('withdrawals');
+    const [activeTab, setActiveTab] = useTabParam<FinancialTab>(FINANCIAL_TAB_KEYS, 'withdrawals');
 
     const fetchMetrics = useCallback(async () => {
         try {

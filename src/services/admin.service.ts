@@ -18,7 +18,9 @@ import type {
   DisputeDetail,
   DisputeStatsDto,
   DisputeQueryParams,
+  DisputeListPageResponse,
   ResolveDisputeRequest,
+  CloseDisputeRequest,
   SessionLog,
   TutorReliability,
   AgoraNcsDiagnostics,
@@ -34,6 +36,7 @@ import type {
   // User Management
   UserListItem,
   AdminUserDetail,
+  AdminUserCccdUrls,
   AdminUserWarningSummary,
   AdminSuspensionHistoryItem,
   // Settings
@@ -333,14 +336,32 @@ export const getPendingCertificates = async (
 
 /**
  * Get list of disputes with optional filtering
- * Backend: GET /api/admin/disputes?status=&page=&pageSize=
- * Returns APIResponse<PagedList<DisputeListDto>>
+ * Backend: GET /api/admin/disputes?search=&status=&disputeType=&classSessionId=&sortDirection=&page=&pageSize=
+ * Returns APIResponse<DisputeListPageResponse>
  */
-export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeForAdmin[]> => {
+export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeListPageResponse> => {
   try {
     const { data } = await api.get('/admin/disputes', { params });
-    // Backend returns APIResponse<PagedList<T>> where PagedList serializes as array with pagination metadata
-    return data.content || [];
+    const content = data.content as DisputeListPageResponse | DisputeForAdmin[] | null | undefined;
+
+    // Compatibility for a short staggered rollout: the previous endpoint serialized PagedList<T>
+    // as a bare array and therefore could not expose a reliable total count.
+    if (Array.isArray(content)) {
+      return {
+        items: content,
+        totalCount: content.length,
+        page: params?.page ?? 1,
+        pageSize: params?.pageSize ?? 20,
+      };
+    }
+
+    const items = Array.isArray(content?.items) ? content.items : [];
+    return {
+      items,
+      totalCount: content?.totalCount ?? items.length,
+      page: content?.page ?? params?.page ?? 1,
+      pageSize: content?.pageSize ?? params?.pageSize ?? 20,
+    };
   } catch (error) {
     console.error('getDisputes error:', error);
     throw error;
@@ -353,7 +374,8 @@ export const getDisputes = async (params?: DisputeQueryParams): Promise<DisputeF
 export const getDisputesLegacy = async (filters?: FilterParams): Promise<DisputeListItem[]> => {
   try {
     const { data } = await api.get('/admin/disputes', { params: filters });
-    return data.content || [];
+    const content = data.content as { items?: DisputeListItem[] } | DisputeListItem[] | null | undefined;
+    return Array.isArray(content) ? content : (content?.items ?? []);
   } catch (error) {
     console.error('getDisputesLegacy error:', error);
     throw error;
@@ -460,6 +482,23 @@ export const resolveDispute = async (
     return data.content;
   } catch (error) {
     console.error('resolveDispute error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Đóng phản ánh khi hai bên đã hoà giải và muốn học tiếp — không phân xử, không hoàn tiền.
+ * Backend: PUT /api/admin/disputes/{disputeId}/close
+ */
+export const closeDispute = async (
+  disputeId: string | number,
+  request: CloseDisputeRequest,
+): Promise<DisputeDetail> => {
+  try {
+    const { data } = await api.put(`/admin/disputes/${disputeId}/close`, request);
+    return data.content;
+  } catch (error) {
+    console.error('closeDispute error:', error);
     throw error;
   }
 };
@@ -771,6 +810,38 @@ export const getUserDetail = async (userId: string, signal?: AbortSignal): Promi
   }
 };
 
+/**
+ * Tải ảnh từ endpoint file private rồi đổi sang blob URL để hiển thị.
+ *
+ * Không gán thẳng link vào <img src> được: endpoint đòi JWT + đúng quyền, mà thẻ img của trình
+ * duyệt không gửi header Authorization nên sẽ nhận 401. Dùng `api` để interceptor tự gắn token.
+ * Nơi gọi phải revokeObjectURL khi đóng ảnh, nếu không blob nằm lại trong bộ nhớ.
+ */
+export const fetchProtectedImage = async (url: string): Promise<string> => {
+  const { data } = await api.get<Blob>(url, { responseType: 'blob' });
+  return URL.createObjectURL(data);
+};
+
+export const releaseProtectedImage = (objectUrl: string | null | undefined): void => {
+  if (objectUrl?.startsWith('blob:')) URL.revokeObjectURL(objectUrl);
+};
+
+/**
+ * Admin xem ảnh CCCD của người dùng (Tutor/Student) — link trả về là signed URL, hết hạn sau ~15 phút.
+ */
+export const getUserCccdUrls = async (userId: string, signal?: AbortSignal): Promise<AdminUserCccdUrls> => {
+  try {
+    const { data } = await api.get<{ content?: AdminUserCccdUrls }>(`/admin/users/${userId}/cccd`, { signal });
+    if (!data.content) throw new Error('Phản hồi CCCD không có dữ liệu.');
+    return data.content;
+  } catch (error) {
+    if ((error as { code?: string })?.code !== 'ERR_CANCELED') {
+      console.error('getUserCccdUrls error:', error);
+    }
+    throw error;
+  }
+};
+
 // ============================================
 // SETTINGS APIs (ADM-06)
 // ============================================
@@ -909,8 +980,11 @@ export const getDisputeChatHistory = async (disputeId: string | number): Promise
 export interface DisputeRecording {
   disputeId: number;
   classSessionId?: number;
-  /** available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) | none. */
-  status: 'available' | 'processing' | 'recording' | 'none';
+  /**
+   * available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) |
+   * failed (buổi đã đóng phòng nhưng Agora không trả về file nào — bản ghi hỏng) | none.
+   */
+  status: 'available' | 'processing' | 'recording' | 'failed' | 'none';
   recordingUrl?: string;
   available: boolean;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { SectionCard, ConfirmDialog } from '../../../components/shared';
+import { SectionCard, ConfirmDialog, TablePagination } from '../../../components/shared';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 import { useAccess } from '../../../contexts/AccessContext';
 import {
   getAiCreditPackages,
@@ -427,6 +428,9 @@ export const PackagesTab: React.FC = () => {
     return !q || p.name.toLowerCase().includes(q) || p.code.includes(q);
   });
 
+  // Bảng này trước đây đổ thẳng toàn bộ danh sách, không có phân trang nào.
+  const { page, setPage, pageItems, total, pageSize } = useClientPagination(filtered);
+
   const handleSoftDelete = async () => {
     if (!deleteConfirm.pkg) return;
     setDeleting(true);
@@ -524,7 +528,7 @@ export const PackagesTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((pkg) => (
+                {pageItems.map((pkg) => (
                   <tr
                     key={pkg.packageId}
                     style={{ borderBottom: '1px solid rgba(62,47,40,0.06)', transition: 'background 0.12s' }}
@@ -632,6 +636,10 @@ export const PackagesTab: React.FC = () => {
                 ))}
               </tbody>
             </table>
+
+            <TablePagination
+              config={{ current: page, pageSize, total, onChange: setPage }}
+            />
           </div>
         )}
       </SectionCard>

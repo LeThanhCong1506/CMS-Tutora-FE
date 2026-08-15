@@ -39,6 +39,8 @@ const AdminFinanceNewPage = lazy(() => import('./pages/AdminFinanceNew/AdminFina
 const AdminRevenueReportsPage = lazy(() => import('./pages/AdminRevenueReports/AdminRevenueReportsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
+const AdminFeedbacksPage = lazy(() => import('./pages/AdminFeedbacks/AdminFeedbacksPage'));
+const AdminPoliciesPage = lazy(() => import('./pages/AdminPolicies/AdminPoliciesPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
 const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBase/KnowledgeBasePage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
@@ -47,6 +49,7 @@ const AdminChaptersPage = lazy(() => import('./pages/AdminChapters/AdminChapters
 const AdminDisputesPage = lazy(() => import('./pages/AdminDisputes/AdminDisputesPage'));
 const AdminDisputeDetailPage = lazy(() => import('./pages/AdminDisputes/AdminDisputeDetailPage'));
 const PayoutOverviewPage = lazy(() => import('./pages/AdminPayout/PayoutOverview/PayoutOverviewPage'));
+const TransferHistoryPage = lazy(() => import('./pages/AdminPayout/Transfer/TransferHistoryPage'));
 const PayoutDetailPage = lazy(() => import('./pages/AdminPayout/PayoutDetail/PayoutDetailPage'));
 const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/PendingReviewPage'));
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
@@ -71,6 +74,8 @@ const PortalIndexRedirect = () => {
     ['certificate.view', '/admin-portal/vetting/certificates'],
     ['dispute.view', '/admin-portal/disputes'],
     ['warning.view', '/admin-portal/warnings'],
+    ['feedback.view', '/admin-portal/feedbacks'],
+    ['policy.view', '/admin-portal/policies'],
     ['question_bank.view', '/admin-portal/question-bank'],
     ['knowledge_base.view', '/admin-portal/knowledge-base'],
     ['financial.view', '/admin-portal/financials'],
@@ -183,6 +188,8 @@ function App() {
                 element={guard(<AdminRevenueReportsPage />, 'financial.view')}
               />
               <Route path="warnings" element={guard(<AdminWarningsPage />, 'warning.view')} />
+              <Route path="feedbacks" element={guard(<AdminFeedbacksPage />, 'feedback.view')} />
+              <Route path="policies" element={guard(<AdminPoliciesPage />, 'policy.view')} />
               <Route path="resources" element={<Navigate to="/admin-portal/resources/subjects" replace />} />
               <Route path="resources/subjects" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
               <Route path="resources/grade-levels" element={guard(<AdminSubjectsPage />, 'lookup.view')} />
@@ -206,6 +213,7 @@ function App() {
               <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="ai-credit/settings" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />
+              <Route path="payouts/transfers" element={guard(<TransferHistoryPage />, 'payout.view')} />
               <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
               <Route path="payouts/:id" element={guard(<PayoutDetailPage />, 'payout.view')} />
               <Route path="payout/review" element={guard(<PendingReviewPage />, 'payout.view')} />

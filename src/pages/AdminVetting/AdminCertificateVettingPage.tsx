@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ConfigProvider, Pagination } from 'antd';
-import viVN from 'antd/locale/vi_VN';
 import { toast } from 'react-toastify';
 import { getPendingCertificates, adminVerifyCertificate } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
@@ -8,9 +6,10 @@ import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
 import type { PendingCertificate } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-vetting.css';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
 type ApiError = {
   response?: { status?: number };
@@ -207,6 +206,9 @@ const AdminCertificateVettingPage = () => {
         toast.info(`Hồ sơ của ${row.tutorName} đã đủ điều kiện và được kích hoạt.`);
       }
       await fetchCertificates();
+      // Báo AdminLayout (khung ngoài, không remount khi ở lại trang này) cập nhật lại số badge
+      // "Chứng chỉ" ở sidebar ngay — nếu không, badge đứng yên tới khi Admin rời trang rồi quay lại.
+      window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
       return true;
     } catch (err) {
       console.error('Error verifying certificate:', err);
@@ -328,44 +330,9 @@ const AdminCertificateVettingPage = () => {
             </button>
           }
           footer={
-            <div className="certificate-table-footer">
-              <span>
-                {searchQuery
-                  ? `Tìm thấy ${total} chứng chỉ khớp với "${searchQuery}"`
-                  : `Hiển thị ${visibleCerts.length} / ${total} chứng chỉ chờ duyệt`}
-              </span>
-              {total > PAGE_SIZE && (
-                <ConfigProvider
-                  locale={viVN}
-                  theme={{
-                    token: {
-                      colorPrimary: '#1a2238',
-                      borderRadius: 8,
-                      fontFamily: "'IBM Plex Sans', sans-serif",
-                    },
-                    components: {
-                      Pagination: {
-                        itemActiveBg: '#1a2238',
-                        itemActiveColor: '#ffffff',
-                        itemActiveColorHover: '#ffffff',
-                        itemBg: 'transparent',
-                        itemLinkBg: 'transparent',
-                      },
-                    },
-                  }}
-                >
-                  <Pagination
-                    current={page}
-                    pageSize={PAGE_SIZE}
-                    total={total}
-                    onChange={(nextPage) => setPage(nextPage)}
-                    showSizeChanger={false}
-                    showLessItems
-                    responsive
-                  />
-                </ConfigProvider>
-              )}
-            </div>
+            searchQuery
+              ? `Tìm thấy ${total} chứng chỉ khớp với "${searchQuery}"`
+              : `Hiển thị ${visibleCerts.length} / ${total} chứng chỉ chờ duyệt`
           }
         >
           <div className="certificate-vetting-toolbar">
@@ -439,8 +406,17 @@ const AdminCertificateVettingPage = () => {
                   workspace_premium
                 </span>
               }
+              tableLabel="Chứng chỉ chờ xác minh"
+              pagination={{
+                current: page,
+                pageSize: PAGE_SIZE,
+                total,
+                onChange: setPage,
+              }}
               minWidth={900}
               variant="embedded"
+              density="compact"
+              adaptive
             />
           )}
         </SectionCard>
