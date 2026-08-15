@@ -46,7 +46,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import {
     getDisputeStatusLabel,
     getDisputeStatusVariant,
-    getPriorityVariant,
+    getPriorityMeta,
     getSuspensionTypeForDuration,
     getVerdictSuggestion,
     getWarningLevelFromSeverity,
@@ -70,7 +70,8 @@ type DisputeChatMessage = {
 };
 
 const EVIDENCE_TABS = ['evidence', 'sessionLog', 'recordings', 'communication', 'reliability'] as const;
-const COMMUNICATION_TABS = ['lesson', 'tutor', 'parent'] as const;
+/** Chỉ còn 2 kênh riêng: chat buổi học đã tách ra cột trái nên luôn hiển thị, không cần tab. */
+const COMMUNICATION_TABS = ['tutor', 'parent'] as const;
 type EvidenceTab = (typeof EVIDENCE_TABS)[number];
 type CommunicationTab = (typeof COMMUNICATION_TABS)[number];
 
@@ -117,6 +118,18 @@ const EvidenceFileCard = ({ url, label, description, tone }: EvidenceFileCardPro
     );
 };
 
+/** Điểm danh: icon Material Symbols thay cho ký tự ✓/✗, giữ nguyên quy ước màu cũ. */
+const AttendanceValue = ({ present }: { present: boolean | null | undefined }) => (
+    <span className="dispute-stat-icon" style={{ color: present ? '#166534' : '#dc2626', fontWeight: 600 }}>
+        {present !== null && present !== undefined && (
+            <span className="material-symbols-outlined" aria-hidden="true">
+                {present ? 'check_circle' : 'cancel'}
+            </span>
+        )}
+        {present === null || present === undefined ? 'Không xác định' : present ? 'Có mặt' : 'Vắng mặt'}
+    </span>
+);
+
 const AdminDisputeDetailPage = () => {
     const navigate = useNavigate();
     // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
@@ -130,7 +143,7 @@ const AdminDisputeDetailPage = () => {
     // Tab states — cả hai nhóm tab nằm trên URL (`?tab=`, `?chat=`) để reload hoặc
     // gửi link cho admin khác vẫn mở đúng bằng chứng đang xem.
     const [activeTab, setActiveTab] = useTabParam<EvidenceTab>(EVIDENCE_TABS, 'evidence');
-    const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'lesson', {
+    const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'tutor', {
         paramKey: 'chat',
     });
     const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
@@ -234,11 +247,12 @@ const AdminDisputeDetailPage = () => {
     }, [disputeId]);
 
     useEffect(() => {
-        if (activeTab === 'communication' && communicationTab === 'lesson' && chatMessages.length === 0) {
+        // Chat buổi học nằm ở cột trái của tab "Trao đổi" nên chỉ phụ thuộc activeTab.
+        if (activeTab === 'communication' && chatMessages.length === 0) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             void fetchChatHistory();
         }
-    }, [activeTab, communicationTab, chatMessages.length, fetchChatHistory]);
+    }, [activeTab, chatMessages.length, fetchChatHistory]);
 
     // Fetch recording info when switching to the recordings tab — token ngắn hạn nên
     // luôn gọi lại (không cache) mỗi lần vào lại tab, giống cách "recordings" không
@@ -542,6 +556,7 @@ const AdminDisputeDetailPage = () => {
     } : null;
     const classSessionPrice = classSession?.classSessionPrice || 0;
     const suggestion = getVerdictSuggestion(sessionLogSummary);
+    const priorityMeta = getPriorityMeta(disputeDetail.priority, disputeDetail.priorityDisplay);
 
     return (
         <>
@@ -567,8 +582,9 @@ const AdminDisputeDetailPage = () => {
                                         {getDisputeStatusLabel(disputeDetail.status)}
                                     </StatusBadge>
                                     <span title={disputeDetail.priorityReason || undefined}>
-                                        <StatusBadge variant={getPriorityVariant(disputeDetail.priority)} shape="tag">
-                                            {disputeDetail.priorityDisplay || 'Chưa phân loại'}
+                                        <StatusBadge variant={priorityMeta.variant} shape="tag">
+                                            <span className="material-symbols-outlined" aria-hidden="true">{priorityMeta.icon}</span>
+                                            {priorityMeta.label}
                                         </StatusBadge>
                                     </span>
                                     <span className="dispute-detail-created">
@@ -708,7 +724,10 @@ const AdminDisputeDetailPage = () => {
                                     <div className="dispute-party-details">
                                         <div className="dispute-stat-row">
                                             <span style={{ color: '#81786a' }}>Đánh giá</span>
-                                            <span className="dispute-stat-green">⭐ {tutor?.averageRating?.toFixed(1) || 'N/A'}</span>
+                                            <span className="dispute-stat-green dispute-stat-icon">
+                                                <span className="material-symbols-outlined" aria-hidden="true">star</span>
+                                                {tutor?.averageRating?.toFixed(1) || 'N/A'}
+                                            </span>
                                         </div>
                                         <div className="dispute-stat-row">
                                             <span style={{ color: '#81786a' }}>Lần nhắc nhở</span>
@@ -784,15 +803,11 @@ const AdminDisputeDetailPage = () => {
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>
-                                                <span style={{ color: classSession.isTutorPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
-                                                    {classSession.isTutorPresent === null ? 'Không xác định' : classSession.isTutorPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
-                                                </span>
+                                                <AttendanceValue present={classSession.isTutorPresent} />
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh học viên</span>
-                                                <span style={{ color: classSession.isStudentPresent ? '#166534' : '#dc2626', fontWeight: 600 }}>
-                                                    {classSession.isStudentPresent === null ? 'Không xác định' : classSession.isStudentPresent ? '✓ Có mặt' : '✗ Vắng mặt'}
-                                                </span>
+                                                <AttendanceValue present={classSession.isStudentPresent} />
                                             </div>
                                         </div>
                                     </div>
@@ -977,81 +992,195 @@ const AdminDisputeDetailPage = () => {
                                     </div>
                                 )}
 
+                                {/* Trao đổi: chat buổi học nằm bên trái, chat riêng của admin bên phải.
+                                    Admin luôn phải đối chiếu lời khai riêng với những gì đôi bên đã nói
+                                    trong buổi học, nên hai luồng đặt cạnh nhau thay vì phải nhảy tab. */}
                                 {activeTab === 'communication' && (
-                                    <div className="dispute-communication-tabs" role="tablist" aria-label="Kênh trao đổi">
-                                        <button
-                                            type="button"
-                                            className={communicationTab === 'lesson' ? 'active' : ''}
-                                            onClick={() => setCommunicationTab('lesson')}
-                                        >
-                                            Chat buổi học
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={communicationTab === 'tutor' ? 'active' : ''}
-                                            onClick={() => setCommunicationTab('tutor')}
-                                        >
-                                            Với gia sư
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={communicationTab === 'parent' ? 'active' : ''}
-                                            onClick={() => setCommunicationTab('parent')}
-                                        >
-                                            Với người học
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Chat Log */}
-                                {activeTab === 'communication' && communicationTab === 'lesson' && (
-                                    <div className="dispute-chat-area">
-                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
-                                            💬 Nhật ký chat
-                                        </h3>
-                                        {chatLoading ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                                Đang tải lịch sử chat...
-                                            </p>
-                                        ) : chatMessages.length === 0 ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                                Không có tin nhắn chat nào
-                                            </p>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto' }}>
-                                                {chatMessages.map((msg, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        style={{
-                                                            padding: '12px 16px',
-                                                            background: '#f8fafc',
-                                                            borderRadius: '8px',
-                                                            border: '1px solid #e2e8f0',
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                                            <span style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
-                                                                {msg.senderName || msg.senderId || 'Unknown'}
-                                                            </span>
-                                                            <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                                                {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
-                                                            </span>
+                                    <div className="dispute-communication-split">
+                                        {/* Chat Log */}
+                                        <section className="dispute-chat-area dispute-chat-panel">
+                                            <h3 className="dispute-section-title" style={{ margin: '0 0 20px' }}>
+                                                <span className="material-symbols-outlined" aria-hidden="true">forum</span>
+                                                Chat buổi học
+                                            </h3>
+                                            {chatLoading ? (
+                                                <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                    Đang tải lịch sử chat...
+                                                </p>
+                                            ) : chatMessages.length === 0 ? (
+                                                <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                    Không có tin nhắn chat nào
+                                                </p>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                                                    {chatMessages.map((msg, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            style={{
+                                                                padding: '12px 16px',
+                                                                background: '#f8fafc',
+                                                                borderRadius: '8px',
+                                                                border: '1px solid #e2e8f0',
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                                <span style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                                                                    {msg.senderName || msg.senderId || 'Unknown'}
+                                                                </span>
+                                                                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                                                                    {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
+                                                                </span>
+                                                            </div>
+                                                            <p style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>
+                                                                {msg.content || msg.message || ''}
+                                                            </p>
                                                         </div>
-                                                        <p style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>
-                                                            {msg.content || msg.message || ''}
-                                                        </p>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </section>
+
+                                        {/* Private chats (admin<->tutor, admin<->parent/student) */}
+                                        <section className="dispute-chat-area dispute-chat-panel">
+                                            {/* Tiêu đề đứng trên thanh chọn kênh: nói rõ đang xem cuộc trò chuyện nào
+                                                trước, rồi mới tới chỗ đổi sang bên còn lại. */}
+                                            <h3 className="dispute-section-title" style={{ margin: '0 0 14px' }}>
+                                                {communicationTab === 'tutor'
+                                                    ? 'Chat riêng với gia sư'
+                                                    : 'Chat riêng với phụ huynh/học sinh'}
+                                            </h3>
+                                            <div className="dispute-communication-tabs" role="tablist" aria-label="Kênh trao đổi riêng">
+                                                <button
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={communicationTab === 'tutor'}
+                                                    className={communicationTab === 'tutor' ? 'active' : ''}
+                                                    onClick={() => setCommunicationTab('tutor')}
+                                                >
+                                                    Gia sư
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={communicationTab === 'parent'}
+                                                    className={communicationTab === 'parent' ? 'active' : ''}
+                                                    onClick={() => setCommunicationTab('parent')}
+                                                >
+                                                    Người học
+                                                </button>
                                             </div>
-                                        )}
+
+                                            {communicationTab === 'tutor' ? (
+                                                <>
+                                                    {tutorThreadLoading ? (
+                                                        <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
+                                                    ) : tutorThread.length === 0 ? (
+                                                        <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
+                                                            {tutorThread.map((msg) => (
+                                                                <div
+                                                                    key={msg.disputeMessageId}
+                                                                    style={{
+                                                                        alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
+                                                                        maxWidth: '75%',
+                                                                        padding: '10px 14px',
+                                                                        borderRadius: '10px',
+                                                                        background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
+                                                                        color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
+                                                                    }}
+                                                                >
+                                                                    <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
+                                                                        {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Gia sư')}
+                                                                    </p>
+                                                                    <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                                                        <textarea
+                                                            value={tutorThreadInput}
+                                                            onChange={(e) => setTutorThreadInput(e.target.value)}
+                                                            placeholder="Nhắn cho gia sư..."
+                                                            rows={2}
+                                                            // Chặn Grammarly chèn nút overlay của nó vào giữa ô soạn tin.
+                                                            data-gramm="false"
+                                                            data-gramm_editor="false"
+                                                            data-enable-grammarly="false"
+                                                            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            className="admin-ui-button admin-ui-button-secondary"
+                                                            disabled={tutorThreadSending || tutorThreadInput.trim().length === 0}
+                                                            onClick={() => void handleSendTutorThreadMessage()}
+                                                        >
+                                                            Gửi
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {parentThreadLoading ? (
+                                                        <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
+                                                    ) : parentThread.length === 0 ? (
+                                                        <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
+                                                            {parentThread.map((msg) => (
+                                                                <div
+                                                                    key={msg.disputeMessageId}
+                                                                    style={{
+                                                                        alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
+                                                                        maxWidth: '75%',
+                                                                        padding: '10px 14px',
+                                                                        borderRadius: '10px',
+                                                                        background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
+                                                                        color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
+                                                                    }}
+                                                                >
+                                                                    <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
+                                                                        {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Phụ huynh/Học sinh')}
+                                                                    </p>
+                                                                    <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                                                        <textarea
+                                                            value={parentThreadInput}
+                                                            onChange={(e) => setParentThreadInput(e.target.value)}
+                                                            placeholder="Nhắn cho phụ huynh/học sinh..."
+                                                            rows={2}
+                                                            // Chặn Grammarly chèn nút overlay của nó vào giữa ô soạn tin.
+                                                            data-gramm="false"
+                                                            data-gramm_editor="false"
+                                                            data-enable-grammarly="false"
+                                                            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            className="admin-ui-button admin-ui-button-secondary"
+                                                            disabled={parentThreadSending || parentThreadInput.trim().length === 0}
+                                                            onClick={() => void handleSendParentThreadMessage()}
+                                                        >
+                                                            Gửi
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </section>
                                     </div>
                                 )}
 
                                 {/* Recording (video buổi học) */}
                                 {activeTab === 'recordings' && (
                                     <div className="dispute-chat-area">
-                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 20px' }}>
-                                            🎥 Ghi hình buổi học
+                                        <h3 className="dispute-section-title" style={{ margin: '0 0 20px' }}>
+                                            <span className="material-symbols-outlined" aria-hidden="true">videocam</span>
+                                            Ghi hình buổi học
                                         </h3>
 
                                         {recordingLoading ? (
@@ -1130,115 +1259,6 @@ const AdminDisputeDetailPage = () => {
                                     </div>
                                 )}
 
-                                {/* Private chat with tutor */}
-                                {activeTab === 'communication' && communicationTab === 'tutor' && (
-                                    <div className="dispute-chat-area">
-                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
-                                            🛡️ Chat riêng với gia sư
-                                        </h3>
-                                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px' }}>
-                                            Chỉ admin và gia sư thấy được cuộc trò chuyện này.
-                                        </p>
-                                        {tutorThreadLoading ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
-                                        ) : tutorThread.length === 0 ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                                                {tutorThread.map((msg) => (
-                                                    <div
-                                                        key={msg.disputeMessageId}
-                                                        style={{
-                                                            alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
-                                                            maxWidth: '75%',
-                                                            padding: '10px 14px',
-                                                            borderRadius: '10px',
-                                                            background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
-                                                            color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
-                                                        }}
-                                                    >
-                                                        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
-                                                            {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Gia sư')}
-                                                        </p>
-                                                        <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <textarea
-                                                value={tutorThreadInput}
-                                                onChange={(e) => setTutorThreadInput(e.target.value)}
-                                                placeholder="Nhắn cho gia sư..."
-                                                rows={2}
-                                                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="admin-ui-button admin-ui-button-secondary"
-                                                disabled={tutorThreadSending || tutorThreadInput.trim().length === 0}
-                                                onClick={() => void handleSendTutorThreadMessage()}
-                                            >
-                                                Gửi
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Private chat with parent/student */}
-                                {activeTab === 'communication' && communicationTab === 'parent' && (
-                                    <div className="dispute-chat-area">
-                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-navy)', margin: '0 0 8px' }}>
-                                            🛡️ Chat riêng với phụ huynh/học sinh
-                                        </h3>
-                                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px' }}>
-                                            Chỉ admin và phụ huynh/học sinh thấy được cuộc trò chuyện này.
-                                        </p>
-                                        {parentThreadLoading ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Đang tải...</p>
-                                        ) : parentThread.length === 0 ? (
-                                            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                                                {parentThread.map((msg) => (
-                                                    <div
-                                                        key={msg.disputeMessageId}
-                                                        style={{
-                                                            alignSelf: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
-                                                            maxWidth: '75%',
-                                                            padding: '10px 14px',
-                                                            borderRadius: '10px',
-                                                            background: msg.senderRole === 'admin' ? 'var(--color-navy)' : '#f1f5f9',
-                                                            color: msg.senderRole === 'admin' ? '#fff' : 'var(--color-navy)',
-                                                        }}
-                                                    >
-                                                        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, opacity: 0.8 }}>
-                                                            {msg.senderName || (msg.senderRole === 'admin' ? 'Admin' : 'Phụ huynh/Học sinh')}
-                                                        </p>
-                                                        <p style={{ margin: 0, fontSize: '14px', whiteSpace: 'pre-wrap' }}>{msg.message}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <textarea
-                                                value={parentThreadInput}
-                                                onChange={(e) => setParentThreadInput(e.target.value)}
-                                                placeholder="Nhắn cho phụ huynh/học sinh..."
-                                                rows={2}
-                                                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="admin-ui-button admin-ui-button-secondary"
-                                                disabled={parentThreadSending || parentThreadInput.trim().length === 0}
-                                                onClick={() => void handleSendParentThreadMessage()}
-                                            >
-                                                Gửi
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             {/* RIGHT COLUMN: Verdict */}

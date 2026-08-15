@@ -4,6 +4,7 @@
 .badge {
     display: inline-flex;
     align-items: center;
+    gap: 3px;
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 10px;
     line-height: 15px;
@@ -11,6 +12,14 @@
     letter-spacing: 0.8px;
     text-transform: uppercase;
     white-space: nowrap;
+}
+
+/* Badge cho phép kèm 1 icon Material Symbols dẫn trước nhãn (vd. mức ưu tiên).
+   Icon mặc định 24px nên phải kéo về đúng cỡ chữ badge. */
+.badge :global(.material-symbols-outlined) {
+    font-size: 14px;
+    line-height: 1;
+    letter-spacing: normal;
 }
 
 /* Shape variants */
