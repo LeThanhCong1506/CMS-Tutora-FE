@@ -623,6 +623,9 @@ export interface DisputeDetail {
   refundPercentage: number | null;
   tutorResponse: string | null;
   tutorRespondedAt: string | null;
+  /** Phản hồi của phụ huynh/học sinh khi dispute do GIA SƯ tạo (chiều ngược với tutorResponse). */
+  respondentResponse: string | null;
+  respondentRespondedAt: string | null;
   additionalEvidence: DisputeEvidenceItemDto[] | null;
   noShowConfirmedAt: string | null;
   noShowConfirmedBy: string | null;
@@ -918,6 +921,18 @@ export interface ResolveDisputeRequest {
   resolutionNote: string;
   createTutorWarning?: boolean;
   warningLevel?: number;
+}
+
+/**
+ * Buổi học về trạng thái nào khi đóng phản ánh do hai bên hoà giải.
+ * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư như bình thường.
+ * - 'reschedule': hai bên thống nhất học lại buổi này — buổi về 'scheduled', chưa quyết toán.
+ */
+export type CloseDisputeOutcome = 'completed' | 'reschedule';
+
+export interface CloseDisputeRequest {
+  classSessionOutcome: CloseDisputeOutcome;
+  note: string;
 }
 
 // Legacy types kept for backward compatibility
