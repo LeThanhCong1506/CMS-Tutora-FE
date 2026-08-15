@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import { getDisputes, getDisputeStats } from '../../services/admin.service';
+import { getPriorityMeta } from './disputeWorkflow';
 import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, ListSortDirection } from '../../types/admin.types';
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
@@ -42,19 +43,6 @@ const getStatusLabel = (dispute: DisputeForAdmin) => {
             return 'Đã đóng';
         default:
             return dispute.statusDisplay || dispute.status || 'N/A';
-    }
-};
-
-const getPriorityVariant = (priority?: string | null): StatusVariant => {
-    switch (priority) {
-        case 'high':
-            return 'error';
-        case 'medium':
-            return 'warning';
-        case 'low':
-            return 'success';
-        default:
-            return 'neutral';
     }
 };
 
@@ -293,22 +281,26 @@ const AdminDisputesPage = () => {
         {
             key: 'priority',
             title: 'Ưu tiên',
-            render: (dispute) => (
-                <span
-                    className="dispute-list-priority"
-                    title={dispute.priorityReason || undefined}
-                    tabIndex={dispute.priorityReason ? 0 : undefined}
-                    aria-label={
-                        dispute.priorityReason
-                            ? `${dispute.priorityDisplay || 'Chưa có ưu tiên'}. Lý do: ${dispute.priorityReason}`
-                            : undefined
-                    }
-                >
-                    <StatusBadge variant={getPriorityVariant(dispute.priority)} shape="tag">
-                        {dispute.priorityDisplay || 'Chưa có'}
-                    </StatusBadge>
-                </span>
-            ),
+            render: (dispute) => {
+                const priority = getPriorityMeta(dispute.priority, dispute.priorityDisplay);
+                return (
+                    <span
+                        className="dispute-list-priority"
+                        title={dispute.priorityReason || undefined}
+                        tabIndex={dispute.priorityReason ? 0 : undefined}
+                        aria-label={
+                            dispute.priorityReason
+                                ? `${priority.label}. Lý do: ${dispute.priorityReason}`
+                                : undefined
+                        }
+                    >
+                        <StatusBadge variant={priority.variant} shape="tag">
+                            <span className="material-symbols-outlined" aria-hidden="true">{priority.icon}</span>
+                            {priority.label}
+                        </StatusBadge>
+                    </span>
+                );
+            },
             hideOnTablet: true,
         },
     ];
