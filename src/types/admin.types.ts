@@ -924,14 +924,11 @@ export interface ResolveDisputeRequest {
 }
 
 /**
- * Buổi học về trạng thái nào khi đóng phản ánh do hai bên hoà giải. Chỉ buổi ở
- * 'pending_confirmation' hoặc 'completed' mới tạo được phản ánh, nhưng trạng thái cũ đó không được
- * lưu lại nên admin phải tự chọn đưa buổi về đâu.
- * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư ngay.
- * - 'pending_confirmation': trả về chờ phụ huynh xác nhận như trước khi có phản ánh, chưa quyết toán.
+ * Buổi học về trạng thái nào khi đóng phản ánh do hai bên hoà giải.
+ * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư như bình thường.
  * - 'reschedule': hai bên thống nhất học lại buổi này — buổi về 'scheduled', chưa quyết toán.
  */
-export type CloseDisputeOutcome = 'completed' | 'pending_confirmation' | 'reschedule';
+export type CloseDisputeOutcome = 'completed' | 'reschedule';
 
 export interface CloseDisputeRequest {
   classSessionOutcome: CloseDisputeOutcome;
