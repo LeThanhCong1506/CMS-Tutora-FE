@@ -26,6 +26,10 @@ export function getNotificationTargetPath(notification: NotificationDTO): string
     const refId = notification.referenceid ?? '';
     const combined = ((notification.title ?? '') + ' ' + (notification.message ?? '')).toLowerCase();
 
+    if (type === 'support_message') {
+        return `${prefix}/support`;
+    }
+
     // ── Booking deep-link (type-based) ──
     if (
         (type === 'booking_new' || type === 'booking_accepted' || type === 'booking_declined') &&
