@@ -126,6 +126,7 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
+      { path: '/admin-portal/support', label: 'Nhắn tin hỗ trợ', materialIcon: 'support_agent', permission: 'support.view' },
       { path: '/admin-portal/knowledge-base', label: 'Thông tin Hệ thống', materialIcon: 'auto_stories', permission: 'knowledge_base.view' },
       { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
