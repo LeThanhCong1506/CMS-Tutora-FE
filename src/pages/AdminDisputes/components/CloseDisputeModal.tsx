@@ -11,9 +11,14 @@ const MIN_NOTE = 10;
  */
 const OUTCOMES: { value: CloseDisputeOutcome; title: string; desc: string }[] = [
     {
+        value: 'pending_confirmation',
+        title: 'Trả về chờ phụ huynh xác nhận',
+        desc: 'Về đúng trạng thái trước khi có phản ánh, cấp lại hạn xác nhận 12 giờ. Phụ huynh xác nhận thì gia sư mới nhận tiền.',
+    },
+    {
         value: 'completed',
         title: 'Tính là đã học xong',
-        desc: 'Buổi học vẫn được tính, gia sư nhận đủ tiền buổi đó như bình thường.',
+        desc: 'Chốt luôn buổi học, gia sư nhận đủ tiền ngay mà không cần phụ huynh xác nhận lại.',
     },
     {
         value: 'reschedule',
@@ -30,7 +35,7 @@ interface CloseDisputeModalProps {
 }
 
 const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm }: CloseDisputeModalProps) => {
-    const [outcome, setOutcome] = useState<CloseDisputeOutcome>('completed');
+    const [outcome, setOutcome] = useState<CloseDisputeOutcome>('pending_confirmation');
     const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -38,7 +43,7 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm }: CloseDispu
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!isOpen) return;
-        setOutcome('completed');
+        setOutcome('pending_confirmation');
         setNote('');
         setError('');
     }, [isOpen]);
