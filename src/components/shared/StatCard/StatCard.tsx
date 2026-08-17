@@ -3,7 +3,18 @@ import styles from './StatCard.module.css';
 
 // Ẩn danh, style khớp bộ icon SVG stroke đã dùng ở InputGroup.tsx.
 const InfoIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        focusable="false"
+    >
         <circle cx="12" cy="12" r="10" />
         <line x1="12" y1="16" x2="12" y2="12" />
         <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -15,8 +26,12 @@ export interface StatCardProps {
     icon: React.ReactNode;
     /** The main numeric/text value */
     value: React.ReactNode;
+    /** Optional className for the main value (for example, exact long currency values) */
+    valueClassName?: string;
     /** Short label below the value */
     label: string;
+    /** Optional className for the label */
+    labelClassName?: string;
     /** Optional sub-label for supplementary info */
     subLabel?: React.ReactNode;
     /** Optional tooltip explaining what this card means, shown via an info icon next to the label */
@@ -38,7 +53,9 @@ export interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({
     icon,
     value,
+    valueClassName,
     label,
+    labelClassName,
     subLabel,
     infoTooltip,
     badge,
@@ -49,27 +66,26 @@ const StatCard: React.FC<StatCardProps> = ({
     const content = (
         <>
             <div className={styles.statHeader}>
-                <div className={styles.statIcon}>{icon}</div>
-                {badge && (
-                    <span className={`${styles.statBadge} ${styles[`badge_${badgeVariant}`]}`}>
-                        {badge}
-                    </span>
-                )}
+                <div className={styles.statIcon} aria-hidden="true">
+                    {icon}
+                </div>
+                {badge && <span className={`${styles.statBadge} ${styles[`badge_${badgeVariant}`]}`}>{badge}</span>}
             </div>
-            <div className={styles.statValue}>{value}</div>
+            <div className={`${styles.statValue} ${valueClassName || ''}`}>{value}</div>
             <div className={styles.statLabelRow}>
-                <span className={styles.statLabel}>{label}</span>
+                <span className={`${styles.statLabel} ${labelClassName || ''}`}>{label}</span>
                 {infoTooltip && (
-                    <span
+                    <button
+                        type="button"
                         className={styles.infoTooltip}
-                        tabIndex={0}
-                        role="img"
-                        aria-label={`Thông tin: ${infoTooltip}`}
+                        aria-label={`Giải thích chỉ số: ${infoTooltip}`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <InfoIcon />
-                        <span className={styles.infoTooltipBubble}>{infoTooltip}</span>
-                    </span>
+                        <span className={styles.infoTooltipBubble} role="tooltip">
+                            {infoTooltip}
+                        </span>
+                    </button>
                 )}
             </div>
             {subLabel && <div className={styles.statSubLabel}>{subLabel}</div>}
@@ -78,21 +94,19 @@ const StatCard: React.FC<StatCardProps> = ({
 
     if (onClick) {
         return (
-            <button
-                type="button"
-                className={`${styles.statCard} ${styles.clickable} ${className || ''}`}
-                onClick={onClick}
-            >
+            <div className={`${styles.statCard} ${styles.clickable} ${className || ''}`}>
+                <button
+                    type="button"
+                    className={styles.cardClickTarget}
+                    onClick={onClick}
+                    aria-label={`Mở chi tiết: ${label}`}
+                />
                 {content}
-            </button>
+            </div>
         );
     }
 
-    return (
-        <div className={`${styles.statCard} ${className || ''}`}>
-            {content}
-        </div>
-    );
+    return <div className={`${styles.statCard} ${className || ''}`}>{content}</div>;
 };
 
 export default StatCard;
