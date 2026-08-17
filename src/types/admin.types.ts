@@ -28,8 +28,8 @@ export interface DashboardBookingSummary {
   platformRevenueThisMonth: number;
 }
 
-export interface DashboardLessonSummary {
-  lessonsToday: number;
+export interface DashboardClassSessionSummary {
+  classSessionsToday: number;
   completionRatePercent: number | null;
   noShowRatePercent: number | null;
 }
@@ -39,12 +39,13 @@ export interface DashboardPendingActions {
   pendingWithdrawalAmount: number;
   openDisputes: number;
   pendingWarnings: number;
+  pendingCertificates: number;
 }
 
 export interface AdminDashboardStats {
   platformOverview: DashboardPlatformOverview;
   bookingSummary: DashboardBookingSummary;
-  lessonSummary: DashboardLessonSummary;
+  classSessionSummary: DashboardClassSessionSummary;
   pendingActions: DashboardPendingActions;
 }
 
@@ -178,6 +179,7 @@ export interface SummaryBookings {
 export interface SummaryPendingActions {
   total: number;
   tutorApprovals: number;
+  pendingCertificates: number;
   withdrawalReviews: number;
   openDisputes: number;
   unresolvedAlerts: number;
@@ -200,14 +202,14 @@ export interface FinancialTrendPoint {
   platformRevenue: number;
 }
 
-export interface LessonTrendPoint {
+export interface ClassSessionTrendPoint {
   label: string;
   completed: number;
   cancelled: number;
   noShow: number;
 }
 
-export interface LessonRates {
+export interface ClassSessionRates {
   completionRate: number;
   cancellationRate: number;
   noShowRate: number;
@@ -218,8 +220,8 @@ export interface DashboardTrend {
   to: string;
   bucket: string;
   financialTrend: FinancialTrendPoint[];
-  lessonTrend: LessonTrendPoint[];
-  lessonRates: LessonRates;
+  classSessionTrend: ClassSessionTrendPoint[];
+  classSessionRates: ClassSessionRates;
 }
 
 // ============================================

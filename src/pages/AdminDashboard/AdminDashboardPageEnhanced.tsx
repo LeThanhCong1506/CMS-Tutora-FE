@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAccess } from '../../contexts/AccessContext';
 import {
     getAdminDashboardStats,
     getAdminUserStats,
@@ -16,52 +17,43 @@ import type {
     AdminDashboardSummary,
     DashboardTrend,
 } from '../../types/admin.types';
-import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
+import { PageContainer, SectionCard, StatCard } from '../../components/shared';
 import {
     FinancialTrendChart,
     LessonActivityChart,
     CategoryDonut,
     HorizontalBars,
     ChartEmpty,
+    DashboardRangePicker,
+    TutorRevenueRanking,
+    TUTOR_RANKING_LIMIT,
     USER_ROLE_COLORS,
     DISPUTE_STATUS_COLORS,
     FUNNEL_COLORS,
     CHART,
 } from './components';
+import { formatNumber, formatDisputeType } from '../../utils/formatters';
 import {
-    formatCurrency,
-    formatCompactNumber,
-    formatNumber,
-    formatDisputeType,
-} from '../../utils/formatters';
-
-import { useTabParam } from '../../hooks/useTabParam';
+    describeDashboardRange,
+    formatDashboardCurrency,
+    formatRangeSpan,
+    summarizePendingActions,
+} from './dashboardDisplay';
+import { useDashboardRange } from './useDashboardRange';
 
 import '../../styles/pages/admin-dashboard.css';
 
-// ─── Date range helpers ───
+/** Dòng phụ duy nhất còn giữ lại trên hàng công việc: cảnh báo hàng bấm vào sẽ bị chặn. */
+const NO_ACCESS_META = 'Không có quyền truy cập';
 
-const RANGE_KEYS = ['today', '7d', '30d'] as const;
-type RangeKey = (typeof RANGE_KEYS)[number];
-
-const computeRange = (key: RangeKey): { from: Date; to: Date } => {
-    const to = new Date();
-    const from = new Date();
-    if (key === 'today') {
-        from.setHours(0, 0, 0, 0);
-    } else if (key === '7d') {
-        from.setDate(from.getDate() - 7);
-    } else {
-        from.setDate(from.getDate() - 30);
-    }
-    return { from, to };
+const EMPTY_LOAD_FAILURES = {
+    summary: false,
+    stats: false,
+    users: false,
+    tutors: false,
+    disputes: false,
+    trends: false,
 };
-
-const rangeTabs = [
-    { key: 'today', label: 'Hôm nay' },
-    { key: '7d', label: '7 ngày' },
-    { key: '30d', label: '30 ngày' },
-];
 
 // ─── KPI change badge ───
 
@@ -89,29 +81,45 @@ const ActionRow = ({
     icon: string;
     label: string;
     meta?: string;
-    value: number;
-    onClick: () => void;
-}) => (
-    <button type="button" className="admin-action-row" onClick={onClick}>
-        <span className="admin-action-row-icon">
-            <span className="material-symbols-outlined">{icon}</span>
-        </span>
-        <span className="admin-action-row-body">
-            <span className="admin-action-row-label">{label}</span>
-            {meta && <span className="admin-action-row-meta">{meta}</span>}
-        </span>
-        <span className={`admin-action-row-value ${value === 0 ? 'admin-action-row-value-zero' : ''}`}>
-            {value}
-        </span>
-        <span className="admin-action-row-chevron material-symbols-outlined">chevron_right</span>
-    </button>
-);
+    value: number | null | undefined;
+    onClick?: () => void;
+}) => {
+    const content = (
+        <>
+            <span className="admin-action-row-icon" aria-hidden="true">
+                <span className="material-symbols-outlined">{icon}</span>
+            </span>
+            <span className="admin-action-row-body">
+                <span className="admin-action-row-label">{label}</span>
+                {meta && <span className="admin-action-row-meta">{meta}</span>}
+            </span>
+            <span
+                className={`admin-action-row-value ${value === 0 || value == null ? 'admin-action-row-value-zero' : ''}`}
+            >
+                {value == null ? '—' : formatNumber(value)}
+            </span>
+        </>
+    );
+
+    if (!onClick) {
+        return <div className="admin-action-row admin-action-row-static">{content}</div>;
+    }
+
+    return (
+        <button type="button" className="admin-action-row" onClick={onClick}>
+            {content}
+            <span className="admin-action-row-chevron material-symbols-outlined" aria-hidden="true">
+                chevron_right
+            </span>
+        </button>
+    );
+};
 
 // ─── Lesson rate chip ───
 
 const RateChip = ({ label, value, color }: { label: string; value: number | null | undefined; color: string }) => (
     <div className="admin-rate-chip">
-        <span className="admin-rate-chip-dot" style={{ background: color }} />
+        <span className="admin-rate-chip-dot" style={{ background: color }} aria-hidden="true" />
         <span className="admin-rate-chip-label">{label}</span>
         <strong className="admin-rate-chip-value">{value != null ? `${value.toFixed(1)}%` : '—'}</strong>
     </div>
@@ -121,9 +129,14 @@ const RateChip = ({ label, value, color }: { label: string; value: number | null
 
 const AdminDashboardPageEnhanced = () => {
     const navigate = useNavigate();
+    const { can, canAny } = useAccess();
+    const canOpenProfiles = canAny(['tutor_approval.view', 'tutor_profile_update.view']);
+    const canOpenCertificates = can('certificate.view');
+    const canOpenPayouts = can('payout.view');
+    const canOpenDisputes = can('dispute.view');
 
-    // `?range=` — cùng quy ước với useRevenueRange ở trang báo cáo doanh thu.
-    const [rangeKey, setRangeKey] = useTabParam<RangeKey>(RANGE_KEYS, '30d', { paramKey: 'range' });
+    // `?range=` — preset trượt, hoặc một tháng/tuần/khoảng cố định trong quá khứ.
+    const { selection, setSelection, range } = useDashboardRange();
 
     const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
     const [stats, setStats] = useState<AdminDashboardStats | null>(null);
@@ -134,8 +147,7 @@ const AdminDashboardPageEnhanced = () => {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const range = useMemo(() => computeRange(rangeKey), [rangeKey]);
+    const [loadFailures, setLoadFailures] = useState(EMPTY_LOAD_FAILURES);
 
     useEffect(() => {
         let cancelled = false;
@@ -143,11 +155,12 @@ const AdminDashboardPageEnhanced = () => {
         const fetchAll = async () => {
             setLoading(true);
             setError(null);
+            setLoadFailures(EMPTY_LOAD_FAILURES);
             const [summaryR, statsR, userR, tutorR, disputeR, trendsR] = await Promise.allSettled([
                 getAdminDashboardSummary(range.from, range.to),
                 getAdminDashboardStats(),
                 getAdminUserStats(range.from, range.to),
-                getAdminTutorPerformance(10, range.from, range.to),
+                getAdminTutorPerformance(TUTOR_RANKING_LIMIT, range.from, range.to),
                 getAdminDisputeStats(range.from, range.to),
                 getAdminDashboardTrends(range.from, range.to, 'auto'),
             ]);
@@ -160,12 +173,24 @@ const AdminDashboardPageEnhanced = () => {
             setDisputeStats(disputeR.status === 'fulfilled' ? disputeR.value : null);
             setTrends(trendsR.status === 'fulfilled' ? trendsR.value : null);
 
-            const everyFailed = [summaryR, statsR, userR, tutorR, disputeR, trendsR].every(
-                (r) => r.status === 'rejected'
-            );
-            if (everyFailed) {
+            const nextLoadFailures = {
+                summary: summaryR.status === 'rejected',
+                stats: statsR.status === 'rejected',
+                users: userR.status === 'rejected',
+                tutors: tutorR.status === 'rejected',
+                disputes: disputeR.status === 'rejected',
+                trends: trendsR.status === 'rejected',
+            };
+            setLoadFailures(nextLoadFailures);
+
+            const failedCount = Object.values(nextLoadFailures).filter(Boolean).length;
+            if (failedCount === Object.keys(nextLoadFailures).length) {
                 console.error('Dashboard fetch error: all endpoints failed');
                 setError('Không tải được dữ liệu bảng điều khiển. Vui lòng thử lại.');
+            } else if (failedCount > 0) {
+                setError(
+                    'Một số dữ liệu chưa tải được. Các khu vực bị ảnh hưởng đã được đánh dấu để bạn dễ nhận biết.'
+                );
             }
             setLoading(false);
         };
@@ -180,22 +205,48 @@ const AdminDashboardPageEnhanced = () => {
     const booking = stats?.bookingSummary;
     const pending = stats?.pendingActions;
 
-    // ── KPI (ưu tiên summary, fallback sang stats) ──
-    const gmvValue = summary?.gmv.value ?? booking?.gmvThisMonth ?? 0;
-    const revValue = summary?.platformRevenue.value ?? booking?.platformRevenueThisMonth ?? 0;
-    const activeBookings = summary?.bookings.active ?? booking?.activeBookings ?? 0;
+    // Hai KPI tiền và các số "trong kỳ" chỉ lấy từ summary. Không dùng số
+    // "tháng này" để thay cho bộ lọc Hôm nay/7 ngày vì sẽ làm sai ngữ cảnh.
+    const gmvValue = summary?.gmv.value;
+    const revValue = summary?.platformRevenue.value;
+    const activeBookings = summary?.bookings.active ?? booking?.activeBookings;
     const newInPeriod = summary?.bookings.newInPeriod;
-    const completedInPeriod = summary?.bookings.completedInPeriod ?? booking?.completedBookings ?? 0;
-    const pendingTotal =
-        summary?.pendingActions.total ??
-        (platform?.pendingTutorApprovals ?? 0) +
-            (pending?.pendingWithdrawals ?? 0) +
-            (pending?.openDisputes ?? 0) +
-            (pending?.pendingWarnings ?? 0);
-    const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals ?? 0;
-    const withdrawalReviews = summary?.pendingActions.withdrawalReviews ?? pending?.pendingWithdrawals ?? 0;
-    const openDisputes = summary?.pendingActions.openDisputes ?? pending?.openDisputes ?? 0;
-    const overdueCount = summary?.pendingActions.overdueCount ?? 0;
+    const completedInPeriod = summary?.bookings.completedInPeriod;
+
+    const pendingBreakdown = summary ? summarizePendingActions(summary.pendingActions) : null;
+    const pendingTotal = pendingBreakdown?.total;
+    const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals;
+    const pendingCertificates = summary?.pendingActions.pendingCertificates ?? pending?.pendingCertificates;
+    const withdrawalReviews = summary?.pendingActions.withdrawalReviews ?? pending?.pendingWithdrawals;
+    const openDisputes = summary?.pendingActions.openDisputes ?? pending?.openDisputes;
+    const unresolvedAlerts = summary?.pendingActions.unresolvedAlerts;
+    const overdueCount = summary?.pendingActions.overdueCount;
+    const withdrawalActionCount =
+        withdrawalReviews == null && overdueCount == null ? undefined : (withdrawalReviews ?? 0) + (overdueCount ?? 0);
+
+    const pendingSubLabel = loading
+        ? 'Đang cập nhật chi tiết…'
+        : pendingBreakdown
+          ? `${formatNumber(pendingBreakdown.verification)} kiểm duyệt · ${formatNumber(pendingBreakdown.withdrawals)} rút tiền · ${formatNumber(pendingBreakdown.disputes)} khiếu nại · ${formatNumber(pendingBreakdown.alerts)} cảnh báo`
+          : 'Chưa tải được chi tiết công việc';
+
+    const activeBookingSubLabel = loading
+        ? 'Đang cập nhật chi tiết…'
+        : newInPeriod != null && completedInPeriod != null
+          ? `${formatNumber(newInPeriod)} lượt mới · ${formatNumber(completedInPeriod)} hoàn tất trong kỳ`
+          : 'Chưa tải được số liệu trong kỳ';
+
+    // Hàng rút tiền là hàng duy nhất có số liệu thật ở dòng phụ, nên giữ lại.
+    const withdrawalMeta = [
+        withdrawalReviews != null ? `${formatNumber(withdrawalReviews)} chờ duyệt` : null,
+        overdueCount != null ? `${formatNumber(overdueCount)} quá hạn` : null,
+        pending?.pendingWithdrawalAmount != null
+            ? `Tổng ${formatDashboardCurrency(pending.pendingWithdrawalAmount)}`
+            : null,
+        canOpenPayouts ? null : NO_ACCESS_META,
+    ]
+        .filter((part): part is string => Boolean(part))
+        .join(' · ');
 
     const gmvBadge = changeBadge(summary?.gmv.changePercent);
     const revBadge = changeBadge(summary?.platformRevenue.changePercent);
@@ -220,7 +271,7 @@ const AdminDashboardPageEnhanced = () => {
             { name: 'Chờ duyệt', value: f.pendingApproval },
             { name: 'Hoạt động', value: f.active },
             { name: 'Từ chối', value: f.rejected },
-            { name: 'Public', value: f.publicTutors },
+            { name: 'Đang công khai', value: f.publicTutors },
         ];
     }, [userStats]);
 
@@ -240,107 +291,158 @@ const AdminDashboardPageEnhanced = () => {
         return disputeStats.byType.map((t) => ({ name: formatDisputeType(t.type), value: t.count }));
     }, [disputeStats]);
 
-    const topTutorData = useMemo(() => {
-        if (!tutorPerformance) return [];
-        return tutorPerformance.topByRevenue
-            .slice(0, 6)
-            .filter((t) => t.totalRevenue > 0)
-            .map((t) => ({ name: t.fullName, value: t.totalRevenue }));
-    }, [tutorPerformance]);
+    const tutorRanking = tutorPerformance?.topByRevenue ?? [];
 
-    const rates = trends?.lessonRates;
+    const rates = trends?.classSessionRates;
 
     return (
         <PageContainer
-            eyebrow="Tổng quan"
-            title="Bảng điều khiển Quản trị"
-            subtitle="Toàn cảnh hoạt động của TUTORA trong khoảng thời gian đã chọn."
+            title="Tổng quan quản trị"
             maxWidth="wide"
-            headerAction={
-                <FilterTabs
-                    tabs={rangeTabs}
-                    activeKey={rangeKey}
-                    onChange={(key) => setRangeKey(key as RangeKey)}
-                />
-            }
+            headerAction={<DashboardRangePicker selection={selection} onChange={setSelection} />}
         >
-            {error && <div className="admin-dash-error">{error}</div>}
+            {error && (
+                <div className="admin-dash-error" role="alert">
+                    {error}
+                </div>
+            )}
+
+            <div className="admin-dash-range-caption">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                    event_note
+                </span>
+                Đang xem <strong>{describeDashboardRange(selection)}</strong>
+                <span className="admin-dash-range-caption-span">{formatRangeSpan(range)}</span>
+            </div>
 
             {/* ── KPI ROW ── */}
             <div className="admin-dash-kpis">
                 <StatCard
                     icon={<span className="material-symbols-outlined">currency_exchange</span>}
-                    value={loading ? '…' : formatCompactNumber(gmvValue)}
-                    label="GMV (kỳ này)"
-                    subLabel={formatCurrency(gmvValue)}
+                    value={loading ? '…' : formatDashboardCurrency(gmvValue)}
+                    valueClassName="admin-kpi-exact-value"
+                    label="Tổng giá trị giao dịch"
+                    labelClassName="admin-kpi-friendly-label"
                     badge={gmvBadge?.text}
                     badgeVariant={gmvBadge?.variant}
-                    infoTooltip="Tổng giá trị giao dịch (Gross Merchandise Value) phát sinh trên nền tảng trong kỳ đã chọn."
+                    infoTooltip="Tổng giá trị các lượt đặt lịch hợp lệ phát sinh trong khoảng đã chọn, gồm cả phần thuộc về gia sư. Đây không phải doanh thu của Tutora; trong báo cáo tài chính chỉ số này còn gọi là GMV."
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
-                    value={loading ? '…' : formatCompactNumber(revValue)}
-                    label="Doanh thu nền tảng"
-                    subLabel={formatCurrency(revValue)}
+                    value={loading ? '…' : formatDashboardCurrency(revValue)}
+                    valueClassName="admin-kpi-exact-value"
+                    label="Phí dịch vụ của Tutora"
+                    labelClassName="admin-kpi-friendly-label"
                     badge={revBadge?.text}
                     badgeVariant={revBadge?.variant}
-                    infoTooltip="Doanh thu Tutora giữ lại (hoa hồng/phí dịch vụ) từ các giao dịch trong kỳ đã chọn."
+                    infoTooltip="Tổng phí nền tảng của các lượt đặt lịch hợp lệ phát sinh trong khoảng đã chọn. Đây là phần phí của Tutora, không phải toàn bộ giá trị giao dịch."
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">event_available</span>}
-                    value={loading ? '…' : formatNumber(activeBookings)}
-                    label="Booking đang hoạt động"
-                    subLabel={
-                        newInPeriod != null
-                            ? `+${newInPeriod} mới · ${completedInPeriod} hoàn tất`
-                            : `${completedInPeriod} hoàn tất`
-                    }
-                    infoTooltip="Số booking hiện đang hoạt động (chưa hoàn tất/hủy), kèm số mới phát sinh và đã hoàn tất trong kỳ."
+                    value={loading ? '…' : activeBookings == null ? '—' : formatNumber(activeBookings)}
+                    label="Lượt đặt lịch đang hoạt động"
+                    labelClassName="admin-kpi-friendly-label"
+                    subLabel={activeBookingSubLabel}
+                    infoTooltip="Số lượt đặt lịch hiện đang ở trạng thái hoạt động. Dòng phụ cho biết số lượt mới và số lượt hoàn tất trong khoảng thời gian đã chọn."
                 />
                 <StatCard
                     className="admin-kpi-alert"
                     icon={<span className="material-symbols-outlined">pending_actions</span>}
-                    value={loading ? '…' : formatNumber(pendingTotal)}
-                    label="Việc cần xử lý"
-                    subLabel={`${tutorApprovals} duyệt · ${withdrawalReviews} rút tiền · ${openDisputes} khiếu nại`}
-                    badge={overdueCount > 0 ? `${overdueCount} quá hạn` : undefined}
+                    value={loading ? '…' : pendingTotal == null ? '—' : formatNumber(pendingTotal)}
+                    label="Công việc đang chờ xử lý"
+                    labelClassName="admin-kpi-friendly-label"
+                    subLabel={pendingSubLabel}
+                    badge={
+                        overdueCount != null && overdueCount > 0 ? `${formatNumber(overdueCount)} quá hạn` : undefined
+                    }
                     badgeVariant="red"
-                    infoTooltip="Tổng số việc đang chờ xử lý: duyệt hồ sơ gia sư, yêu cầu rút tiền và khiếu nại đang mở."
+                    infoTooltip="Tổng số hồ sơ và chứng chỉ cần kiểm duyệt, yêu cầu rút tiền chờ duyệt hoặc quá hạn, khiếu nại đang mở và cảnh báo hệ thống chưa xử lý."
                 />
             </div>
 
             <div className="admin-dashboard-sections">
-                {/* ── FINANCIAL TREND (hero) ── */}
-                <SectionCard
-                    title="Xu hướng tài chính"
-                    subtitle="GMV và doanh thu nền tảng theo thời gian."
-                    headerAction={
-                        trends?.bucket ? (
-                            <span className="admin-dash-bucket">
-                                Nhóm theo{' '}
-                                {trends.bucket === 'day' ? 'ngày' : trends.bucket === 'week' ? 'tuần' : 'tháng'}
-                            </span>
-                        ) : null
-                    }
-                >
-                    <div className="admin-chart-body">
-                        {loading ? <ChartEmpty loading /> : <FinancialTrendChart data={trends?.financialTrend ?? []} />}
-                    </div>
-                </SectionCard>
-
-                {/* ── LESSON ACTIVITY + PENDING ── */}
-                <div className="admin-dash-grid-2-wide">
+                {/* ── TÀI CHÍNH + CÔNG VIỆC ƯU TIÊN ── */}
+                <div className="admin-dash-priority-grid">
                     <SectionCard
-                        title="Hoạt động buổi học"
-                        subtitle="Buổi hoàn thành, hủy và vắng mặt theo thời gian."
+                        className="admin-dash-priority-financial"
+                        title="Giá trị giao dịch và phí dịch vụ"
+                        headerAction={
+                            trends?.bucket ? (
+                                <span className="admin-dash-bucket">
+                                    Hiển thị theo{' '}
+                                    <strong>
+                                        {trends.bucket === 'day' ? 'ngày' : trends.bucket === 'week' ? 'tuần' : 'tháng'}
+                                    </strong>
+                                </span>
+                            ) : null
+                        }
                     >
                         <div className="admin-chart-body">
                             {loading ? (
                                 <ChartEmpty loading />
+                            ) : loadFailures.trends ? (
+                                <ChartEmpty error />
                             ) : (
-                                <LessonActivityChart data={trends?.lessonTrend ?? []} />
+                                <FinancialTrendChart data={trends?.financialTrend ?? []} />
                             )}
-                            {rates && (
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard className="admin-dash-priority-actions" title="Công việc cần ưu tiên">
+                        <div className="admin-action-list">
+                            <ActionRow
+                                icon="verified_user"
+                                label="Hồ sơ gia sư chờ duyệt"
+                                meta={canOpenProfiles ? undefined : NO_ACCESS_META}
+                                value={tutorApprovals}
+                                onClick={canOpenProfiles ? () => navigate('/admin-portal/vetting/profiles') : undefined}
+                            />
+                            <ActionRow
+                                icon="workspace_premium"
+                                label="Chứng chỉ chờ duyệt"
+                                meta={canOpenCertificates ? undefined : NO_ACCESS_META}
+                                value={pendingCertificates}
+                                onClick={
+                                    canOpenCertificates
+                                        ? () => navigate('/admin-portal/vetting/certificates')
+                                        : undefined
+                                }
+                            />
+                            <ActionRow
+                                icon="account_balance_wallet"
+                                label="Yêu cầu rút tiền cần xử lý"
+                                meta={withdrawalMeta || undefined}
+                                value={withdrawalActionCount}
+                                onClick={canOpenPayouts ? () => navigate('/admin-portal/payout/review') : undefined}
+                            />
+                            <ActionRow
+                                icon="gavel"
+                                label="Khiếu nại đang mở"
+                                meta={canOpenDisputes ? undefined : NO_ACCESS_META}
+                                value={openDisputes}
+                                onClick={canOpenDisputes ? () => navigate('/admin-portal/disputes') : undefined}
+                            />
+                            <ActionRow
+                                icon="warning"
+                                label="Cảnh báo hệ thống chưa xử lý"
+                                value={unresolvedAlerts}
+                            />
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* ── HOẠT ĐỘNG BUỔI HỌC + NGƯỜI DÙNG ── */}
+                <div className="admin-dash-grid-2-wide">
+                    <SectionCard title="Hoạt động buổi học">
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : loadFailures.trends ? (
+                                <ChartEmpty error />
+                            ) : (
+                                <LessonActivityChart data={trends?.classSessionTrend ?? []} />
+                            )}
+                            {!loading && !loadFailures.trends && rates && (
                                 <div className="admin-rate-chips">
                                     <RateChip label="Hoàn thành" value={rates.completionRate} color={CHART.green} />
                                     <RateChip label="Hủy" value={rates.cancellationRate} color={CHART.gold} />
@@ -350,69 +452,39 @@ const AdminDashboardPageEnhanced = () => {
                         </div>
                     </SectionCard>
 
-                    <SectionCard
-                        title="Hành động cần xử lý"
-                        subtitle="Queue ảnh hưởng trực tiếp tới vận hành & dòng tiền."
-                    >
-                        <div className="admin-action-list">
-                            <ActionRow
-                                icon="verified_user"
-                                label="Hồ sơ gia sư chờ duyệt"
-                                meta="Cấp quyền cho tutor mới"
-                                value={tutorApprovals}
-                                onClick={() => navigate('/admin-portal/vetting')}
-                            />
-                            <ActionRow
-                                icon="account_balance_wallet"
-                                label="Yêu cầu rút tiền chờ duyệt"
-                                meta={
-                                    pending?.pendingWithdrawalAmount
-                                        ? `Tổng ${formatCompactNumber(pending.pendingWithdrawalAmount)}`
-                                        : undefined
-                                }
-                                value={withdrawalReviews}
-                                onClick={() => navigate('/admin-portal/financials')}
-                            />
-                            <ActionRow
-                                icon="gavel"
-                                label="Khiếu nại đang mở"
-                                meta="Cần phân loại / điều tra"
-                                value={openDisputes}
-                                onClick={() => navigate('/admin-portal/disputes')}
-                            />
-                            <ActionRow
-                                icon="warning"
-                                label="Cảnh báo chờ xử lý"
-                                meta="Cần ra quyết định cảnh báo / khóa tài khoản"
-                                value={pending?.pendingWarnings ?? 0}
-                                onClick={() => navigate('/admin-portal/warnings')}
-                            />
-                        </div>
-                    </SectionCard>
-                </div>
-
-                {/* ── DISTRIBUTIONS: users / funnel / disputes ── */}
-                <div className="admin-dash-grid-3">
-                    <SectionCard title="Phân bổ người dùng" subtitle="Theo vai trò trên nền tảng.">
+                    <SectionCard title="Người dùng theo vai trò">
                         <div className="admin-chart-body">
                             {loading ? (
                                 <ChartEmpty loading />
+                            ) : loadFailures.users ? (
+                                <ChartEmpty error />
                             ) : (
                                 <CategoryDonut data={userRoleData} colors={USER_ROLE_COLORS} centerLabel="Người dùng" />
                             )}
                         </div>
                     </SectionCard>
+                </div>
 
-                    <SectionCard title="Phễu duyệt gia sư" subtitle="Trạng thái hồ sơ trong pipeline.">
-                        <div className="admin-chart-body">
-                            {loading ? <ChartEmpty loading /> : <HorizontalBars data={funnelData} colors={FUNNEL_COLORS} />}
-                        </div>
-                    </SectionCard>
-
-                    <SectionCard title="Trạng thái khiếu nại" subtitle="Phân bổ dispute trong kỳ.">
+                {/* ── QUY TRÌNH DUYỆT + KHIẾU NẠI ── */}
+                <div className="admin-dash-grid-2">
+                    <SectionCard title="Quy trình duyệt hồ sơ gia sư">
                         <div className="admin-chart-body">
                             {loading ? (
                                 <ChartEmpty loading />
+                            ) : loadFailures.users ? (
+                                <ChartEmpty error />
+                            ) : (
+                                <HorizontalBars data={funnelData} colors={FUNNEL_COLORS} valueName="Số hồ sơ" />
+                            )}
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard title="Tình trạng khiếu nại">
+                        <div className="admin-chart-body">
+                            {loading ? (
+                                <ChartEmpty loading />
+                            ) : loadFailures.disputes ? (
+                                <ChartEmpty error />
                             ) : (
                                 <CategoryDonut
                                     data={disputeStatusData}
@@ -426,32 +498,20 @@ const AdminDashboardPageEnhanced = () => {
 
                 {/* ── TOP TUTORS + DISPUTE TYPES ── */}
                 <div className="admin-dash-grid-2">
-                    <SectionCard
-                        title="Top gia sư theo doanh thu"
-                        subtitle="Gia sư đóng góp doanh thu cao nhất trong kỳ."
-                        headerAction={
-                            tutorPerformance?.platformAverageRating != null ? (
-                                <span className="admin-dash-bucket">
-                                    TB nền tảng{' '}
-                                    <strong style={{ color: 'var(--color-gold)' }}>
-                                        {tutorPerformance.platformAverageRating.toFixed(2)} ★
-                                    </strong>
-                                </span>
-                            ) : null
-                        }
-                    >
+                    <SectionCard title="Xếp hạng doanh thu gia sư">
                         <div className="admin-chart-body">
                             {loading ? (
                                 <ChartEmpty loading />
+                            ) : loadFailures.tutors ? (
+                                <ChartEmpty error />
                             ) : (
-                                <HorizontalBars data={topTutorData} color={CHART.gold} money />
+                                <TutorRevenueRanking tutors={tutorRanking} />
                             )}
                         </div>
                     </SectionCard>
 
                     <SectionCard
-                        title="Khiếu nại theo loại"
-                        subtitle="Phân loại nguyên nhân tranh chấp."
+                        title="Nhóm nguyên nhân khiếu nại"
                         headerAction={
                             disputeStats?.overview.resolutionRatePercent != null ? (
                                 <span className="admin-dash-bucket">
@@ -466,8 +526,14 @@ const AdminDashboardPageEnhanced = () => {
                         <div className="admin-chart-body">
                             {loading ? (
                                 <ChartEmpty loading />
+                            ) : loadFailures.disputes ? (
+                                <ChartEmpty error />
                             ) : (
-                                <HorizontalBars data={disputeTypeData} color={CHART.burgundy} />
+                                <HorizontalBars
+                                    data={disputeTypeData}
+                                    color={CHART.burgundy}
+                                    valueName="Số khiếu nại"
+                                />
                             )}
                         </div>
                     </SectionCard>
