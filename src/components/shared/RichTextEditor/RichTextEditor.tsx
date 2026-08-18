@@ -40,6 +40,12 @@ export const RichTextEditor: React.FC<Props> = ({ value, onChange, placeholder, 
 
   const previewHtml = useMemo(() => renderMathHtml(value), [value]);
 
+  // Số $ lẻ = thiếu dấu đóng -> công thức hiện thô thay vì render.
+  const unclosedMath = useMemo(
+    () => (value.replace(/\$\$/g, '').match(/\$/g)?.length ?? 0) % 2 === 1,
+    [value],
+  );
+
   const insertFormula = (latex: string) => {
     // Append the formula (wrapped in $...$) to the current content.
     const snippet = `$${latex}$`;
@@ -48,21 +54,24 @@ export const RichTextEditor: React.FC<Props> = ({ value, onChange, placeholder, 
   };
 
   return (
-    <div className={`rich-text-editor-container ${className || ''}`}>
-      <div className="mb-2 flex items-center gap-2">
+    <div className={`rich-text-editor-container @container/editor ${className || ''}`}>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setIsMathModalOpen(true)}
-          className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
         >
           <span className="font-serif italic">∑</span> Chèn nhanh công thức
         </button>
         <span className="text-xs text-slate-400">
           Gõ trực tiếp hoặc dùng <code className="rounded bg-slate-100 px-1">$...$</code> cho công thức
         </span>
+        {unclosedMath && (
+          <span className="text-xs font-medium text-amber-600">Thiếu dấu $ đóng công thức</span>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @2xl/editor:grid-cols-2">
         {/* Soạn thảo */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-slate-500">Soạn thảo</label>
