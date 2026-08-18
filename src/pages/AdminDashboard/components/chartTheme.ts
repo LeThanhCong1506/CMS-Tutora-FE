@@ -27,7 +27,7 @@ export const USER_ROLE_COLORS = [CHART.navy, CHART.gold, CHART.burgundy, CHART.s
 export const DISPUTE_STATUS_COLORS = [CHART.amber, CHART.blue, CHART.emerald, CHART.slate];
 
 /** Màu theo từng bước phễu duyệt gia sư. */
-export const FUNNEL_COLORS = [CHART.slate, CHART.amber, CHART.emerald, CHART.red, CHART.blue];
+export const FUNNEL_COLORS = [CHART.slate, CHART.amber, CHART.emerald, CHART.red];
 
 /** Props chung cho trục — giữ font nhỏ, không kẻ trục đậm. */
 export const axisProps = {
