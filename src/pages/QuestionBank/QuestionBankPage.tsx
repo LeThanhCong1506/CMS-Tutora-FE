@@ -404,8 +404,8 @@ const QuestionBankPage: React.FC = () => {
                           </Badge>
                         )}
                         {q.chapterName && (
-                          <Badge variant="secondary" className="max-w-48 truncate font-normal">
-                            {q.chapterName}
+                          <Badge variant="secondary" className="max-w-48 font-normal" title={q.chapterName}>
+                            <span className="truncate">{q.chapterName}</span>
                           </Badge>
                         )}
                         {q.questionTypeName && (
