@@ -1,6 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, Trash2 } from 'lucide-react';
+import { GripVertical, Plus, Trash2 } from 'lucide-react';
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -57,6 +75,67 @@ const nextOptionKey = (options: AnswerOption[], lower: boolean): string => {
   return `X${options.length}`;
 };
 
+/** 1 dòng phương án: kéo-thả · chọn đúng · ký hiệu · nội dung · xoá. */
+const OptionRow: React.FC<{
+  option: AnswerOption;
+  multiple: boolean;
+  checked: boolean;
+  placeholder: string;
+  canRemove: boolean;
+  onToggle: () => void;
+  onChange: (text: string) => void;
+  onRemove: () => void;
+}> = ({ option, multiple, checked, placeholder, canRemove, onToggle, onChange, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: option.key,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-2 rounded-lg border bg-white py-1.5 pl-2 pr-1.5 transition ${
+        isDragging ? 'z-10 border-slate-300' : checked ? 'border-green-300 bg-green-50/40' : 'border-slate-200'
+      }`}
+    >
+      <input
+        type={multiple ? 'checkbox' : 'radio'}
+        name="correct-answer"
+        checked={checked}
+        onChange={onToggle}
+        className="size-4 shrink-0 cursor-pointer accent-primary"
+        aria-label={`Đáp án đúng ${option.key}`}
+      />
+      <span className="w-5 shrink-0 text-sm font-medium text-slate-500">{option.key}.</span>
+      <Input
+        value={option.text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-8 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
+      />
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={`Kéo để đổi thứ tự ${option.key}`}
+        className="shrink-0 cursor-grab touch-none rounded p-1 text-slate-300 transition hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing"
+      >
+        <GripVertical className="size-4" />
+      </button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        disabled={!canRemove}
+        aria-label={`Xoá phương án ${option.key}`}
+        className="size-7 shrink-0 text-slate-300 hover:text-red-600 disabled:opacity-0"
+      >
+        <Trash2 className="size-4" />
+      </Button>
+    </div>
+  );
+};
+
 /** Form 1 câu hỏi. UI đáp án đổi theo loại câu đã chọn (slug -> cách chấm). */
 export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, question, onClose, onSaved }) => {
   const isEdit = !!question;
@@ -90,6 +169,8 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
   const [difficulty, setDifficulty] = useState<Difficulty | null>(question?.difficulty ?? null);
   const [points, setPoints] = useState(String(question?.points ?? 1));
   const [saving, setSaving] = useState(false);
+
+  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor), useSensor(KeyboardSensor));
 
   // Chương theo môn+lớp CỦA ĐỀ.
   useEffect(() => {
@@ -135,6 +216,16 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
   const removeOption = (key: string) => {
     setOptions((prev) => prev.filter((o) => o.key !== key));
     setCorrectKeys((prev) => prev.filter((k) => k !== key));
+  };
+
+  /** Kéo-thả đổi thứ tự phương án. Ký hiệu (A/B/C) đi theo dòng, không đánh lại số. */
+  const reorderOptions = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    setOptions((prev) => {
+      const from = prev.findIndex((o) => o.key === active.id);
+      const to = prev.findIndex((o) => o.key === over.id);
+      return from < 0 || to < 0 ? prev : arrayMove(prev, from, to);
+    });
   };
 
   const toggleCorrect = (key: string) =>
@@ -249,37 +340,35 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
                     </span>
                   </div>
 
-                  <div className="space-y-2">
-                    {options.map((o) => (
-                      <div key={o.key} className="flex items-center gap-2.5">
-                        <input
-                          type={allowsMultiple ? 'checkbox' : 'radio'}
-                          name="correct-answer"
-                          checked={correctKeys.includes(o.key)}
-                          onChange={() => toggleCorrect(o.key)}
-                          className="size-4 shrink-0 cursor-pointer accent-primary"
-                          aria-label={`Đáp án đúng ${o.key}`}
-                        />
-                        <span className="w-6 shrink-0 text-sm font-medium text-slate-600">{o.key}.</span>
-                        <Input
-                          value={o.text}
-                          onChange={(e) => updateOption(o.key, e.target.value)}
-                          placeholder={format === 'true_false' ? `Mệnh đề ${o.key}` : `Nội dung phương án ${o.key}`}
-                        />
-                        {options.length > 2 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeOption(o.key)}
-                            aria-label={`Xoá phương án ${o.key}`}
-                            className="shrink-0 text-slate-400 hover:text-red-600"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    modifiers={[restrictToVerticalAxis]}
+                    onDragEnd={reorderOptions}
+                  >
+                    <SortableContext
+                      items={options.map((o) => o.key)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-1.5">
+                        {options.map((o) => (
+                          <OptionRow
+                            key={o.key}
+                            option={o}
+                            multiple={allowsMultiple}
+                            checked={correctKeys.includes(o.key)}
+                            placeholder={
+                              format === 'true_false' ? `Mệnh đề ${o.key}` : `Nội dung phương án ${o.key}`
+                            }
+                            canRemove={options.length > 2}
+                            onToggle={() => toggleCorrect(o.key)}
+                            onChange={(text) => updateOption(o.key, text)}
+                            onRemove={() => removeOption(o.key)}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
 
                   <Button variant="outline" size="sm" onClick={addOption} className="mt-1">
                     <Plus className="size-3.5" /> Thêm {format === 'true_false' ? 'mệnh đề' : 'phương án'}
@@ -398,7 +487,7 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
                   value={chapterId ? String(chapterId) : NONE}
                   onValueChange={(v) => setChapterId(v === NONE ? null : Number(v))}
                   items={[
-                    { value: NONE, label: '— Chưa gán —' },
+                    { value: NONE, label: 'Không thuộc chương nào' },
                     ...chapters.map((c) => ({ value: String(c.id), label: c.name })),
                   ]}
                 >
@@ -406,7 +495,7 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
                     <SelectValue placeholder="Chọn chương" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE}>— Chưa gán —</SelectItem>
+                    <SelectItem value={NONE}>Không thuộc chương nào</SelectItem>
                     {chapters.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.name}
@@ -422,7 +511,7 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
                   value={difficulty ?? NONE}
                   onValueChange={(v) => setDifficulty(v === NONE ? null : (v as Difficulty))}
                   items={[
-                    { value: NONE, label: '— Chưa gán —' },
+                    { value: NONE, label: 'Chưa phân loại' },
                     ...DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] })),
                   ]}
                 >
@@ -430,7 +519,7 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
                     <SelectValue placeholder="Chọn độ khó" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE}>— Chưa gán —</SelectItem>
+                    <SelectItem value={NONE}>Chưa phân loại</SelectItem>
                     {DIFFICULTIES.map((d) => (
                       <SelectItem key={d} value={d}>
                         {DIFFICULTY_LABEL[d]}
