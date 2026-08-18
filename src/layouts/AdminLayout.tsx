@@ -119,6 +119,7 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
         ]
       },
+      { path: '/admin-portal/test-bank', label: 'Ngân hàng kiểm tra', materialIcon: 'fact_check', permission: 'question_bank.view' },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
       { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
       // TEMP: proposal page, running on mock data — see src/pages/AdminFinanceNew
