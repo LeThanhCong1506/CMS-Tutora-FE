@@ -32,8 +32,6 @@ const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/Admi
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
 const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBookingDetailPage'));
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
-// TEMP: proposal page, running on mock data — see src/mocks/taxMockData.ts
-const AdminTaxPage = lazy(() => import('./pages/AdminTax/AdminTaxPage'));
 // TEMP: proposal page, running on mock data — see src/mocks/financeManagementMockData.ts
 const AdminFinanceNewPage = lazy(() => import('./pages/AdminFinanceNew/AdminFinanceNewPage'));
 const AdminRevenueReportsPage = lazy(() => import('./pages/AdminRevenueReports/AdminRevenueReportsPage'));
@@ -42,6 +40,7 @@ const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarnings
 const AdminFeedbacksPage = lazy(() => import('./pages/AdminFeedbacks/AdminFeedbacksPage'));
 const AdminPoliciesPage = lazy(() => import('./pages/AdminPolicies/AdminPoliciesPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
+const TestBankPage = lazy(() => import('./pages/TestBank/TestBankPage'));
 const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBase/KnowledgeBasePage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
 const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjectsPage'));
@@ -177,7 +176,6 @@ function App() {
               <Route path="bookings" element={guard(<AdminBookingsPage />, 'booking.view')} />
               <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
               <Route path="financials" element={guard(<AdminFinancialsPage />, 'financial.view')} />
-              <Route path="tax" element={guard(<AdminTaxPage />, 'financial.view')} />
               <Route path="finance-new" element={guard(<AdminFinanceNewPage />, 'financial.view')} />
               <Route
                 path="revenue-reports"
@@ -202,6 +200,7 @@ function App() {
                 element={guard(<AdminChaptersPage />, 'lookup.view')}
               />
               <Route path="question-bank" element={guard(<QuestionBankPage />, 'question_bank.view')} />
+              <Route path="test-bank" element={guard(<TestBankPage />, 'question_bank.view')} />
               <Route path="question-bank/upload" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="question-bank/upload/:id" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="knowledge-base" element={guard(<KnowledgeBasePage />, 'knowledge_base.view')} />
