@@ -27,10 +27,6 @@
   padding: 16px 0;
 }
 
-.payout-timeline {
-  padding: 16px;
-}
-
 .bank-info-display {
   background-color: #fafafa;
   padding: 16px;
@@ -152,6 +148,8 @@
   gap: 6px;
   min-height: 34px;
   padding: 7px 10px;
+  font-family: inherit;
+  cursor: pointer;
   color: var(--color-navy);
   background: var(--color-white);
   border: 1px solid var(--color-stone-100);
@@ -282,13 +280,35 @@
   line-height: 1.6;
 }
 
-.payout-detail-header-actions {
-  justify-content: flex-end;
+/* Nút quay lại đặt ở slot eyebrow của PageContainer nên phải huỷ uppercase/letter-spacing
+   mà eyebrow áp xuống, đồng thời khớp kiểu back-link của các trang chi tiết khác. */
+.payout-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-navy-60);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.payout-back-button:hover {
+  color: var(--color-navy);
+}
+
+.payout-back-button .material-symbols-outlined {
+  font-size: 18px;
 }
 
 /* Cùng bề mặt với SectionCard (trắng, bo 14px, viền 1.2px) — trước đây khối này là một tấm
    gradient navy có vòng tròn trang trí, nhìn không giống bất kỳ trang admin nào khác. */
-.payout-detail-summary {
+.payout-summary-panel {
   display: grid;
   grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.6fr);
   min-width: 0;
@@ -299,7 +319,7 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.payout-detail-summary__amount {
+.payout-summary-panel__amount {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -309,12 +329,12 @@
   border-right: 1.2px solid rgba(62, 47, 40, 0.1);
 }
 
-.payout-detail-summary__label {
+.payout-summary-panel__label {
   color: var(--color-navy-60);
   font-size: 13px;
 }
 
-.payout-detail-summary__amount > strong {
+.payout-summary-panel__amount > strong {
   margin-top: 6px;
   overflow: hidden;
   color: var(--color-navy);
@@ -327,20 +347,20 @@
   white-space: nowrap;
 }
 
-.payout-detail-summary__amount > small {
+.payout-summary-panel__amount > small {
   margin-top: 8px;
   color: var(--color-navy-50);
   font-size: 12px;
 }
 
-.payout-detail-summary__facts {
+.payout-summary-panel__facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   padding: 20px;
 }
 
-.payout-detail-fact {
+.payout-summary-fact {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
   align-items: start;
@@ -348,7 +368,7 @@
   min-width: 0;
 }
 
-.payout-detail-fact__icon {
+.payout-summary-fact__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -361,39 +381,39 @@
   font-size: 17px;
 }
 
-.payout-detail-fact__copy {
+.payout-summary-fact__copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
 /* Nhãn đọc được ở cỡ chữ bình thường — bản cũ dùng 9px in hoa giãn chữ, phải nheo mắt mới đọc nổi. */
-.payout-detail-fact__copy > span {
+.payout-summary-fact__copy > span {
   color: var(--color-navy-60);
   font-size: 12px;
 }
 
-.payout-detail-fact__copy > div {
+.payout-summary-fact__copy > div {
   display: flex;
   flex-direction: column;
   min-width: 0;
   margin-top: 3px;
 }
 
-.payout-detail-fact__copy strong,
-.payout-detail-fact__copy small {
+.payout-summary-fact__copy strong,
+.payout-summary-fact__copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.payout-detail-fact__copy strong {
+.payout-summary-fact__copy strong {
   color: var(--color-navy);
   font-size: 14px;
   font-weight: 700;
 }
 
-.payout-detail-fact__copy small {
+.payout-summary-fact__copy small {
   margin-top: 2px;
   color: var(--color-navy-50);
   font-size: 12px;
@@ -550,7 +570,6 @@
 }
 
 .payout-detail-card,
-.payout-timeline-card,
 .payout-previous-card {
   border-radius: 18px;
   box-shadow: 0 10px 28px rgba(26, 34, 56, 0.05);
@@ -609,8 +628,90 @@
   white-space: normal;
 }
 
-.payout-success-amount {
+.payout-success-amount,
+/* Trang chuyển tiền chủ động: mọi con số trên trang đều là tiền cộng vào ví, nên dùng chung
+   đúng sắc xanh của .payout-success-amount thay vì thêm một mã màu thứ hai. */
+.payout-transfers-page .admin-ui-amount,
+.payout-transfers-page .payout-summary-panel__amount > strong {
   color: #166534;
+}
+
+/* Nhật ký xử lý: nhãn hẹp bên trái, giá trị bên phải — đọc lướt nhanh hơn lưới 2 cột. */
+.payout-audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+.payout-audit-row {
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
+  gap: 16px;
+  padding: 11px 0;
+  border-top: 1px solid rgba(62, 47, 40, 0.075);
+}
+
+.payout-audit-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.payout-audit-row dt {
+  color: var(--color-navy-50);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.payout-audit-row dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-navy);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.payout-audit-actor {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payout-audit-code {
+  font-size: 12px;
+}
+
+.payout-audit-proof {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(62, 47, 40, 0.075);
+}
+
+.payout-audit-proof .payout-proof-modal-body {
+  display: flex;
+  justify-content: center;
+}
+
+.payout-proof-modal-body .payout-proof-image {
+  width: 100%;
+  max-height: min(60vh, 460px);
+  margin-top: 0;
+}
+
+.payout-proof-image {
+  margin-top: 0;
+}
+
+.payout-info-hint {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-navy-50);
+  font-size: 12px;
 }
 
 .payout-wallet-panel {
@@ -745,84 +846,6 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.payout-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-}
-
-.payout-timeline-item {
-  position: relative;
-  padding-left: 28px;
-  padding-bottom: 14px;
-}
-
-.payout-timeline-item::before {
-  content: '';
-  position: absolute;
-  top: 17px;
-  bottom: 0;
-  left: 5px;
-  width: 2px;
-  background: rgba(62, 47, 40, 0.1);
-}
-
-.payout-timeline-item:last-child {
-  padding-bottom: 0;
-}
-
-.payout-timeline-item:last-child::before {
-  display: none;
-}
-
-.payout-timeline-dot {
-  position: absolute;
-  top: 15px;
-  left: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-stone-100);
-  box-shadow: 0 0 0 4px var(--color-white);
-}
-
-.payout-timeline-dot.active {
-  background: var(--color-green);
-}
-
-.payout-timeline-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  background: rgba(250, 249, 246, 0.64);
-  border: 1px solid rgba(62, 47, 40, 0.07);
-  border-radius: 12px;
-}
-
-.payout-timeline-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.payout-timeline-header strong {
-  color: var(--color-navy);
-}
-
-.payout-timeline-header span,
-.payout-timeline-content p {
-  color: var(--color-navy-50);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.payout-timeline-content p {
-  margin: 0;
 }
 
 .payout-modal-overlay {
@@ -1174,22 +1197,18 @@
     padding: 14px;
   }
 
-  .payout-detail-header-actions {
-    justify-content: flex-start;
-  }
-
-  .payout-detail-summary {
+  .payout-summary-panel {
     grid-template-columns: 1fr;
     border-radius: 12px;
   }
 
   /* Xếp dọc thì vạch ngăn phải chuyển xuống cạnh dưới. */
-  .payout-detail-summary__amount {
+  .payout-summary-panel__amount {
     border-right: 0;
     border-bottom: 1.2px solid rgba(62, 47, 40, 0.1);
   }
 
-  .payout-detail-summary__facts {
+  .payout-summary-panel__facts {
     padding: 16px;
   }
 
@@ -1213,17 +1232,17 @@
     grid-template-columns: 1fr;
   }
 
+  .payout-audit-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .payout-detail-side {
     order: initial;
   }
 
   .payout-previous-card {
     position: static;
-  }
-
-  .payout-timeline-header {
-    flex-direction: column;
-    gap: 2px;
   }
 
   .payout-modal-overlay {
@@ -1257,7 +1276,7 @@
 
 @media (max-width: 480px) {
 
-  .payout-detail-summary__facts {
+  .payout-summary-panel__facts {
     gap: 16px;
     padding: 14px;
   }
