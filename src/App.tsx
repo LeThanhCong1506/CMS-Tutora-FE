@@ -40,7 +40,8 @@ const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarnings
 const AdminFeedbacksPage = lazy(() => import('./pages/AdminFeedbacks/AdminFeedbacksPage'));
 const AdminPoliciesPage = lazy(() => import('./pages/AdminPolicies/AdminPoliciesPage'));
 const QuestionBankPage = lazy(() => import('./pages/QuestionBank/QuestionBankPage'));
-const TestBankPage = lazy(() => import('./pages/TestBank/TestBankPage'));
+const AssessmentsPage = lazy(() => import('./pages/Assessments/AssessmentsPage'));
+const AssessmentDetailPage = lazy(() => import('./pages/Assessments/AssessmentDetailPage'));
 const KnowledgeBasePage = lazy(() => import('./pages/KnowledgeBase/KnowledgeBasePage'));
 const UploadPdfPage = lazy(() => import('./pages/QuestionBank/UploadPdfPage'));
 const AdminSubjectsPage = lazy(() => import('./pages/AdminSubjects/AdminSubjectsPage'));
@@ -200,7 +201,8 @@ function App() {
                 element={guard(<AdminChaptersPage />, 'lookup.view')}
               />
               <Route path="question-bank" element={guard(<QuestionBankPage />, 'question_bank.view')} />
-              <Route path="test-bank" element={guard(<TestBankPage />, 'question_bank.view')} />
+              <Route path="assessments" element={guard(<AssessmentsPage />, undefined, true)} />
+              <Route path="assessments/:id" element={guard(<AssessmentDetailPage />, undefined, true)} />
               <Route path="question-bank/upload" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="question-bank/upload/:id" element={guard(<UploadPdfPage />, 'question_document.upload')} />
               <Route path="knowledge-base" element={guard(<KnowledgeBasePage />, 'knowledge_base.view')} />
