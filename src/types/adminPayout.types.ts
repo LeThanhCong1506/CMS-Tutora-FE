@@ -112,8 +112,11 @@ export interface RequestInfo {
     createdAt: string;
     processedAt: string | null;
     processedBy: string | null;
+    /** Tên nhân sự đã duyệt — UI luôn hiển thị tên này, không bao giờ hiện user id. */
+    processedByName: string | null;
     completionNote: string | null;
     claimedBy: string | null;
+    claimedByName: string | null;
     claimedAt: string | null;
     rejectionReason: string | null;
     transactionId: string | null;
