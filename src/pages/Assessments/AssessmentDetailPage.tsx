@@ -1,11 +1,30 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
+  Check,
   Clock,
+  Copy,
+  GripVertical,
   ListChecks,
   Pencil,
   Plus,
@@ -17,9 +36,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MathText } from '../../components/MathText/MathText';
 import {
+  addAssessmentQuestion,
   deleteAssessmentQuestion,
   getAssessmentById,
   reorderAssessmentQuestions,
+  updateAssessmentQuestion,
   updateAssessmentStatus,
 } from '../../services/assessment.service';
 import {
@@ -50,6 +71,14 @@ const AssessmentDetailPage: React.FC = () => {
   const [editingQuestion, setEditingQuestion] = useState<AssessmentQuestion | null>(null);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [reordering, setReordering] = useState(false);
+
+  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor), useSensor(KeyboardSensor));
+
+  // Tính tại chỗ để sửa điểm inline phản ánh ngay, không đợi fetch lại.
+  const totalPoints = useMemo(
+    () => assessment?.questions.reduce((sum, q) => sum + (q.points ?? 0), 0) ?? 0,
+    [assessment],
+  );
 
   const fetchData = useCallback(
     async (signal?: AbortSignal) => {
@@ -102,28 +131,85 @@ const AssessmentDetailPage: React.FC = () => {
     }
   };
 
-  /** Đổi chỗ với câu liền kề. BE cần ĐỦ id mọi câu. */
-  const move = async (index: number, direction: -1 | 1) => {
+  /** Kéo-thả đổi thứ tự. BE cần ĐỦ id mọi câu. */
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     if (!assessment || reordering) return;
-    const target = index + direction;
-    if (target < 0 || target >= assessment.questions.length) return;
+    if (!over || active.id === over.id) return;
 
-    const ids = assessment.questions.map((q) => q.id);
-    [ids[index], ids[target]] = [ids[target], ids[index]];
+    const from = assessment.questions.findIndex((q) => q.id === active.id);
+    const to = assessment.questions.findIndex((q) => q.id === over.id);
+    if (from < 0 || to < 0) return;
 
-    // Optimistic để không nháy khi bấm liên tiếp.
-    const reordered = [...assessment.questions];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    // Optimistic để không nháy khi thả.
+    const reordered = arrayMove(assessment.questions, from, to);
     setAssessment({ ...assessment, questions: reordered });
 
     setReordering(true);
     try {
-      await reorderAssessmentQuestions(assessment.id, ids);
+      await reorderAssessmentQuestions(
+        assessment.id,
+        reordered.map((q) => q.id),
+      );
     } catch {
       toast.error('Không đổi được thứ tự câu hỏi.');
       fetchData();
     } finally {
       setReordering(false);
+    }
+  };
+
+  /** Nhân bản: gửi lại đúng payload của câu gốc, BE tự xếp xuống cuối. */
+  const handleDuplicate = async (q: AssessmentQuestion) => {
+    if (!assessment || q.questionTypeId == null) {
+      toast.error('Câu hỏi thiếu loại câu hỏi nên không nhân bản được.');
+      return;
+    }
+    try {
+      await addAssessmentQuestion(assessment.id, {
+        content: q.content,
+        answerOptions: q.answerOptions,
+        correctAnswer: q.correctAnswer,
+        acceptedAnswers: q.acceptedAnswers,
+        explanation: q.explanation,
+        chapterId: q.chapterId,
+        questionTypeId: q.questionTypeId,
+        difficulty: q.difficulty,
+        points: q.points,
+        imageUrls: q.imageUrls,
+      });
+      toast.success('Đã nhân bản câu hỏi.');
+      fetchData();
+    } catch {
+      toast.error('Nhân bản thất bại.');
+    }
+  };
+
+  /** Sửa điểm ngay trên card — khỏi mở modal chỉ để đổi 1 số. */
+  const handlePointsChange = async (q: AssessmentQuestion, points: number) => {
+    if (!assessment || q.questionTypeId == null || points === q.points) return;
+
+    // Optimistic: tổng điểm ở thanh tóm tắt cập nhật ngay.
+    setAssessment({
+      ...assessment,
+      questions: assessment.questions.map((x) => (x.id === q.id ? { ...x, points } : x)),
+    });
+
+    try {
+      await updateAssessmentQuestion(assessment.id, q.id, {
+        content: q.content,
+        answerOptions: q.answerOptions,
+        correctAnswer: q.correctAnswer,
+        acceptedAnswers: q.acceptedAnswers,
+        explanation: q.explanation,
+        chapterId: q.chapterId,
+        questionTypeId: q.questionTypeId,
+        difficulty: q.difficulty,
+        points,
+        imageUrls: q.imageUrls,
+      });
+    } catch {
+      toast.error('Không đổi được điểm câu hỏi.');
+      fetchData();
     }
   };
 
@@ -172,8 +258,8 @@ const AssessmentDetailPage: React.FC = () => {
         </div>
       }
     >
-      {/* Tổng quan cấu hình đề */}
-      <div className="mb-4 rounded-xl border bg-white p-4 shadow-sm">
+      {/* Tổng quan cấu hình đề — dính khi cuộn để luôn thấy số câu/điểm và nút phát hành. */}
+      <div className="sticky top-0 z-20 mb-4 rounded-xl border bg-white p-4">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <InfoItem label="Trạng thái">
             <Badge className={STATUS_META[assessment.status]}>{ASSESSMENT_STATUS_LABEL[assessment.status]}</Badge>
@@ -203,7 +289,7 @@ const AssessmentDetailPage: React.FC = () => {
           <InfoItem label="Tổng điểm">
             <span className="inline-flex items-center gap-1.5 text-sm text-slate-800">
               <Target className="size-3.5 text-slate-400" />
-              {assessment.totalPoints}
+              {totalPoints}
             </span>
           </InfoItem>
 
@@ -257,20 +343,32 @@ const AssessmentDetailPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {assessment.questions.map((q, i) => (
-            <QuestionCard
-              key={q.id}
-              question={q}
-              index={i}
-              total={assessment.questions.length}
-              reordering={reordering}
-              onEdit={() => setEditingQuestion(q)}
-              onDelete={() => handleDeleteQuestion(q)}
-              onMove={(dir) => move(i, dir)}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={assessment.questions.map((q) => q.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {assessment.questions.map((q, i) => (
+                <QuestionCard
+                  key={q.id}
+                  question={q}
+                  index={i}
+                  reordering={reordering}
+                  onEdit={() => setEditingQuestion(q)}
+                  onDelete={() => handleDeleteQuestion(q)}
+                  onDuplicate={() => handleDuplicate(q)}
+                  onPointsChange={(points) => handlePointsChange(q, points)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {editingInfo && (
@@ -310,73 +408,165 @@ const InfoItem: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
   </div>
 );
 
+/** Sửa điểm ngay trên card; commit khi blur/Enter để không bắn request mỗi phím. */
+const PointsInput: React.FC<{ value: number; onCommit: (points: number) => void }> = ({
+  value,
+  onCommit,
+}) => {
+  // Không đồng bộ lại value bằng effect: card đổi điểm là remount qua key,
+  // nên draft luôn khởi tạo từ giá trị mới nhất.
+  const [draft, setDraft] = useState(String(value));
+
+  const commit = () => {
+    const next = Number(draft);
+    if (!Number.isFinite(next) || next < 0) {
+      setDraft(String(value));
+      return;
+    }
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
+      <input
+        type="number"
+        min={0}
+        step="0.5"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') {
+            setDraft(String(value));
+            e.currentTarget.blur();
+          }
+        }}
+        aria-label="Điểm của câu hỏi"
+        className="w-10 bg-transparent text-right font-medium outline-none focus:text-slate-900"
+      />
+      điểm
+    </span>
+  );
+};
+
 const QuestionCard: React.FC<{
   question: AssessmentQuestion;
   index: number;
-  total: number;
   reordering: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onMove: (dir: -1 | 1) => void;
-}> = ({ question: q, index, total, reordering, onEdit, onDelete, onMove }) => {
+  onDuplicate: () => void;
+  onPointsChange: (points: number) => void;
+}> = ({ question: q, index, reordering, onEdit, onDelete, onDuplicate, onPointsChange }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: q.id,
+    disabled: reordering,
+  });
+
   const correctKeys = formatNeedsOptions(q.questionFormat)
     ? q.correctAnswer.split(',').map((k) => k.trim())
     : [];
 
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-600">
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`group rounded-xl border bg-white p-3.5 ${
+        isDragging ? 'z-10 border-slate-300 opacity-90' : ''
+      }`}
+    >
+      <div className="flex items-start gap-2.5">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Kéo để đổi thứ tự"
+          className="mt-0.5 shrink-0 cursor-grab touch-none rounded-md p-1 text-slate-300 transition hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing"
+        >
+          <GripVertical className="size-4" />
+        </button>
+
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-600">
           {index + 1}
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" className="font-normal">
-              {q.questionTypeName ?? '—'}
-            </Badge>
-            {q.difficulty && (
+          {/* Meta + thao tác cùng 1 hàng: card gọn, nút hiện khi hover. */}
+          <div className="mb-1.5 flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <Badge variant="secondary" className="font-normal">
-                {DIFFICULTY_LABEL[q.difficulty]}
+                {q.questionTypeName ?? '—'}
               </Badge>
-            )}
-            {q.chapterName && (
-              <Badge variant="secondary" className="max-w-48 font-normal" title={q.chapterName}>
-                <span className="truncate">{q.chapterName}</span>
-              </Badge>
-            )}
-            <Badge variant="secondary" className="font-normal">
-              {q.points} điểm
-            </Badge>
+              {q.difficulty && (
+                <Badge variant="secondary" className="font-normal">
+                  {DIFFICULTY_LABEL[q.difficulty]}
+                </Badge>
+              )}
+              {q.chapterName && (
+                <Badge variant="secondary" className="max-w-48 font-normal" title={q.chapterName}>
+                  <span className="truncate">{q.chapterName}</span>
+                </Badge>
+              )}
+              <PointsInput key={q.points} value={q.points} onCommit={onPointsChange} />
+            </div>
+
+            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                aria-label="Sửa câu hỏi"
+                className="size-7 text-slate-400 hover:text-slate-700"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDuplicate}
+                aria-label="Nhân bản câu hỏi"
+                className="size-7 text-slate-400 hover:text-slate-700"
+              >
+                <Copy className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                aria-label="Xoá câu hỏi"
+                className="size-7 text-slate-400 hover:text-red-600"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
           </div>
 
-          <MathText className="text-sm leading-loose text-slate-800">{q.content}</MathText>
+          <MathText className="text-sm leading-relaxed text-slate-800">{q.content}</MathText>
 
           {formatNeedsOptions(q.questionFormat) ? (
-            <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            <div className="mt-2 grid gap-1 sm:grid-cols-2">
               {q.answerOptions?.map((o) => {
                 const isCorrect = correctKeys.includes(o.key);
                 return (
                   <div
                     key={o.key}
-                    className={`flex items-start gap-2 rounded-md px-2.5 py-2 text-sm leading-relaxed ${
+                    className={`flex items-start gap-2 rounded-md px-2 py-1.5 text-sm leading-relaxed ${
                       isCorrect ? 'bg-green-50 text-green-900' : 'text-slate-600'
                     }`}
                   >
                     <span className="font-medium">{o.key}.</span>
                     <MathText className="min-w-0 flex-1">{o.text}</MathText>
-                    {isCorrect && (
-                      <span className="shrink-0 text-xs font-medium text-green-700">
-                        {q.questionFormat === 'true_false' ? 'Đúng' : '✓'}
-                      </span>
-                    )}
+                    {isCorrect && <Check className="mt-0.5 size-3.5 shrink-0 text-green-700" />}
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="mt-3 text-sm leading-loose">
-              <span className="text-slate-500">{q.questionFormat === 'essay' ? 'Đáp án mẫu: ' : 'Đáp án: '}</span>
+            <div className="mt-2 text-sm leading-relaxed">
+              <span className="text-slate-500">
+                {q.questionFormat === 'essay' ? 'Đáp án mẫu: ' : 'Đáp án: '}
+              </span>
               <MathText className="font-medium text-green-800">{q.correctAnswer}</MathText>
               {q.acceptedAnswers && q.acceptedAnswers.length > 0 && (
                 <span className="text-slate-500"> · cũng đúng: {q.acceptedAnswers.join(', ')}</span>
@@ -385,52 +575,11 @@ const QuestionCard: React.FC<{
           )}
 
           {q.explanation && (
-            <p className="mt-3 border-t border-slate-100 pt-2.5 text-sm leading-loose text-slate-500">
+            <p className="mt-2 border-t border-slate-100 pt-2 text-sm leading-relaxed text-slate-500">
               <span className="font-medium text-slate-600">Giải thích: </span>
               <MathText>{q.explanation}</MathText>
             </p>
           )}
-        </div>
-
-        <div className="flex shrink-0 flex-col items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={index === 0 || reordering}
-            onClick={() => onMove(-1)}
-            aria-label="Chuyển lên"
-            className="text-slate-400 hover:text-slate-700"
-          >
-            <ChevronUp className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={index === total - 1 || reordering}
-            onClick={() => onMove(1)}
-            aria-label="Chuyển xuống"
-            className="text-slate-400 hover:text-slate-700"
-          >
-            <ChevronDown className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            aria-label="Sửa câu hỏi"
-            className="text-slate-400 hover:text-slate-700"
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            aria-label="Xoá câu hỏi"
-            className="text-slate-400 hover:text-red-600"
-          >
-            <Trash2 className="size-4" />
-          </Button>
         </div>
       </div>
     </div>
