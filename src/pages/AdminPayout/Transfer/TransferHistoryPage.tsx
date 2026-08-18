@@ -1,16 +1,17 @@
+import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { getTransferHistory, getFundBalance, getFundTopupHistory } from '../../../services/adminPayout.service';
 import type { AdminWalletTransferResult, SystemFund, SystemFundTopupResult } from '../../../types/adminPayout.types';
-import { DataTable, PageContainer, SectionCard } from '../../../components/shared';
+import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
 import type { DataTableColumn } from '../../../components/shared';
 import { Can } from '../../../contexts/AccessContext';
 import { formatCurrency, formatDateTime } from '../../../utils/formatters';
+import PayoutSummaryPanel, { PayoutSummaryFact } from '../PayoutSummaryPanel';
+import ProofImageModal from '../ProofImageModal';
 import TransferMoneyModal from './TransferMoneyModal';
 import TopUpFundModal from './TopUpFundModal';
 import '../../../styles/pages/admin-payout.css';
-
-const PAGE_SIZE = 20;
 
 const ROLE_LABEL: Record<string, string> = {
     tutor: 'Gia sư',
@@ -30,6 +31,7 @@ const TransferHistoryPage: React.FC = () => {
 
     const [fund, setFund] = useState<SystemFund | null>(null);
     const [showTopUpModal, setShowTopUpModal] = useState(false);
+    const [proofPreview, setProofPreview] = useState<SystemFundTopupResult | null>(null);
 
     const [topups, setTopups] = useState<SystemFundTopupResult[]>([]);
     const [topupTotalCount, setTopupTotalCount] = useState(0);
@@ -39,7 +41,7 @@ const TransferHistoryPage: React.FC = () => {
     const fetchHistory = useCallback(async () => {
         try {
             setLoading(true);
-            const result = await getTransferHistory(currentPage, PAGE_SIZE);
+            const result = await getTransferHistory(currentPage, ADMIN_PAGE_SIZE);
             setTransfers(result.items);
             setTotalCount(result.totalCount);
         } catch {
@@ -60,7 +62,7 @@ const TransferHistoryPage: React.FC = () => {
     const fetchTopups = useCallback(async () => {
         try {
             setTopupLoading(true);
-            const result = await getFundTopupHistory(topupPage, PAGE_SIZE);
+            const result = await getFundTopupHistory(topupPage, ADMIN_PAGE_SIZE);
             setTopups(result.items);
             setTopupTotalCount(result.totalCount);
         } catch {
@@ -175,16 +177,15 @@ const TransferHistoryPage: React.FC = () => {
             align: 'right',
             render: (record) =>
                 record.proofImageUrl ? (
-                    <a
+                    <button
+                        type="button"
                         className="payout-row-action"
-                        href={record.proofImageUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                        onClick={() => setProofPreview(record)}
                         aria-label={`Xem ảnh chứng minh khoản nạp #${record.topupId}`}
                     >
                         <span className="payout-row-action__label">Xem ảnh</span>
                         <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
-                    </a>
+                    </button>
                 ) : (
                     <span className="admin-ui-table-meta">—</span>
                 ),
@@ -194,10 +195,9 @@ const TransferHistoryPage: React.FC = () => {
 
     return (
         <PageContainer
-            className="payout-overview-page"
+            className="payout-transfers-page"
             eyebrow="Tài chính"
             title="Chuyển tiền chủ động"
-            subtitle="Cộng thẳng tiền vào ví một gia sư, phụ huynh hoặc học sinh — không gắn với yêu cầu rút tiền nào. Tiền vào ví ngay khi xác nhận, không có bước duyệt thứ hai."
             maxWidth="wide"
             headerAction={
                 <div className="admin-ui-actions">
@@ -224,58 +224,30 @@ const TransferHistoryPage: React.FC = () => {
                 </div>
             }
         >
-            <section className="payout-summary-grid" aria-label="Quỹ hệ thống">
-                <article className="payout-cash-card">
-                    <div className="payout-cash-card__orb" aria-hidden="true" />
-
-                    <div className="payout-cash-card__header">
-                        <div className="payout-cash-card__heading">
-                            <span className="payout-cash-card__icon material-symbols-outlined" aria-hidden="true">
-                                savings
-                            </span>
-                            <div>
-                                <span>Nguồn duy nhất cho chuyển tiền chủ động</span>
-                                <h2>Quỹ hệ thống</h2>
-                            </div>
-                        </div>
-                        <span className="payout-live-badge">
-                            <span aria-hidden="true" />
-                            Cập nhật
-                        </span>
-                    </div>
-
-                    <div className="payout-cash-card__total">
-                        <span>Số dư khả dụng</span>
-                        <strong>{fund ? formatCurrency(fund.balance) : '...'}</strong>
-                    </div>
-
-                    <div className="payout-cash-card__metrics">
-                        <div>
-                            <span>Lượt chuyển</span>
-                            <strong>{totalCount.toLocaleString('vi-VN')}</strong>
-                        </div>
-                        <div>
-                            <span>Lượt nạp quỹ</span>
-                            <strong>{topupTotalCount.toLocaleString('vi-VN')}</strong>
-                        </div>
-                        <div>
-                            <span>Cập nhật lúc</span>
-                            <strong>{fund ? formatDateTime(fund.updatedAt) : '—'}</strong>
-                        </div>
-                    </div>
-                </article>
-            </section>
+            <PayoutSummaryPanel
+                ariaLabel="Quỹ hệ thống"
+                label="Số dư quỹ hệ thống"
+                amount={fund ? formatCurrency(fund.balance) : '...'}
+                hint="Nguồn duy nhất cho chuyển tiền chủ động"
+            >
+                <PayoutSummaryFact icon="send_money" label="Lượt chuyển">
+                    <strong>{totalCount.toLocaleString('vi-VN')}</strong>
+                </PayoutSummaryFact>
+                <PayoutSummaryFact icon="savings" label="Lượt nạp quỹ">
+                    <strong>{topupTotalCount.toLocaleString('vi-VN')}</strong>
+                </PayoutSummaryFact>
+                <PayoutSummaryFact icon="schedule" label="Cập nhật lúc">
+                    <strong>{fund ? formatDateTime(fund.updatedAt) : '—'}</strong>
+                </PayoutSummaryFact>
+            </PayoutSummaryPanel>
 
             <SectionCard
                 className="payout-requests-card"
                 title="Lịch sử chuyển tiền"
-                subtitle="Mới nhất trước."
                 headerAction={
-                    <span className="payout-request-total">
-                        <span className="material-symbols-outlined" aria-hidden="true">send_money</span>
-                        <strong>{totalCount.toLocaleString('vi-VN')}</strong>
-                        lượt chuyển
-                    </span>
+                    <StatusBadge variant={totalCount > 0 ? 'info' : 'neutral'} shape="tag">
+                        {totalCount.toLocaleString('vi-VN')} lượt chuyển
+                    </StatusBadge>
                 }
             >
                 <DataTable<AdminWalletTransferResult>
@@ -293,7 +265,7 @@ const TransferHistoryPage: React.FC = () => {
                     tableLabel="Lịch sử chuyển tiền chủ động"
                     pagination={{
                         current: currentPage,
-                        pageSize: PAGE_SIZE,
+                        pageSize: ADMIN_PAGE_SIZE,
                         total: totalCount,
                         onChange: setCurrentPage,
                     }}
@@ -307,13 +279,10 @@ const TransferHistoryPage: React.FC = () => {
             <SectionCard
                 className="payout-requests-card"
                 title="Lịch sử nạp quỹ"
-                subtitle="Mới nhất trước — mỗi lần nạp đều kèm ảnh chứng minh."
                 headerAction={
-                    <span className="payout-request-total">
-                        <span className="material-symbols-outlined" aria-hidden="true">savings</span>
-                        <strong>{topupTotalCount.toLocaleString('vi-VN')}</strong>
-                        lượt nạp
-                    </span>
+                    <StatusBadge variant={topupTotalCount > 0 ? 'info' : 'neutral'} shape="tag">
+                        {topupTotalCount.toLocaleString('vi-VN')} lượt nạp
+                    </StatusBadge>
                 }
             >
                 <DataTable<SystemFundTopupResult>
@@ -331,7 +300,7 @@ const TransferHistoryPage: React.FC = () => {
                     tableLabel="Lịch sử nạp quỹ hệ thống"
                     pagination={{
                         current: topupPage,
-                        pageSize: PAGE_SIZE,
+                        pageSize: ADMIN_PAGE_SIZE,
                         total: topupTotalCount,
                         onChange: setTopupPage,
                     }}
@@ -346,6 +315,13 @@ const TransferHistoryPage: React.FC = () => {
                 isOpen={showTransferModal}
                 onClose={() => setShowTransferModal(false)}
                 onSuccess={handleTransferSuccess}
+            />
+
+            <ProofImageModal
+                imageUrl={proofPreview?.proofImageUrl ?? null}
+                title={`Ảnh chứng minh khoản nạp #${proofPreview?.topupId ?? ''}`}
+                alt={`Ảnh chứng minh khoản nạp quỹ #${proofPreview?.topupId ?? ''}`}
+                onClose={() => setProofPreview(null)}
             />
 
             <TopUpFundModal
