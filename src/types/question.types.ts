@@ -13,6 +13,14 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   VAN_DUNG_CAO: 'Vận dụng cao',
 };
 
+/** null = câu tự luận thường (Ngân hàng câu hỏi) | mc = trắc nghiệm (Ngân hàng kiểm tra). */
+export type AnswerFormat = 'mc' | 'numeric' | 'text';
+
+export interface AnswerOption {
+  key: string;
+  text: string;
+}
+
 export interface Question {
   id: string; // uuid
   subjectId: number;
@@ -27,6 +35,10 @@ export interface Question {
   content: string;
   solution: string | null;
   solutionSource: string | null;
+  answerFormat: AnswerFormat | null;
+  answerOptions: AnswerOption[] | null;
+  correctAnswer: string | null;
+  explanation: string | null;
   sourceDocumentId: string | null;
   sourcePage: number | null;
   reviewStatus: ReviewStatus;
@@ -54,6 +66,8 @@ export interface QuestionListParams {
   hasSolution?: boolean;
   sortBy?: QuestionSortBy;
   sortDir?: SortDir;
+  /** 'mc' -> chỉ câu trắc nghiệm (dùng cho tab Ngân hàng kiểm tra). */
+  answerFormat?: AnswerFormat;
 }
 
 export interface QuestionListResponse {
@@ -75,6 +89,10 @@ export interface CreateQuestionPayload {
   content: string;
   solution?: string | null;
   solutionSource?: string | null;
+  answerFormat?: AnswerFormat | null;
+  answerOptions?: AnswerOption[] | null;
+  correctAnswer?: string | null;
+  explanation?: string | null;
   reviewStatus?: ReviewStatus;
 }
 
