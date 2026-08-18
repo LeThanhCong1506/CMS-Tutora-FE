@@ -16,7 +16,8 @@ const MathTextImpl: React.FC<MathTextProps> = ({ children, className }) => {
   const html = useMemo(() => renderMathToHtml(children ?? ''), [children]);
   return (
     <span
-      className={className}
+      // line-height cho .katex nằm ở index.css (cần !important, xem chú thích ở đó).
+      className={`leading-relaxed ${className ?? ''}`}
       // KaTeX sinh HTML an toàn từ input toán học; input là nội dung câu hỏi nội bộ.
       dangerouslySetInnerHTML={{ __html: html }}
     />
