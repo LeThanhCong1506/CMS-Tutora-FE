@@ -33,6 +33,15 @@
     padding: 40px 20px;
 }
 
+/* Cho .adaptive tự đo độ rộng thật của chính nó (container query), thay vì chỉ dựa vào
+   viewport như .hideOnTablet/.hideOnMobile bên dưới. Cần thiết vì sidebar admin có thể
+   mở rộng/thu gọn (68px ↔ 288px) mà không đổi kích thước viewport — nếu chỉ dùng @media,
+   bảng bị hẹp lại do sidebar sẽ không bao giờ kích hoạt chế độ thu gọn cột, khiến các cột
+   cuối (vd. "Ưu tiên") bị tràn/lẹm ra ngoài thay vì tự ẩn như thiết kế ban đầu. */
+.adaptive {
+    container-type: inline-size;
+}
+
 /* Scrollable container for horizontal overflow on mobile */
 .tableScroll {
     width: 100%;
@@ -241,6 +250,19 @@
     }
 }
 
+/* Bản container-query của khối trên — chỉ áp dụng cho bảng .adaptive (nơi đã có
+   container-type ở trên), kích hoạt khi CHÍNH bảng bị hẹp dưới ngưỡng, bất kể do
+   viewport hay do sidebar admin đang mở rộng. */
+@container (max-width: 1024px) {
+    .hideOnTablet {
+        display: none;
+    }
+
+    .adaptive .table {
+        min-width: 620px !important;
+    }
+}
+
 /* ─── Hide on Mobile ───────────────────────────── */
 @media (max-width: 768px) {
     .hideOnMobile {
@@ -260,6 +282,32 @@
         flex-direction: column;
         gap: 10px;
         align-items: center;
+    }
+
+    .adaptive .table {
+        min-width: 100% !important;
+        table-layout: fixed;
+    }
+
+    .adaptive .th,
+    .adaptive .td {
+        min-width: var(--data-table-mobile-min-width, 0) !important;
+        width: var(--data-table-mobile-width, auto) !important;
+    }
+}
+
+@container (max-width: 768px) {
+    .hideOnMobile {
+        display: none;
+    }
+
+    .th {
+        padding: 14px 16px;
+    }
+
+    .td {
+        padding: 12px 16px;
+        font-size: 12px;
     }
 
     .adaptive .table {
