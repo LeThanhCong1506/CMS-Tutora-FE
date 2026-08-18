@@ -36,7 +36,7 @@ const certStatusBadge = (status: string) => {
     case 'pending_review':
       return <StatusBadge variant="warning">Chờ xác minh</StatusBadge>;
     default:
-      return <StatusBadge variant="neutral">{status}</StatusBadge>;
+      return <StatusBadge variant="neutral">Không rõ</StatusBadge>;
   }
 };
 

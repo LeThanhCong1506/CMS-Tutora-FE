@@ -58,6 +58,7 @@ import {
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
+import { getLessonStatusDisplay } from '../AdminBookings/bookingDisplay';
 
 type DisputeChatMessage = {
     senderName?: string | null;
@@ -799,7 +800,14 @@ const AdminDisputeDetailPage = () => {
                                                 </div>
                                             )}                                            <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
-                                                <StatusBadge variant="info" shape="tag">{classSession.status || 'N/A'}</StatusBadge>
+                                                {(() => {
+                                                    const sessionStatus = getLessonStatusDisplay(classSession.status);
+                                                    return (
+                                                        <StatusBadge variant={sessionStatus.variant} shape="tag">
+                                                            {sessionStatus.label}
+                                                        </StatusBadge>
+                                                    );
+                                                })()}
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>

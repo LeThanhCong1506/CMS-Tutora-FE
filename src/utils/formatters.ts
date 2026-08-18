@@ -329,7 +329,9 @@ export const formatWithdrawalStatusV2 = (status: string): string => {
     pending_review: 'Chờ xét duyệt',
   };
 
-  return statusMap[status] || status;
+  // Tra khong phan biet hoa thuong: WithdrawalStatusBadge da tu .toLowerCase() cho phan tone,
+  // nhan chu khong the lech khoi mau chi vi BE tra ve chu hoa.
+  return statusMap[status.toLowerCase()] || 'Không rõ';
 };
 
 /**

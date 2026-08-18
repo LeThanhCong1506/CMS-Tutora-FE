@@ -26,7 +26,7 @@ export function getBookingStatusDisplay(status?: string): { label: string; varia
     if (!status) return { label: 'Không xác định', variant: 'neutral' };
     return (
         BOOKING_STATUS_MAP[status.toLowerCase()] ?? {
-            label: status,
+            label: 'Không rõ',
             variant: 'neutral',
         }
     );
@@ -35,6 +35,12 @@ export function getBookingStatusDisplay(status?: string): { label: string; varia
 /** Payment status — match PaymentStatus.cs (Pending / Paid / Failed / Refunded). */
 export const PAYMENT_STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
     pending: { label: 'Chờ thanh toán', variant: 'warning' },
+    // PaymentStatus.cs dùng PascalCase cho 3 giá trị này (DepositEscrowed/Escrowed) — key ở đây
+    // viết thường vì tra cứu đã `.toLowerCase()`. Thiếu chúng thì admin đọc được nguyên chuỗi
+    // "DepositEscrowed" trên bảng.
+    depositescrowed: { label: 'Đang giữ cọc', variant: 'info' },
+    escrowed: { label: 'Đang giữ toàn bộ', variant: 'info' },
+    holding: { label: 'Đang giữ', variant: 'warning' },
     paid: { label: 'Đã thanh toán', variant: 'success' },
     failed: { label: 'Thất bại', variant: 'error' },
     refunded: { label: 'Đã hoàn tiền', variant: 'info' },
@@ -44,7 +50,7 @@ export function getPaymentStatusDisplay(status?: string): { label: string; varia
     if (!status) return { label: '—', variant: 'neutral' };
     return (
         PAYMENT_STATUS_MAP[status.toLowerCase()] ?? {
-            label: status,
+            label: 'Không rõ',
             variant: 'neutral',
         }
     );
@@ -89,12 +95,14 @@ export function formatVND(amount?: number): string {
 
 // ───── Lesson status — match LessonStatus.cs constants ──────────────────────
 export const LESSON_STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
+    reserved: { label: 'Đang giữ chỗ', variant: 'neutral' },
     scheduled: { label: 'Đã lên lịch', variant: 'info' },
     in_progress: { label: 'Đang diễn ra', variant: 'warning' },
     completed: { label: 'Hoàn thành', variant: 'success' },
     pending_confirmation: { label: 'Chờ xác nhận', variant: 'warning' },
     pending_parent_confirmation: { label: 'Chờ phụ huynh xác nhận', variant: 'warning' },
     cancelled: { label: 'Đã hủy', variant: 'error' },
+    cancelled_noshow: { label: 'Hủy do vắng mặt', variant: 'error' },
     no_show: { label: 'Vắng mặt', variant: 'error' },
     disputed: { label: 'Đang khiếu nại', variant: 'error' },
     checked_in: { label: 'Đã check-in', variant: 'info' },
@@ -105,7 +113,7 @@ export const LESSON_STATUS_MAP: Record<string, { label: string; variant: StatusV
  * Use `realEnd` to distinguish that awaiting-report phase from a lesson that is still live.
  */
 export function getLessonStatusDisplay(
-    status?: string,
+    status?: string | null,
     realEnd?: string | null,
 ): { label: string; variant: StatusVariant } {
     if (!status) return { label: '—', variant: 'neutral' };
@@ -113,7 +121,7 @@ export function getLessonStatusDisplay(
     if (normalizedStatus === 'in_progress' && realEnd) {
         return { label: 'Chờ gửi báo cáo', variant: 'warning' };
     }
-    return LESSON_STATUS_MAP[normalizedStatus] ?? { label: status, variant: 'neutral' };
+    return LESSON_STATUS_MAP[normalizedStatus] ?? { label: 'Không rõ', variant: 'neutral' };
 }
 
 // ───── Escrow status ────────────────────────────────────────────────────────
@@ -127,7 +135,7 @@ export const ESCROW_STATUS_MAP: Record<string, { label: string; variant: StatusV
 
 export function getEscrowStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
     if (!status) return { label: '—', variant: 'neutral' };
-    return ESCROW_STATUS_MAP[status.toLowerCase()] ?? { label: status, variant: 'neutral' };
+    return ESCROW_STATUS_MAP[status.toLowerCase()] ?? { label: 'Không rõ', variant: 'neutral' };
 }
 
 // ───── Refund status ────────────────────────────────────────────────────────
@@ -143,5 +151,5 @@ export const REFUND_STATUS_MAP: Record<string, { label: string; variant: StatusV
 
 export function getRefundStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
     if (!status) return { label: '—', variant: 'neutral' };
-    return REFUND_STATUS_MAP[status.toLowerCase()] ?? { label: status, variant: 'neutral' };
+    return REFUND_STATUS_MAP[status.toLowerCase()] ?? { label: 'Không rõ', variant: 'neutral' };
 }
