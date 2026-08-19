@@ -534,7 +534,6 @@ const AdminDisputeDetailPage = () => {
         warningcount: tutor.warningCount || 0,
         suspensioncount: 0,
     } : null;
-    const classSessionPrice = classSession?.classSessionPrice || 0;
     const suggestion = getVerdictSuggestion(sessionLogSummary);
     const priorityMeta = getPriorityMeta(disputeDetail.priority, disputeDetail.priorityDisplay);
     const hasHeaderActions = ['pending', 'investigating', 'confirmed_no_show']
