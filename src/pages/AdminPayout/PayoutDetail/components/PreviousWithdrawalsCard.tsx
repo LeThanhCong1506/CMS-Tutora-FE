@@ -16,7 +16,6 @@ const PreviousWithdrawalsCard: React.FC<Props> = ({ withdrawals, loading }) => {
     <SectionCard
       className="payout-previous-card"
       title="Lịch sử rút tiền"
-      subtitle="Các yêu cầu gần nhất của người dùng này, hỗ trợ đối chiếu trước khi duyệt."
       headerAction={
         <StatusBadge variant={items.length > 0 ? 'info' : 'neutral'} shape="tag">
           {items.length} yêu cầu

@@ -174,13 +174,13 @@ export const QuestionFormModal: React.FC<Props> = ({ question, onClose, onSaved 
                   <Select
                     value={form.questionTypeId ? String(form.questionTypeId) : NONE}
                     onValueChange={(v) => set('questionTypeId', v === NONE ? null : Number(v))}
-                    items={[{ value: NONE, label: '—' }, ...types.map((t) => ({ value: String(t.id), label: t.name }))]}
+                    items={[{ value: NONE, label: 'Chưa phân loại' }, ...types.map((t) => ({ value: String(t.id), label: t.name }))]}
                   >
                     <SelectTrigger className="bg-slate-50">
                       <SelectValue placeholder="Chọn loại câu hỏi" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>—</SelectItem>
+                      <SelectItem value={NONE}>Chưa phân loại</SelectItem>
                       {types.map((t) => (
                         <SelectItem key={t.id} value={String(t.id)}>
                           {t.name}
@@ -254,13 +254,13 @@ export const QuestionFormModal: React.FC<Props> = ({ question, onClose, onSaved 
                     value={form.chapterId ? String(form.chapterId) : NONE}
                     onValueChange={(v) => set('chapterId', v === NONE ? null : Number(v))}
                     disabled={!chapters.length}
-                    items={[{ value: NONE, label: '—' }, ...chapters.map((c) => ({ value: String(c.id), label: c.name }))]}
+                    items={[{ value: NONE, label: 'Không thuộc chương nào' }, ...chapters.map((c) => ({ value: String(c.id), label: c.name }))]}
                   >
                     <SelectTrigger className="bg-slate-50 w-full">
                       <SelectValue placeholder={chapters.length ? 'Chọn chương' : 'Chọn môn+lớp trước'} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72 w-auto min-w-60">
-                      <SelectItem value={NONE}>—</SelectItem>
+                      <SelectItem value={NONE}>Không thuộc chương nào</SelectItem>
                       {chapters.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)} className="whitespace-normal">
                           {c.name}

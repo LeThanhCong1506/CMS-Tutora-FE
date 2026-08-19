@@ -149,9 +149,7 @@ const StaffManagementPage = () => {
   return (
     <>
       <PageContainer
-        eyebrow="Quản trị"
         title="Quản lý nhân viên"
-        subtitle="Tạo tài khoản và gán đúng một nhóm quyền cho mỗi nhân viên vận hành."
         maxWidth="wide"
         headerAction={
           <button
@@ -166,7 +164,6 @@ const StaffManagementPage = () => {
       >
         <SectionCard
           title="Danh sách nhân viên"
-          subtitle="Nhân viên không có nhóm sẽ không có quyền sử dụng chức năng CMS."
           footer={`Hiển thị ${staffs.length} nhân viên`}
         >
           <DataTable<StaffListItem>

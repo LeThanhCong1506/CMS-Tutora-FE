@@ -266,12 +266,15 @@ const AdminDashboardPageEnhanced = () => {
     const funnelData = useMemo(() => {
         if (!userStats) return [];
         const f = userStats.tutorFunnel;
+        // `f.publicTutors` = active && isPublic, tức tập con của `f.active` chứ không phải chỉ số
+        // độc lập. Chừng nào mọi gia sư active còn để hồ sơ công khai thì hai cột luôn bằng nhau
+        // và cột thứ hai chỉ làm nhiễu biểu đồ. Muốn theo dõi số bị ẩn thì hiện phần chênh
+        // (f.active - f.publicTutors) chứ đừng vẽ lại cả tập con.
         return [
             { name: 'Nháp', value: f.draft },
             { name: 'Chờ duyệt', value: f.pendingApproval },
             { name: 'Hoạt động', value: f.active },
             { name: 'Từ chối', value: f.rejected },
-            { name: 'Đang công khai', value: f.publicTutors },
         ];
     }, [userStats]);
 
@@ -331,11 +334,11 @@ const AdminDashboardPageEnhanced = () => {
                     icon={<span className="material-symbols-outlined">payments</span>}
                     value={loading ? '…' : formatDashboardCurrency(revValue)}
                     valueClassName="admin-kpi-exact-value"
-                    label="Phí dịch vụ của Tutora"
+                    label="Doanh thu từ phí dịch vụ"
                     labelClassName="admin-kpi-friendly-label"
                     badge={revBadge?.text}
                     badgeVariant={revBadge?.variant}
-                    infoTooltip="Tổng phí nền tảng của các lượt đặt lịch hợp lệ phát sinh trong khoảng đã chọn. Đây là phần phí của Tutora, không phải toàn bộ giá trị giao dịch."
+                    infoTooltip="Phần Tutora thu được từ phí nền tảng của các lượt đặt lịch hợp lệ trong khoảng đã chọn — không phải toàn bộ giá trị giao dịch. Đây CHƯA phải tổng doanh thu: AdminDashboardService chỉ cộng Booking.Platformfee, chưa gồm tiền bán gói AI Homework Helper. Số tổng đầy đủ nằm ở trang Báo cáo tài chính."
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">event_available</span>}

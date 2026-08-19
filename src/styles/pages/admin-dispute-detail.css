@@ -82,6 +82,11 @@
     margin-top: 18px;
 }
 
+/* Permissions can hide every button in the row — don't leave its spacing behind */
+.dispute-admin-actions:empty {
+    display: none;
+}
+
 .dispute-investigate-action {
     display: flex;
     flex-direction: column;

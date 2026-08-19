@@ -21,7 +21,6 @@ import {
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
-    classifyDispute,
     type DisputeRecording,
 } from '../../services/admin.service';
 import type {
@@ -58,6 +57,7 @@ import {
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
+import { getLessonStatusDisplay } from '../AdminBookings/bookingDisplay';
 
 type DisputeChatMessage = {
     senderName?: string | null;
@@ -438,26 +438,6 @@ const AdminDisputeDetailPage = () => {
             setIsSubmitting(false);
         }
     };
-
-    const handleClassify = async () => {
-        if (!disputeDetail || !disputeId) return;
-
-        try {
-            setIsSubmitting(true);
-            const classified = await classifyDispute(disputeDetail.disputeId);
-            if (!classified.priority) {
-                toast.error('AI chưa phân loại được mức ưu tiên. Vui lòng thử lại sau.');
-                return;
-            }
-            toast.success('Đã cập nhật mức độ ưu tiên của hồ sơ.');
-            await fetchDisputeDetail(disputeId);
-        } catch (err) {
-            console.error('Error classifying dispute:', err);
-            toast.error('Không thể cập nhật mức độ ưu tiên');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
     // Wrapper functions for modal callbacks
     const handleIssueWarning = async (tutorId: string, reason: string, severity: string, relatedBookingId?: string) => {
         if (!disputeId) return;
@@ -557,6 +537,8 @@ const AdminDisputeDetailPage = () => {
     const classSessionPrice = classSession?.classSessionPrice || 0;
     const suggestion = getVerdictSuggestion(sessionLogSummary);
     const priorityMeta = getPriorityMeta(disputeDetail.priority, disputeDetail.priorityDisplay);
+    const hasHeaderActions = ['pending', 'investigating', 'confirmed_no_show']
+        .includes(disputeDetail.status || '');
 
     return (
         <>
@@ -595,18 +577,8 @@ const AdminDisputeDetailPage = () => {
                             </div>
                         </div>
 
+                        {hasHeaderActions && (
                         <div className="admin-ui-actions dispute-admin-actions">
-                            <Can permission="dispute.investigate">
-                                <button
-                                    type="button"
-                                    className="admin-ui-button admin-ui-button-secondary"
-                                    onClick={handleClassify}
-                                    disabled={isSubmitting}
-                                >
-                                    <span className="material-symbols-outlined">smart_toy</span>
-                                    {disputeDetail.priority ? 'Phân loại lại' : 'Phân loại ưu tiên'}
-                                </button>
-                            </Can>
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
                                 <div className="dispute-investigate-action">
@@ -648,6 +620,7 @@ const AdminDisputeDetailPage = () => {
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
                 </header>
 
@@ -785,7 +758,14 @@ const AdminDisputeDetailPage = () => {
                                                 </div>
                                             )}                                            <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
-                                                <StatusBadge variant="info" shape="tag">{classSession.status || 'N/A'}</StatusBadge>
+                                                {(() => {
+                                                    const sessionStatus = getLessonStatusDisplay(classSession.status);
+                                                    return (
+                                                        <StatusBadge variant={sessionStatus.variant} shape="tag">
+                                                            {sessionStatus.label}
+                                                        </StatusBadge>
+                                                    );
+                                                })()}
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>
