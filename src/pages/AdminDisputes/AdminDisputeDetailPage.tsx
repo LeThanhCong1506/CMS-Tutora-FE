@@ -642,20 +642,6 @@ const AdminDisputeDetailPage = () => {
                                     </button>
                                 </Can>
                             )}
-                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
-                                <Can permission="dispute.resolve">
-                                    <button
-                                        type="button"
-                                        className="admin-ui-button admin-ui-button-secondary"
-                                        onClick={() => setIsCloseModalOpen(true)}
-                                        disabled={isSubmitting}
-                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
-                                    >
-                                        <span className="material-symbols-outlined">handshake</span>
-                                        Đóng do hoà giải
-                                    </button>
-                                </Can>
-                            )}
                             {disputeDetail.status === 'confirmed_no_show' && (
                                 <div style={{ maxWidth: '320px', padding: '10px 14px', borderRadius: '10px', background: '#ecfdf5', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
                                     Đã xác nhận no-show. Đang chờ phụ huynh/học sinh chọn phương án xử lý.
@@ -1316,7 +1302,6 @@ const AdminDisputeDetailPage = () => {
                                             )}
 
                                             <div className="dispute-options-group">
-                                                {/* 3 Resolution Options matching backend */}
                                                 <label className="dispute-radio-label">
                                                     <input
                                                         type="radio"
@@ -1326,52 +1311,8 @@ const AdminDisputeDetailPage = () => {
                                                         onChange={() => setVerdict('refund_100')}
                                                     />
                                                     <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Hoàn tiền 100% cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Hoàn lại {formatCurrency(classSessionPrice)} về nguồn</span>
-                                                    </div>
-                                                </label>
-
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'refund_50'}
-                                                        onChange={() => setVerdict('refund_50')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Chia 50% cho mỗi bên</span>
-                                                        <span className="dispute-radio-desc">
-                                                            Hoàn 50% cho Học viên · chuyển 50% cho Gia sư
-                                                        </span>
-                                                    </div>
-                                                </label>
-
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'release'}
-                                                        onChange={() => setVerdict('release')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Chuyển tiền cho Gia sư</span>
-                                                        <span className="dispute-radio-desc">Chuyển {formatCurrency(classSessionPrice)} cho {tutor?.fullName || 'Gia sư'}</span>
-                                                    </div>
-                                                </label>
-
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'custom'}
-                                                        onChange={() => setVerdict('custom')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Tùy chỉnh % hoàn tiền</span>
-                                                        <span className="dispute-radio-desc">Admin tự nhập tỷ lệ hoàn tiền cho học viên</span>
+                                                        <span className="dispute-radio-title">Hoàn tiền cho Học viên</span>
+                                                        <span className="dispute-radio-desc">Số tiền hoàn sẽ được tính dựa trên những buổi chưa học</span>
                                                     </div>
                                                 </label>
                                             </div>
@@ -1501,6 +1442,21 @@ const AdminDisputeDetailPage = () => {
                                                 {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phương án'}
                                             </button>
                                             </Can>
+
+                                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
+                                                <Can permission="dispute.resolve">
+                                                    <button
+                                                        type="button"
+                                                        className="dispute-submit-btn dispute-submit-btn--mediation"
+                                                        onClick={() => setIsCloseModalOpen(true)}
+                                                        disabled={isSubmitting}
+                                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
+                                                    >
+                                                        <span className="material-symbols-outlined">handshake</span>
+                                                        Đóng do hoà giải
+                                                    </button>
+                                                </Can>
+                                            )}
                                         </div>
                                     )}
                                 </div>

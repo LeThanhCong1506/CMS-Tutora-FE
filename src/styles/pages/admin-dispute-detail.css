@@ -893,6 +893,16 @@
     cursor: not-allowed;
 }
 
+.dispute-submit-btn--mediation {
+    margin-top: 10px;
+    background: var(--color-gold);
+    color: var(--color-navy);
+}
+
+.dispute-submit-btn--mediation:hover:not(:disabled) {
+    background: #c9a873;
+}
+
 .dispute-resolved-summary {
     padding: 24px 20px;
     text-align: left;
