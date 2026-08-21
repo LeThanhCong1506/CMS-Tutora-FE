@@ -3,6 +3,10 @@ import type { FormEvent } from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 import type { ApprovePayoutRequest } from '../../../../types/adminPayout.types';
 
+// Phải khớp với [RegularExpression] trên ApproveWithdrawalRequest.BankTransactionCode ở BE —
+// lệch nhau thì staff bị BE từ chối sau khi form đã cho bấm gửi.
+const BANK_TRANSACTION_CODE_PATTERN = /^[A-Za-z0-9._/-]+$/;
+
 const toLocalDateTimeInput = (date: Date): string => {
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
     return local.toISOString().slice(0, 16);
@@ -33,6 +37,7 @@ const ApproveWithdrawalModal = ({
 }: Props) => {
     const [paidAt, setPaidAt] = useState(() => toLocalDateTimeInput(new Date()));
     const [note, setNote] = useState('');
+    const [bankTransactionCode, setBankTransactionCode] = useState('');
     const [proofImage, setProofImage] = useState<File | null>(null);
     const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState('');
@@ -70,6 +75,7 @@ const ApproveWithdrawalModal = ({
         event.preventDefault();
 
         const trimmedNote = note.trim();
+        const trimmedBankCode = bankTransactionCode.trim();
 
         if (!paidAt || Number.isNaN(new Date(paidAt).getTime())) {
             setError('Vui lòng nhập thời gian chuyển khoản hợp lệ');
@@ -83,6 +89,14 @@ const ApproveWithdrawalModal = ({
             setError('Vui lòng nhập ghi chú đối soát ít nhất 3 ký tự');
             return;
         }
+        if (trimmedBankCode.length < 4) {
+            setError('Vui lòng nhập mã tham chiếu của ngân hàng (ít nhất 4 ký tự)');
+            return;
+        }
+        if (!BANK_TRANSACTION_CODE_PATTERN.test(trimmedBankCode)) {
+            setError('Mã tham chiếu ngân hàng chỉ được gồm chữ, số và các ký tự . _ - /');
+            return;
+        }
         if (!proofImage) {
             setError('Vui lòng tải ảnh biên lai chuyển khoản');
             return;
@@ -92,6 +106,7 @@ const ApproveWithdrawalModal = ({
         onConfirm({
             paidAt: new Date(paidAt).toISOString(),
             note: trimmedNote,
+            bankTransactionCode: trimmedBankCode,
             proofImage,
         });
     };
@@ -101,11 +116,11 @@ const ApproveWithdrawalModal = ({
     return (
         <div className="payout-modal-overlay" onClick={handleClose} role="presentation">
             <form
-                className="payout-modal-dialog"
+                className="payout-modal-dialog payout-modal-dialog--approve"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="approve-withdrawal-title"
-                aria-describedby="approve-withdrawal-description"
+                aria-describedby="approve-withdrawal-warning"
                 onClick={(event) => event.stopPropagation()}
                 onSubmit={handleSubmit}
             >
@@ -116,9 +131,6 @@ const ApproveWithdrawalModal = ({
                         </span>
                         <div>
                             <h2 id="approve-withdrawal-title">Xác nhận đã chuyển khoản</h2>
-                            <p id="approve-withdrawal-description">
-                                Đánh dấu yêu cầu hoàn tất sau khi bạn đã chuyển tiền thủ công cho người dùng.
-                            </p>
                         </div>
                     </div>
                     <button
@@ -133,12 +145,11 @@ const ApproveWithdrawalModal = ({
                 </header>
 
                 <div className="payout-modal-body">
-                    <div className="payout-modal-alert warning" role="note">
+                    <div id="approve-withdrawal-warning" className="payout-modal-alert warning" role="note">
                         <span className="material-symbols-outlined" aria-hidden="true">warning</span>
                         <p>
-                            Chỉ bấm xác nhận <strong>sau khi</strong> bạn đã chuyển khoản thủ công đúng số tiền
-                            vào tài khoản thụ hưởng bên dưới. Hệ thống sẽ chuyển yêu cầu sang trạng thái hoàn tất
-                            và thông báo cho người dùng — hành động này không thể hoàn tác.
+                            Chỉ xác nhận <strong>sau khi</strong> đã chuyển đúng số tiền vào tài khoản thụ hưởng.
+                            Hành động này không thể hoàn tác.
                         </p>
                     </div>
 
@@ -182,6 +193,24 @@ const ApproveWithdrawalModal = ({
                                 setPaidAt(event.target.value);
                                 if (error) setError('');
                             }}
+                            disabled={confirmLoading}
+                            required
+                        />
+                    </label>
+
+                    <label className="payout-modal-field" htmlFor="approve-withdrawal-bank-code">
+                        <span>Mã tham chiếu ngân hàng</span>
+                        <input
+                            id="approve-withdrawal-bank-code"
+                            className="payout-modal-input"
+                            type="text"
+                            value={bankTransactionCode}
+                            maxLength={100}
+                            onChange={(event) => {
+                                setBankTransactionCode(event.target.value);
+                                if (error) setError('');
+                            }}
+                            placeholder="Ví dụ: FT26082212345678"
                             disabled={confirmLoading}
                             required
                         />
@@ -259,6 +288,7 @@ const ApproveWithdrawalModal = ({
                             confirmLoading
                             || !paidAt
                             || note.trim().length < 3
+                            || bankTransactionCode.trim().length < 4
                             || !proofImage
                         }
                     >
