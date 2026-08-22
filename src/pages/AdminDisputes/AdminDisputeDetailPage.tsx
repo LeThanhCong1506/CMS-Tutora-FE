@@ -21,7 +21,9 @@ import {
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
+    getCancelCoursePreview,
     type DisputeRecording,
+    type CourseCancelPreviewDto,
 } from '../../services/admin.service';
 import type {
     DisputeDetail,
@@ -151,6 +153,8 @@ const AdminDisputeDetailPage = () => {
     const [customPercentage, setCustomPercentage] = useState(50);
     const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [courseCancelPreview, setCourseCancelPreview] = useState<CourseCancelPreviewDto | null>(null);
+    const [courseCancelPreviewLoading, setCourseCancelPreviewLoading] = useState(false);
 
     /**
      * Latest attendance summary from the session log panel. Only used to offer a starting point for
@@ -230,6 +234,22 @@ const AdminDisputeDetailPage = () => {
         }, 400);
         return () => clearTimeout(timer);
     }, [verdict, customPercentage, disputeId]);
+
+    // Preview số buổi/số tiền hủy khóa học khi admin chọn "Hủy khóa học & hoàn tiền"
+    useEffect(() => {
+        if (verdict !== 'cancel_course' || !disputeId) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- kick off a one-shot fetch, not a render loop
+        setCourseCancelPreviewLoading(true);
+        setCourseCancelPreview(null);
+        getCancelCoursePreview(disputeId)
+            .then((data) => setCourseCancelPreview(data))
+            .catch((err) => {
+                console.error('Error fetching cancel-course preview:', err);
+                setCourseCancelPreview(null);
+                toast.error('Không thể tính toán số tiền hủy khóa học');
+            })
+            .finally(() => setCourseCancelPreviewLoading(false));
+    }, [verdict, disputeId]);
 
     // Fetch chat history when switching to chat tab
     const fetchChatHistory = useCallback(async () => {
@@ -1294,7 +1314,59 @@ const AdminDisputeDetailPage = () => {
                                                         <span className="dispute-radio-desc">Số tiền hoàn sẽ được tính dựa trên những buổi chưa học</span>
                                                     </div>
                                                 </label>
+                                                <label className="dispute-radio-label">
+                                                    <input
+                                                        type="radio"
+                                                        name="verdict"
+                                                        className="dispute-radio-input"
+                                                        checked={verdict === 'cancel_course'}
+                                                        onChange={() => setVerdict('cancel_course')}
+                                                    />
+                                                    <div className="dispute-radio-content">
+                                                        <span className="dispute-radio-title">Hủy khóa học &amp; hoàn tiền</span>
+                                                        <span className="dispute-radio-desc">
+                                                            Buổi đang khiếu nại giữ nguyên (gia sư không mất tiền buổi đó nếu đã dạy đủ). Hủy tất cả
+                                                            các buổi CHƯA diễn ra còn lại và hoàn cho phụ huynh theo giá gốc mỗi buổi (không gồm 5%
+                                                            phí dịch vụ).
+                                                        </span>
+                                                    </div>
+                                                </label>
                                             </div>
+
+                                            {verdict === 'cancel_course' && (
+                                                <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                                                    {courseCancelPreviewLoading && (
+                                                        <p style={{ fontSize: '13px', color: '#6b7280' }}>Đang tính toán số buổi/số tiền hủy...</p>
+                                                    )}
+
+                                                    {!courseCancelPreviewLoading && courseCancelPreview && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Số buổi sẽ bị hủy:</span>
+                                                                <span style={{ fontWeight: 700, color: '#374151' }}>{courseCancelPreview.remainingSessionsCount}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Hoàn cho phụ huynh (giá gốc, không phí dịch vụ):</span>
+                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.parentRefundAmount)}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Escrow gia sư bị rút lại:</span>
+                                                                <span style={{ fontWeight: 700, color: '#b91c1c' }}>{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</span>
+                                                            </div>
+                                                            {courseCancelPreview.warnings.length > 0 && (
+                                                                <div style={{ marginTop: '6px' }}>
+                                                                    {courseCancelPreview.warnings.map((w, i) => (
+                                                                        <p key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontSize: '12px', margin: '2px 0' }}>
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                                                                            {w}
+                                                                        </p>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {verdict === 'custom' && (
                                                 <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
@@ -1414,7 +1486,12 @@ const AdminDisputeDetailPage = () => {
                                             <button
                                                 className="dispute-submit-btn"
                                                 onClick={handleResolveDispute}
-                                                disabled={isSubmitting || adminNotes.trim().length < 10 || (verdict === 'custom' && previewLoading)}
+                                                disabled={
+                                                    isSubmitting ||
+                                                    adminNotes.trim().length < 10 ||
+                                                    (verdict === 'custom' && previewLoading) ||
+                                                    (verdict === 'cancel_course' && courseCancelPreviewLoading)
+                                                }
                                                 style={{ opacity: adminNotes.trim().length < 10 ? 0.5 : 1 }}
                                             >
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>
