@@ -917,7 +917,7 @@ export interface DisputeEvidenceItemDto {
   uploadedByName: string | null;
 }
 
-export type ResolutionType = 'refund_100' | 'refund_50' | 'release' | 'custom';
+export type ResolutionType = 'refund_100' | 'refund_50' | 'release' | 'custom' | 'cancel_course';
 
 export interface ResolveDisputeRequest {
   resolutionType: ResolutionType;

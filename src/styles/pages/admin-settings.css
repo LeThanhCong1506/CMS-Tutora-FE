@@ -39,6 +39,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     min-width: 72px;
     padding: 8px 14px;
     border-radius: var(--radius-full);
@@ -46,6 +47,30 @@
     color: var(--color-navy);
     font-family: 'Courier New', monospace;
     font-weight: 800;
+}
+
+.settings-slider-value-input {
+    width: 3.5ch;
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: right;
+}
+
+.settings-slider-value-input:focus-visible {
+    outline: none;
+}
+
+.settings-slider-value-input::-webkit-outer-spin-button,
+.settings-slider-value-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.settings-slider-value-input[type='number'] {
+    -moz-appearance: textfield;
 }
 
 .settings-range-input {

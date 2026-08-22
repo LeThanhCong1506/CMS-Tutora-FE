@@ -18,9 +18,26 @@ export const BOOKING_STATUS_MAP: Record<string, { label: string; variant: Status
     completed: { label: 'Đã hoàn thành', variant: 'success' },
     cancelled: { label: 'Đã hủy', variant: 'error' },
     cancelled_noshow: { label: 'Đã hủy do vắng mặt', variant: 'error' },
+    cancelled_by_staff: { label: 'Đã hủy (phụ huynh nghỉ ngang)', variant: 'error' },
+    cancelled_by_dispute: { label: 'Đã hủy (theo tranh chấp)', variant: 'error' },
     declined: { label: 'Đã từ chối', variant: 'error' },
     payment_timeout: { label: 'Quá hạn thanh toán', variant: 'error' },
 };
+
+/** Trạng thái booking đã kết thúc — không còn action nào (hủy/hoàn tiền) áp dụng được nữa. */
+export const TERMINAL_BOOKING_STATUSES = new Set([
+    'completed',
+    'cancelled',
+    'cancelled_noshow',
+    'cancelled_by_staff',
+    'cancelled_by_dispute',
+    'payment_timeout',
+]);
+
+export function isTerminalBookingStatus(status?: string | null): boolean {
+    if (!status) return false;
+    return TERMINAL_BOOKING_STATUSES.has(status.toLowerCase());
+}
 
 export function getBookingStatusDisplay(status?: string): { label: string; variant: StatusVariant } {
     if (!status) return { label: 'Không xác định', variant: 'neutral' };

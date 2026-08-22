@@ -1,11 +1,9 @@
+import { useEffect, useState } from 'react';
 import { FilterTabs, PageContainer, SectionCard, StatCard } from '../../components/shared';
 import { useTabParam } from '../../hooks/useTabParam';
-import {
-    mockCommissionConfig,
-    mockEscrowBookings,
-    mockRefundRequests,
-} from '../../mocks/financeManagementMockData';
+import { mockEscrowBookings, mockRefundRequests } from '../../mocks/financeManagementMockData';
 import { mockTreasurySnapshot } from '../../mocks/treasuryMockData';
+import { getCommissionConfig, type CommissionConfig } from '../../services/adminCommission.service';
 import { formatCompactNumber } from '../../utils/formatters';
 import CommissionConfigTab from './components/CommissionConfigTab';
 import EscrowManagementTab from './components/EscrowManagementTab';
@@ -27,6 +25,21 @@ const FINANCE_TAB_KEYS = financeTabs.map((tab) => tab.key);
 
 const AdminFinanceNewPage = () => {
     const [activeTab, setActiveTab] = useTabParam<FinanceTab>(FINANCE_TAB_KEYS, 'liquidity');
+    const [commissionConfig, setCommissionConfig] = useState<CommissionConfig | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        getCommissionConfig()
+            .then((data) => {
+                if (!cancelled) setCommissionConfig(data);
+            })
+            .catch(() => {
+                // KPI card chỉ hiển thị "—" nếu lỗi — tab Cấu hình hoa hồng đã tự báo lỗi riêng.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const escrowTotal = mockEscrowBookings.reduce((sum, b) => sum + b.amount, 0);
     const refundPending = mockRefundRequests.filter((r) => r.status === 'pending' || r.status === 'investigating').length;
@@ -53,7 +66,11 @@ const AdminFinanceNewPage = () => {
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">percent</span>}
-                    value={`${mockCommissionConfig.parentFeePercent}% + ${mockCommissionConfig.tutorFeePercent}%`}
+                    value={
+                        commissionConfig
+                            ? `${commissionConfig.parentFeePercent}% + ${commissionConfig.tutorFeePercent}%`
+                            : '—'
+                    }
                     label="Hoa hồng nền tảng hiện hành"
                     subLabel="Phụ huynh + Gia sư"
                 />
