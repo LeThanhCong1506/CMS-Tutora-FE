@@ -35,6 +35,7 @@ const PROFILE_UPDATE_DIFF_FIELDS: Array<{
   { label: 'Thành phố', current: 'currentTeachingAreaCity', proposed: 'proposedTeachingAreaCity' },
   { label: 'Quận/huyện', current: 'currentTeachingAreaDistrict', proposed: 'proposedTeachingAreaDistrict' },
   { label: 'Giới thiệu (Bio)', current: 'currentBio', proposed: 'proposedBio' },
+  { label: 'Học vị', current: 'currentDegree', proposed: 'proposedDegree' },
   { label: 'Học vấn', current: 'currentEducation', proposed: 'proposedEducation' },
   { label: 'Kinh nghiệm', current: 'currentExperience', proposed: 'proposedExperience' },
   { label: 'Video giới thiệu', current: 'currentVideoIntroUrl', proposed: 'proposedVideoIntroUrl' },

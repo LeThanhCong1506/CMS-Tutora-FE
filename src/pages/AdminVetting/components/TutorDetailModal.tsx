@@ -322,6 +322,10 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                     <p>{introduction?.bio || 'Chưa cập nhật'}</p>
                   </article>
                   <article>
+                    <span>Học vị</span>
+                    <p>{introduction?.degree || 'Chưa cập nhật'}</p>
+                  </article>
+                  <article>
                     <span>Học vấn</span>
                     <p>{introduction?.education || 'Chưa cập nhật'}</p>
                   </article>
