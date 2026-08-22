@@ -431,9 +431,7 @@ const PermissionGroupsPage = () => {
   return (
     <>
       <PageContainer
-        eyebrow="Quản trị"
         title="Nhóm quyền"
-        subtitle="Tạo nhóm tùy chỉnh và gán cho nhân viên vận hành."
         maxWidth="wide"
         headerAction={
           <button

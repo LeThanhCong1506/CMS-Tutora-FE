@@ -155,3 +155,16 @@
     @apply font-sans;
     }
 }
+
+.katex {
+  line-height: 1.6 !important;
+}
+
+.katex .mfrac {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.katex-html:has(.mfrac) {
+  padding-block: 0.35em;
+}

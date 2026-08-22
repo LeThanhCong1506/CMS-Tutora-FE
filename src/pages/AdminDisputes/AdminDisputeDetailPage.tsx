@@ -21,8 +21,9 @@ import {
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
-    classifyDispute,
+    getCancelCoursePreview,
     type DisputeRecording,
+    type CourseCancelPreviewDto,
 } from '../../services/admin.service';
 import type {
     DisputeDetail,
@@ -58,6 +59,7 @@ import {
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
+import { getLessonStatusDisplay } from '../AdminBookings/bookingDisplay';
 
 type DisputeChatMessage = {
     senderName?: string | null;
@@ -151,6 +153,8 @@ const AdminDisputeDetailPage = () => {
     const [customPercentage, setCustomPercentage] = useState(50);
     const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [courseCancelPreview, setCourseCancelPreview] = useState<CourseCancelPreviewDto | null>(null);
+    const [courseCancelPreviewLoading, setCourseCancelPreviewLoading] = useState(false);
 
     /**
      * Latest attendance summary from the session log panel. Only used to offer a starting point for
@@ -232,6 +236,22 @@ const AdminDisputeDetailPage = () => {
         }, 400);
         return () => clearTimeout(timer);
     }, [verdict, customPercentage, disputeId]);
+
+    // Preview số buổi/số tiền hủy khóa học khi admin chọn "Hủy khóa học & hoàn tiền"
+    useEffect(() => {
+        if (verdict !== 'cancel_course' || !disputeId) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- kick off a one-shot fetch, not a render loop
+        setCourseCancelPreviewLoading(true);
+        setCourseCancelPreview(null);
+        getCancelCoursePreview(disputeId)
+            .then((data) => setCourseCancelPreview(data))
+            .catch((err) => {
+                console.error('Error fetching cancel-course preview:', err);
+                setCourseCancelPreview(null);
+                toast.error('Không thể tính toán số tiền hủy khóa học');
+            })
+            .finally(() => setCourseCancelPreviewLoading(false));
+    }, [verdict, disputeId]);
 
     // Fetch chat history when switching to chat tab
     const fetchChatHistory = useCallback(async () => {
@@ -444,26 +464,6 @@ const AdminDisputeDetailPage = () => {
             setIsSubmitting(false);
         }
     };
-
-    const handleClassify = async () => {
-        if (!disputeDetail || !disputeId) return;
-
-        try {
-            setIsSubmitting(true);
-            const classified = await classifyDispute(disputeDetail.disputeId);
-            if (!classified.priority) {
-                toast.error('AI chưa phân loại được mức ưu tiên. Vui lòng thử lại sau.');
-                return;
-            }
-            toast.success('Đã cập nhật mức độ ưu tiên của hồ sơ.');
-            await fetchDisputeDetail(disputeId);
-        } catch (err) {
-            console.error('Error classifying dispute:', err);
-            toast.error('Không thể cập nhật mức độ ưu tiên');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
     // Wrapper functions for modal callbacks
     const handleIssueWarning = async (tutorId: string, reason: string, severity: string, relatedBookingId?: string) => {
         if (!disputeId) return;
@@ -560,9 +560,10 @@ const AdminDisputeDetailPage = () => {
         warningcount: tutor.warningCount || 0,
         suspensioncount: 0,
     } : null;
-    const classSessionPrice = classSession?.classSessionPrice || 0;
     const suggestion = getVerdictSuggestion(sessionLogSummary);
     const priorityMeta = getPriorityMeta(disputeDetail.priority, disputeDetail.priorityDisplay);
+    const hasHeaderActions = ['pending', 'investigating', 'confirmed_no_show']
+        .includes(disputeDetail.status || '');
 
     return (
         <>
@@ -601,18 +602,8 @@ const AdminDisputeDetailPage = () => {
                             </div>
                         </div>
 
+                        {hasHeaderActions && (
                         <div className="admin-ui-actions dispute-admin-actions">
-                            <Can permission="dispute.investigate">
-                                <button
-                                    type="button"
-                                    className="admin-ui-button admin-ui-button-secondary"
-                                    onClick={handleClassify}
-                                    disabled={isSubmitting}
-                                >
-                                    <span className="material-symbols-outlined">smart_toy</span>
-                                    {disputeDetail.priority ? 'Phân loại lại' : 'Phân loại ưu tiên'}
-                                </button>
-                            </Can>
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
                                 <div className="dispute-investigate-action">
@@ -648,26 +639,13 @@ const AdminDisputeDetailPage = () => {
                                     </button>
                                 </Can>
                             )}
-                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
-                                <Can permission="dispute.resolve">
-                                    <button
-                                        type="button"
-                                        className="admin-ui-button admin-ui-button-secondary"
-                                        onClick={() => setIsCloseModalOpen(true)}
-                                        disabled={isSubmitting}
-                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
-                                    >
-                                        <span className="material-symbols-outlined">handshake</span>
-                                        Đóng do hoà giải
-                                    </button>
-                                </Can>
-                            )}
                             {disputeDetail.status === 'confirmed_no_show' && (
                                 <div style={{ maxWidth: '320px', padding: '10px 14px', borderRadius: '10px', background: '#ecfdf5', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
                                     Đã xác nhận no-show. Đang chờ phụ huynh/học sinh chọn phương án xử lý.
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
                 </header>
 
@@ -805,7 +783,14 @@ const AdminDisputeDetailPage = () => {
                                                 </div>
                                             )}                                            <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Trạng thái</span>
-                                                <StatusBadge variant="info" shape="tag">{classSession.status || 'N/A'}</StatusBadge>
+                                                {(() => {
+                                                    const sessionStatus = getLessonStatusDisplay(classSession.status);
+                                                    return (
+                                                        <StatusBadge variant={sessionStatus.variant} shape="tag">
+                                                            {sessionStatus.label}
+                                                        </StatusBadge>
+                                                    );
+                                                })()}
                                             </div>
                                             <div className="dispute-stat-row">
                                                 <span style={{ color: '#81786a' }}>Điểm danh gia sư</span>
@@ -1360,7 +1345,6 @@ const AdminDisputeDetailPage = () => {
                                             )}
 
                                             <div className="dispute-options-group">
-                                                {/* 3 Resolution Options matching backend */}
                                                 <label className="dispute-radio-label">
                                                     <input
                                                         type="radio"
@@ -1370,55 +1354,63 @@ const AdminDisputeDetailPage = () => {
                                                         onChange={() => setVerdict('refund_100')}
                                                     />
                                                     <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Hoàn tiền 100% cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Hoàn lại {formatCurrency(classSessionPrice)} về nguồn</span>
+                                                        <span className="dispute-radio-title">Hoàn tiền cho Học viên</span>
+                                                        <span className="dispute-radio-desc">Số tiền hoàn sẽ được tính dựa trên những buổi chưa học</span>
                                                     </div>
                                                 </label>
-
                                                 <label className="dispute-radio-label">
                                                     <input
                                                         type="radio"
                                                         name="verdict"
                                                         className="dispute-radio-input"
-                                                        checked={verdict === 'refund_50'}
-                                                        onChange={() => setVerdict('refund_50')}
+                                                        checked={verdict === 'cancel_course'}
+                                                        onChange={() => setVerdict('cancel_course')}
                                                     />
                                                     <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Chia 50% cho mỗi bên</span>
+                                                        <span className="dispute-radio-title">Hủy khóa học &amp; hoàn tiền</span>
                                                         <span className="dispute-radio-desc">
-                                                            Hoàn 50% cho Học viên · chuyển 50% cho Gia sư
+                                                            Buổi đang khiếu nại giữ nguyên (gia sư không mất tiền buổi đó nếu đã dạy đủ). Hủy tất cả
+                                                            các buổi CHƯA diễn ra còn lại và hoàn cho phụ huynh theo giá gốc mỗi buổi (không gồm 5%
+                                                            phí dịch vụ).
                                                         </span>
                                                     </div>
                                                 </label>
-
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'release'}
-                                                        onChange={() => setVerdict('release')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Chuyển tiền cho Gia sư</span>
-                                                        <span className="dispute-radio-desc">Chuyển {formatCurrency(classSessionPrice)} cho {tutor?.fullName || 'Gia sư'}</span>
-                                                    </div>
-                                                </label>
-
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'custom'}
-                                                        onChange={() => setVerdict('custom')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Tùy chỉnh % hoàn tiền</span>
-                                                        <span className="dispute-radio-desc">Admin tự nhập tỷ lệ hoàn tiền cho học viên</span>
-                                                    </div>
-                                                </label>
                                             </div>
+
+                                            {verdict === 'cancel_course' && (
+                                                <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                                                    {courseCancelPreviewLoading && (
+                                                        <p style={{ fontSize: '13px', color: '#6b7280' }}>Đang tính toán số buổi/số tiền hủy...</p>
+                                                    )}
+
+                                                    {!courseCancelPreviewLoading && courseCancelPreview && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Số buổi sẽ bị hủy:</span>
+                                                                <span style={{ fontWeight: 700, color: '#374151' }}>{courseCancelPreview.remainingSessionsCount}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Hoàn cho phụ huynh (giá gốc, không phí dịch vụ):</span>
+                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.parentRefundAmount)}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Escrow gia sư bị rút lại:</span>
+                                                                <span style={{ fontWeight: 700, color: '#b91c1c' }}>{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</span>
+                                                            </div>
+                                                            {courseCancelPreview.warnings.length > 0 && (
+                                                                <div style={{ marginTop: '6px' }}>
+                                                                    {courseCancelPreview.warnings.map((w, i) => (
+                                                                        <p key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontSize: '12px', margin: '2px 0' }}>
+                                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                                                                            {w}
+                                                                        </p>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {verdict === 'custom' && (
                                                 <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
@@ -1538,13 +1530,33 @@ const AdminDisputeDetailPage = () => {
                                             <button
                                                 className="dispute-submit-btn"
                                                 onClick={handleResolveDispute}
-                                                disabled={isSubmitting || adminNotes.trim().length < 10 || (verdict === 'custom' && previewLoading)}
+                                                disabled={
+                                                    isSubmitting ||
+                                                    adminNotes.trim().length < 10 ||
+                                                    (verdict === 'custom' && previewLoading) ||
+                                                    (verdict === 'cancel_course' && courseCancelPreviewLoading)
+                                                }
                                                 style={{ opacity: adminNotes.trim().length < 10 ? 0.5 : 1 }}
                                             >
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>
                                                 {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phương án'}
                                             </button>
                                             </Can>
+
+                                            {['pending', 'investigating'].includes(disputeDetail.status || '') && (
+                                                <Can permission="dispute.resolve">
+                                                    <button
+                                                        type="button"
+                                                        className="dispute-submit-btn dispute-submit-btn--mediation"
+                                                        onClick={() => setIsCloseModalOpen(true)}
+                                                        disabled={isSubmitting}
+                                                        title="Hai bên đã tự dàn xếp và muốn học tiếp — đóng phản ánh mà không phân xử"
+                                                    >
+                                                        <span className="material-symbols-outlined">handshake</span>
+                                                        Đóng do hoà giải
+                                                    </button>
+                                                </Can>
+                                            )}
                                         </div>
                                     )}
                                 </div>

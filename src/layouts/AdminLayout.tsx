@@ -3,8 +3,23 @@ import { PortalLayout } from '../components/shared/PortalLayout';
 import type { NavItem } from '../components/shared/PortalLayout';
 import { getPendingTutors, getPendingCertificates, getPendingProfileUpdateRequests } from '../services/admin.service';
 import { useAccess } from '../contexts/AccessContext';
+import { useUnreadBadgesByTab } from '../hooks/useUnreadBadgesByTab';
 
 const BADGE_FETCH_SIZE = 50;
+
+/**
+ * Notification type → tab sidebar. Badge đếm số notification CHƯA ĐỌC thuộc các type này và
+ * tự clear khi Admin/Staff mở đúng tab, khác với badge kiểm duyệt bên dưới (poll số việc tồn).
+ *
+ * Phải là const module-scope: hook re-subscribe SignalR mỗi khi ref của map đổi.
+ * Key '/admin-portal/payout' (số ít) phủ cả /payouts, /payouts/:id lẫn /payout/review.
+ */
+const NOTIFICATION_TYPES_BY_PATH: Record<string, string[]> = {
+  '/admin-portal/payout': ['withdrawal_request_new'],
+  '/admin-portal/support': ['support_message'],
+  '/admin-portal/disputes': ['dispute_new'],
+  '/admin-portal/vetting': ['tutor_profile_update'],
+};
 
 type SecuredNavItem = Omit<NavItem, 'children'> & {
   permission?: string;
@@ -18,6 +33,7 @@ const AdminLayout: React.FC = () => {
   const [pendingProfileUpdates, setPendingProfileUpdates] = useState(0);
   const [pendingCertificates, setPendingCertificates] = useState(0);
   const { isAdmin, isStaff, can, canAny } = useAccess();
+  const notificationBadges = useUnreadBadgesByTab(NOTIFICATION_TYPES_BY_PATH);
 
   useEffect(() => {
     if (!canAny(['tutor_approval.view', 'tutor_profile_update.view', 'certificate.view'])) return;
@@ -90,8 +106,9 @@ const AdminLayout: React.FC = () => {
         path: '/admin-portal/disputes',
         label: 'Tranh chấp',
         materialIcon: 'gavel',
+        badge: notificationBadges['/admin-portal/disputes'],
         children: [
-          { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', permission: 'dispute.view' },
+          { path: '/admin-portal/disputes', label: 'Khiếu nại', materialIcon: 'gavel', badge: notificationBadges['/admin-portal/disputes'], permission: 'dispute.view' },
           { path: '/admin-portal/warnings', label: 'Cảnh báo', materialIcon: 'warning', permission: 'warning.view' },
         ]
       },
@@ -108,8 +125,7 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
         ]
       },
-      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', permission: 'payout.view' },
-      { path: '/admin-portal/tax', label: 'Quản lý thuế (mới)', materialIcon: 'receipt_long', permission: 'financial.view' },
+      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', badge: notificationBadges['/admin-portal/payout'], permission: 'payout.view' },
       {
         path: '/admin-portal/resources',
         label: 'Cấu hình chương trình',
@@ -120,13 +136,14 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/resources/chapters', label: 'Chương & Loại câu', materialIcon: 'menu_book', permission: 'lookup.view' },
         ]
       },
+      { path: '/admin-portal/assessments', label: 'Bộ đề đánh giá', materialIcon: 'fact_check', adminOnly: true },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
       { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
-      // TEMP: proposal pages, running on mock data — see src/pages/AdminFinanceNew and src/pages/AdminTax
+      // TEMP: proposal page, running on mock data — see src/pages/AdminFinanceNew
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },
-      { path: '/admin-portal/support', label: 'Nhắn tin hỗ trợ', materialIcon: 'support_agent', permission: 'support.view' },
+      { path: '/admin-portal/support', label: 'Nhắn tin hỗ trợ', materialIcon: 'support_agent', badge: notificationBadges['/admin-portal/support'], permission: 'support.view' },
       { path: '/admin-portal/knowledge-base', label: 'Thông tin Hệ thống', materialIcon: 'auto_stories', permission: 'knowledge_base.view' },
       { path: '/admin-portal/settings', label: 'Cài đặt', materialIcon: 'settings', permission: 'lookup.view' },
     ];
@@ -161,7 +178,7 @@ const AdminLayout: React.FC = () => {
       void _adminOnly;
       return [{ ...navItem, children: visibleChildren }];
     });
-  }, [can, canAny, isAdmin, pendingCertificates, pendingProfileUpdates, pendingTutors]);
+  }, [can, canAny, isAdmin, notificationBadges, pendingCertificates, pendingProfileUpdates, pendingTutors]);
 
   const isActive = (path: string, pathname: string) => {
     if (path === '/admin-portal/payouts') return pathname.startsWith('/admin-portal/payout');

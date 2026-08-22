@@ -528,6 +528,28 @@ export const getRefundPreview = async (
   return data.content;
 };
 
+export interface CourseCancelPreviewDto {
+  bookingId: number;
+  /** Số buổi Scheduled/Reserved sẽ bị hủy nếu resolve bằng cancel_course. */
+  remainingSessionsCount: number;
+  /** Số tiền phụ huynh sẽ được hoàn (giá gốc mỗi buổi, KHÔNG gồm 5% phí dịch vụ). */
+  parentRefundAmount: number;
+  tutorEscrowReversed: number;
+  tutorFrozenBalance: number;
+  warnings: string[];
+}
+
+/**
+ * Preview số buổi/số tiền sẽ hủy+hoàn nếu resolve dispute bằng "Hủy khóa học & hoàn tiền".
+ * Backend: GET /api/admin/disputes/{disputeId}/cancel-course-preview
+ */
+export const getCancelCoursePreview = async (
+  disputeId: string | number,
+): Promise<CourseCancelPreviewDto> => {
+  const { data } = await api.get(`/admin/disputes/${disputeId}/cancel-course-preview`);
+  return data.content;
+};
+
 /**
  * Issue a warning to a user.
  * Backend: POST /api/admin/warnings/users/{userId}

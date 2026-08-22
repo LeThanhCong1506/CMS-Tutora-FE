@@ -82,6 +82,11 @@
     margin-top: 18px;
 }
 
+/* Permissions can hide every button in the row — don't leave its spacing behind */
+.dispute-admin-actions:empty {
+    display: none;
+}
+
 .dispute-investigate-action {
     display: flex;
     flex-direction: column;
@@ -891,6 +896,16 @@
 
 .dispute-submit-btn:disabled {
     cursor: not-allowed;
+}
+
+.dispute-submit-btn--mediation {
+    margin-top: 10px;
+    background: var(--color-gold);
+    color: var(--color-navy);
+}
+
+.dispute-submit-btn--mediation:hover:not(:disabled) {
+    background: #c9a873;
 }
 
 .dispute-resolved-summary {

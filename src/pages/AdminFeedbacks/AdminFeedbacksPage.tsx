@@ -217,9 +217,7 @@ const AdminFeedbacksPage: React.FC = () => {
 
     return (
         <PageContainer
-            eyebrow="Vận hành"
             title="Kiểm duyệt đánh giá"
-            subtitle="Xem đánh giá gia sư nhận được và ẩn nội dung vi phạm. Ẩn một đánh giá sẽ loại nó khỏi trang gia sư và tính lại điểm trung bình."
             maxWidth="wide"
             headerAction={
                 <div className="admin-ui-actions">
@@ -291,7 +289,6 @@ const AdminFeedbacksPage: React.FC = () => {
 
             <SectionCard
                 title="Danh sách đánh giá"
-                subtitle="Gồm cả đánh giá đã bị ẩn — khác với danh sách công khai trên trang gia sư."
                 footer={`Hiển thị ${feedbacks.length} / ${totalCount.toLocaleString('vi-VN')} đánh giá`}
             >
                 <DataTable<AdminFeedbackItem>
