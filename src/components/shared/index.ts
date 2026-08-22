@@ -44,3 +44,5 @@ export type { ErrorFallbackProps } from './ErrorBoundary';
 export { SessionLogPanel } from './SessionLogPanel';
 
 export { TutorReliabilityCard } from './TutorReliabilityCard';
+
+export { ProtectedImage, useProtectedImage } from './ProtectedImage';

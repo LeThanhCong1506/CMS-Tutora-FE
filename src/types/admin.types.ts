@@ -274,6 +274,7 @@ export interface PendingTutorSections {
   };
   introduction?: {
     bio: string | null;
+    degree: string | null;
     education: string | null;
     gpa: number | null;
     gpaScale: number | null;
@@ -374,6 +375,8 @@ export interface ProfileUpdateRequestFromAPI {
   proposedTeachingAreaDistrict: string | null;
   currentBio: string | null;
   proposedBio: string | null;
+  currentDegree: string | null;
+  proposedDegree: string | null;
   currentEducation: string | null;
   proposedEducation: string | null;
   currentExperience: string | null;

@@ -11,13 +11,14 @@ import {
 import type { AdminWithdrawalDetail, ApprovePayoutRequest } from '../../../types/adminPayout.types';
 import { getUserIdFromToken } from '../../../services/auth.service';
 import { formatApprovalDecision, formatCurrency, formatDateTime } from '../../../utils/formatters';
-import { PageContainer, SectionCard, StatusBadge } from '../../../components/shared';
+import { PageContainer, ProtectedImage, SectionCard, StatusBadge } from '../../../components/shared';
 import { Can } from '../../../contexts/AccessContext';
 import WithdrawalStatusBadge from '../WithdrawalStatusBadge';
 import PayoutSummaryPanel, { PayoutSummaryFact } from '../PayoutSummaryPanel';
 import PreviousWithdrawalsCard from './components/PreviousWithdrawalsCard';
 import ApproveWithdrawalModal from './components/ApproveWithdrawalModal';
 import RejectWithdrawalModal from './components/RejectWithdrawalModal';
+import ProofImageModal from '../ProofImageModal';
 import '../../../styles/pages/admin-payout.css';
 
 type ApiError = {
@@ -105,6 +106,7 @@ const PayoutDetailPage: React.FC = () => {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [proofZoomed, setProofZoomed] = useState(false);
 
   const requestId = Number.parseInt(id || '', 10);
   const isReviewDetail = location.pathname.startsWith('/admin-portal/payout/review/');
@@ -268,10 +270,20 @@ const PayoutDetailPage: React.FC = () => {
   if (requestInfo.rejectionReason) {
     auditRows.push({ label: 'Lý do từ chối', value: requestInfo.rejectionReason });
   }
+  if (requestInfo.bankTransactionCode) {
+    // Mã THAM CHIẾU do ngân hàng cấp (liên ngân hàng qua Napas), staff nhập tay từ biên lai —
+    // đây mới là thứ khớp được với sao kê, khác với "mã giao dịch" nội bộ app ngân hàng.
+    auditRows.push({
+      label: 'Mã tham chiếu ngân hàng',
+      value: (
+        <span className="admin-ui-code-chip payout-audit-code">{requestInfo.bankTransactionCode}</span>
+      ),
+    });
+  }
   if (requestInfo.transactionId) {
     // Mã do hệ thống sinh khi duyệt, dùng để tra lại giao dịch — không phải mã của ngân hàng.
     auditRows.push({
-      label: 'Mã đối soát',
+      label: 'Mã đối soát nội bộ',
       value: <span className="admin-ui-code-chip payout-audit-code">{requestInfo.transactionId}</span>,
     });
   }
@@ -425,13 +437,12 @@ const PayoutDetailPage: React.FC = () => {
               {requestInfo.proofImageUrl && (
                 <div className="payout-audit-proof">
                   <span className="payout-info-label">Biên lai chuyển khoản</span>
-                  <a href={requestInfo.proofImageUrl} target="_blank" rel="noreferrer">
-                    <img
-                      className="payout-proof-image"
-                      src={requestInfo.proofImageUrl}
-                      alt={`Biên lai chuyển khoản cho yêu cầu #${requestInfo.withdrawalId}`}
-                    />
-                  </a>
+                  <ProtectedImage
+                    className="payout-proof-image"
+                    src={requestInfo.proofImageUrl}
+                    alt={`Biên lai chuyển khoản cho yêu cầu #${requestInfo.withdrawalId}`}
+                    onClick={() => setProofZoomed(true)}
+                  />
                 </div>
               )}
             </SectionCard>
@@ -501,6 +512,13 @@ const PayoutDetailPage: React.FC = () => {
           tutorName={tutorInfo.name}
         />
       )}
+
+      <ProofImageModal
+        imageUrl={proofZoomed ? requestInfo.proofImageUrl : null}
+        title={`Biên lai chuyển khoản #${requestInfo.withdrawalId}`}
+        alt={`Biên lai chuyển khoản cho yêu cầu #${requestInfo.withdrawalId}`}
+        onClose={() => setProofZoomed(false)}
+      />
     </PageContainer>
   );
 };

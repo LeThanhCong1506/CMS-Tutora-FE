@@ -30,6 +30,17 @@ export function getNotificationTargetPath(notification: NotificationDTO): string
         return `${prefix}/support`;
     }
 
+    // ── Yêu cầu rút tiền mới → thẳng trang duyệt payout (refId = withdrawalId) ──
+    if (type === 'withdrawal_request_new') {
+        return refId ? `${prefix}/payouts/${refId}` : `${prefix}/payouts`;
+    }
+
+    // ── Khiếu nại mới → trang xử lý khiếu nại. refId là disputeId (KHÔNG phải classSessionId):
+    //    route CMS là `disputes/:id` với id = disputeId, khác app người dùng. ──
+    if (type === 'dispute_new') {
+        return refId ? `${prefix}/disputes/${refId}` : `${prefix}/disputes`;
+    }
+
     // ── Booking deep-link (type-based) ──
     if (
         (type === 'booking_new' || type === 'booking_accepted' || type === 'booking_declined') &&
@@ -49,6 +60,12 @@ export function getNotificationTargetPath(notification: NotificationDTO): string
     }
     if (combined.includes('cập nhật hồ sơ')) {
         return `${prefix}/vetting/profiles?tab=updates`;
+    }
+    if (combined.includes('tranh chấp') || combined.includes('khiếu nại')) {
+        return refId ? `${prefix}/disputes/${refId}` : `${prefix}/disputes`;
+    }
+    if (combined.includes('rút tiền') || combined.includes('payout')) {
+        return refId ? `${prefix}/payouts/${refId}` : `${prefix}/payouts`;
     }
 
     // ── Default ──
