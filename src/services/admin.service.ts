@@ -973,20 +973,31 @@ export const getDisputeChatHistory = async (disputeId: string | number): Promise
  * Backend: GET /api/admin/disputes/{disputeId}/recording
  * Returns APIResponse<DisputeRecordingResponse>
  *
- * `recordingUrl` là đường dẫn tương đối tới endpoint proxy (token ngắn hạn, hết hạn sau ít
+ * `streamUrl` là đường dẫn tương đối tới endpoint proxy (token ngắn hạn, hết hạn sau ít
  * phút) — KHÔNG phải link Drive trực tiếp (file trên Drive luôn ở chế độ private). Ghép với
  * gốc backend thật (VITE_BACKEND_URL) trước khi gán vào `<video src>`.
  */
-export interface DisputeRecording {
-  disputeId: number;
-  classSessionId?: number;
+export interface DisputeRecordingChainItem {
+  classSessionId: number;
+  /** "Buổi 1", "Buổi 2"... đánh số theo thứ tự thời gian trong chuỗi bù/phụ/học lại. */
+  label: string;
+  scheduledStart: string;
+  /** True nếu đây là đúng buổi đang bị tranh chấp trong phản ánh này. */
+  isCurrent: boolean;
   /**
    * available (xem được) | processing (đang đẩy lên lưu trữ) | recording (đang ghi) |
    * failed (buổi đã đóng phòng nhưng Agora không trả về file nào — bản ghi hỏng) | none.
    */
   status: 'available' | 'processing' | 'recording' | 'failed' | 'none';
-  recordingUrl?: string;
+  streamUrl?: string;
   available: boolean;
+}
+
+export interface DisputeRecording {
+  disputeId: number;
+  /** Toàn bộ chuỗi buổi liên kết chứa buổi bị tranh chấp — có thể dài hơn 1 nếu buổi này từng
+   * bị ngắt/nối/học lại nhiều lần. Item có isCurrent=true là đúng buổi trong phản ánh. */
+  chain: DisputeRecordingChainItem[];
 }
 
 export const getDisputeRecording = async (disputeId: string | number): Promise<DisputeRecording> => {

@@ -98,6 +98,7 @@ export const LESSON_STATUS_MAP: Record<string, { label: string; variant: StatusV
     no_show: { label: 'Vắng mặt', variant: 'error' },
     disputed: { label: 'Đang khiếu nại', variant: 'error' },
     checked_in: { label: 'Đã check-in', variant: 'info' },
+    interrupted: { label: 'Bị ngắt giữa buổi', variant: 'dark' },
 };
 
 /**
