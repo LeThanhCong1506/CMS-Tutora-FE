@@ -13,7 +13,13 @@ const getNotificationIcon = (notification: NotificationDTO) => {
     if (title.includes('booking') || title.includes('request') || title.includes('đặt lịch')) {
         return 'event_available';
     }
-    if (title.includes('payment') || title.includes('paid') || title.includes('payout') || title.includes('thanh toán')) {
+    if (
+        title.includes('payment') ||
+        title.includes('paid') ||
+        title.includes('payout') ||
+        title.includes('thanh toán') ||
+        title.includes('rút tiền')
+    ) {
         return 'payments';
     }
     if (title.includes('message') || title.includes('chat') || title.includes('tin nhắn')) {
