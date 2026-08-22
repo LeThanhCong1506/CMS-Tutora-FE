@@ -119,7 +119,10 @@ export interface RequestInfo {
     claimedByName: string | null;
     claimedAt: string | null;
     rejectionReason: string | null;
+    /** Mã đối soát nội bộ do BE sinh khi duyệt — KHÔNG phải mã của ngân hàng. */
     transactionId: string | null;
+    /** Mã tham chiếu do ngân hàng cấp (liên ngân hàng qua Napas), Admin/Staff nhập khi xác nhận chuyển khoản. */
+    bankTransactionCode: string | null;
     paidAt: string | null;
     proofImageUrl: string | null;
 }
@@ -186,6 +189,8 @@ export interface ApproveResult {
 export interface ApprovePayoutRequest {
     paidAt: string;
     note: string;
+    /** Mã tham chiếu đọc trên biên lai của ngân hàng, dùng để đối soát với sao kê. */
+    bankTransactionCode: string;
     proofImage: File;
 }
 
