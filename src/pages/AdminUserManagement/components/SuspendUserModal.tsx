@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const MIN_REASON = 15;
 const DURATION_PRESETS = [3, 7, 14, 30, 60, 90];
@@ -56,7 +57,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
             onClose();
         } catch (err) {
             console.error('Error suspending user:', err);
-            toast.error('Không thể tạm ngưng hồ sơ. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể tạm ngưng hồ sơ. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }

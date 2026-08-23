@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const MIN_REASON = 20;
 
@@ -50,7 +51,7 @@ const BlockUserModal = ({ isOpen, onClose, user, onBlock }: BlockUserModalProps)
             onClose();
         } catch (err) {
             console.error('Error blocking user:', err);
-            toast.error('Không thể chặn tài khoản. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể chặn tài khoản. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }
