@@ -532,8 +532,15 @@ export interface CourseCancelPreviewDto {
   bookingId: number;
   /** Số buổi Scheduled/Reserved sẽ bị hủy nếu resolve bằng cancel_course. */
   remainingSessionsCount: number;
-  /** Số tiền phụ huynh sẽ được hoàn (giá gốc mỗi buổi, KHÔNG gồm 5% phí dịch vụ). */
+  /** Số tiền phụ huynh sẽ được hoàn (giá gốc mỗi buổi, KHÔNG gồm 5% phí dịch vụ) — đã trừ phần
+   * thuộc về gia sư cho (các) buổi đã dạy. */
   parentRefundAmount: number;
+  /** Số buổi được tính là ĐÃ dạy, kể cả buổi đang khiếu nại (sẽ được settle như đã dạy đủ trước
+   * khi hủy phần còn lại). */
+  deliveredSessionsCount: number;
+  /** Số tiền sẽ giải ngân cho gia sư (Frozenbalance → Balance) cho các buổi đã dạy. */
+  tutorEscrowReleased: number;
+  /** Số tiền escrow của gia sư sẽ bị rút lại cho các buổi CHƯA dạy — khác với tutorEscrowReleased. */
   tutorEscrowReversed: number;
   tutorFrozenBalance: number;
   warnings: string[];
