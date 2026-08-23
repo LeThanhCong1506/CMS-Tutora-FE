@@ -13,6 +13,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import HideFeedbackModal from './HideFeedbackModal';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-feedbacks.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
@@ -76,8 +77,8 @@ const AdminFeedbacksPage: React.FC = () => {
             setFeedbacks(result.items);
             setTotalCount(result.totalCount);
             setStats(result.stats);
-        } catch {
-            toast.error('Không thể tải danh sách đánh giá.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể tải danh sách đánh giá.'));
         } finally {
             setLoading(false);
         }
@@ -109,8 +110,8 @@ const AdminFeedbacksPage: React.FC = () => {
             await toggleFeedbackVisibility(feedback.feedbackId);
             toast.success('Đã hiện lại đánh giá. Điểm gia sư được tính lại và hai bên đã được thông báo.');
             await fetchFeedbacks();
-        } catch {
-            toast.error('Không thể hiện lại đánh giá.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể hiện lại đánh giá.'));
         } finally {
             setTogglingId(null);
         }
@@ -217,7 +218,9 @@ const AdminFeedbacksPage: React.FC = () => {
 
     return (
         <PageContainer
-            title="Kiểm duyệt đánh giá"
+            eyebrow="Vận hành"
+            eyebrowInfo="Theo dõi chất lượng đánh giá và kiểm soát nội dung được hiển thị trên hệ thống."
+            title="Đánh giá"
             maxWidth="wide"
             headerAction={
                 <div className="admin-ui-actions">
@@ -261,7 +264,7 @@ const AdminFeedbacksPage: React.FC = () => {
                 />
             </div>
 
-            <SectionCard>
+            <SectionCard footer={`Hiển thị ${feedbacks.length} / ${totalCount.toLocaleString('vi-VN')} đánh giá`}>
                 <div className="admin-ui-toolbar feedback-toolbar">
                     <FilterTabs
                         tabs={tabs}
@@ -285,12 +288,6 @@ const AdminFeedbacksPage: React.FC = () => {
                         </select>
                     </div>
                 </div>
-            </SectionCard>
-
-            <SectionCard
-                title="Danh sách đánh giá"
-                footer={`Hiển thị ${feedbacks.length} / ${totalCount.toLocaleString('vi-VN')} đánh giá`}
-            >
                 <DataTable<AdminFeedbackItem>
                     columns={columns}
                     data={feedbacks}
