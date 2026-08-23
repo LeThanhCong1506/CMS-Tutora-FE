@@ -626,6 +626,9 @@ export interface DisputeDetail {
   resolutionNote: string | null;
   refundAmount: number | null;
   refundPercentage: number | null;
+  /** False khi chuỗi buổi (bù/phụ/học lại) chứa buổi này đã học lại tối đa số lần cho phép — CMS
+   * phải khoá lựa chọn "Học lại buổi này" trong modal đóng phản ánh, chỉ còn hoàn tiền. */
+  relearnAvailable: boolean;
   tutorResponse: string | null;
   tutorRespondedAt: string | null;
   /** Phản hồi của phụ huynh/học sinh khi dispute do GIA SƯ tạo (chiều ngược với tutorResponse). */
@@ -931,13 +934,16 @@ export interface ResolveDisputeRequest {
 /**
  * Buổi học về trạng thái nào khi đóng phản ánh do hai bên hoà giải.
  * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư như bình thường.
- * - 'reschedule': hai bên thống nhất học lại buổi này — buổi về 'scheduled', chưa quyết toán.
+ * - 'reschedule': hai bên thống nhất học lại — buổi gốc chuyển 'cancelled' (giữ nguyên dữ liệu,
+ *   không xoá), tạo 1 buổi học lại MỚI (Link 3) ở giờ do Admin/Staff chọn (relearnScheduledStart).
  */
 export type CloseDisputeOutcome = 'completed' | 'reschedule';
 
 export interface CloseDisputeRequest {
   classSessionOutcome: CloseDisputeOutcome;
   note: string;
+  /** Giờ học lại do Admin/Staff chọn — bắt buộc khi classSessionOutcome = 'reschedule'. ISO string, phải ở tương lai. */
+  relearnScheduledStart?: string;
 }
 
 // Legacy types kept for backward compatibility
