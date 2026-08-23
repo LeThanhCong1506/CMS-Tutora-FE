@@ -179,6 +179,12 @@ export interface AdminBookingClassSessionItem {
     classSessionPrice?: number;
     isSettled?: boolean;
     isMakeup?: boolean;
+    /** Buổi phụ (Link 2) — sinh ra khi originalClassSessionId bị báo ngắt giữa chừng. */
+    isContinuation?: boolean;
+    /** Buổi học lại (Link 3) — sinh ra khi hoà giải dispute chọn "học lại". */
+    isDisputeRelearn?: boolean;
+    /** Buổi gốc mà buổi bù/buổi phụ/buổi học lại này trỏ về — undefined nếu đây là buổi gốc. */
+    originalClassSessionId?: number;
     tutorNotes?: string;
     meetingLink?: string;
     // TODO: BE chưa trả 2 field attendance — đã yêu cầu Công bổ sung:

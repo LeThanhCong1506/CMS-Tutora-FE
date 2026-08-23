@@ -166,10 +166,12 @@ const AdminDisputeDetailPage = () => {
     const [chatMessages, setChatMessages] = useState<DisputeChatMessage[]>([]);
     const [chatLoading, setChatLoading] = useState(false);
 
-    // Recording (video buổi học)
+    // Recording (video buổi học) — recording.chain có thể nhiều buổi (buổi bù/phụ/học lại nối
+    // tiếp nhau), selectedChainSessionId chọn đang xem buổi nào trong chuỗi đó.
     const [recording, setRecording] = useState<DisputeRecording | null>(null);
     const [recordingLoading, setRecordingLoading] = useState(false);
     const [recordingError, setRecordingError] = useState(false);
+    const [selectedChainSessionId, setSelectedChainSessionId] = useState<number | null>(null);
 
     // Private dispute chat threads (admin<->tutor, admin<->parent/student)
     const [tutorThread, setTutorThread] = useState<DisputeMessageDto[]>([]);
@@ -284,6 +286,8 @@ const AdminDisputeDetailPage = () => {
             setRecordingError(false);
             const data = await getDisputeRecording(disputeId);
             setRecording(data);
+            // Mặc định mở đúng buổi đang bị tranh chấp (isCurrent), không phải buổi đầu chuỗi.
+            setSelectedChainSessionId(data.chain.find((item) => item.isCurrent)?.classSessionId ?? data.chain[0]?.classSessionId ?? null);
         } catch (err) {
             console.error('Error fetching dispute recording:', err);
             setRecording(null);
@@ -292,6 +296,8 @@ const AdminDisputeDetailPage = () => {
             setRecordingLoading(false);
         }
     }, [disputeId]);
+
+    const selectedChainItem = recording?.chain.find((item) => item.classSessionId === selectedChainSessionId) ?? null;
 
     useEffect(() => {
         // KHÔNG gate theo recordingLoading: nó tự chuyển true→false khi fetch xong (kể cả
@@ -409,9 +415,9 @@ const AdminDisputeDetailPage = () => {
     };
 
     /** Đóng phản ánh do hai bên hoà giải — không phân xử, không hoàn tiền. Modal tự hiện toast/đóng. */
-    const handleCloseDispute = async (outcome: CloseDisputeOutcome, note: string) => {
+    const handleCloseDispute = async (outcome: CloseDisputeOutcome, note: string, relearnScheduledStart?: string) => {
         if (!disputeDetail || !disputeId) return;
-        await closeDispute(disputeDetail.disputeId, { classSessionOutcome: outcome, note });
+        await closeDispute(disputeDetail.disputeId, { classSessionOutcome: outcome, note, relearnScheduledStart });
         await fetchDisputeDetail(disputeId);
     };
 
@@ -1160,13 +1166,50 @@ const AdminDisputeDetailPage = () => {
                                     </div>
                                 )}
 
-                                {/* Recording (video buổi học) */}
+                                {/* Recording (video buổi học) — chuỗi buổi bù/phụ/học lại nối tiếp nhau
+                                    hiện đủ dưới dạng tab, không chỉ đúng 1 buổi bị tranh chấp. */}
                                 {activeTab === 'recordings' && (
                                     <div className="dispute-chat-area">
                                         <h3 className="dispute-section-title" style={{ margin: '0 0 20px' }}>
                                             <span className="material-symbols-outlined" aria-hidden="true">videocam</span>
                                             Ghi hình buổi học
                                         </h3>
+
+                                        {!recordingLoading && !recordingError && recording && recording.chain.length > 1 && (
+                                            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                                                {recording.chain.map((item) => (
+                                                    <button
+                                                        key={item.classSessionId}
+                                                        type="button"
+                                                        onClick={() => setSelectedChainSessionId(item.classSessionId)}
+                                                        style={{
+                                                            padding: '6px 14px',
+                                                            borderRadius: 999,
+                                                            border: item.classSessionId === selectedChainSessionId ? '1px solid var(--color-navy)' : '1px solid #e2e8f0',
+                                                            background: item.classSessionId === selectedChainSessionId ? 'var(--color-navy)' : '#fff',
+                                                            color: item.classSessionId === selectedChainSessionId ? '#fff' : '#334155',
+                                                            fontSize: 13,
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                        }}
+                                                    >
+                                                        {item.label}
+                                                        {item.isCurrent && (
+                                                            <span
+                                                                title="Buổi đang bị tranh chấp"
+                                                                style={{
+                                                                    width: 6, height: 6, borderRadius: '50%',
+                                                                    background: item.classSessionId === selectedChainSessionId ? '#fff' : '#dc2626',
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {recordingLoading ? (
                                             <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -1190,23 +1233,24 @@ const AdminDisputeDetailPage = () => {
                                                     Thử lại
                                                 </button>
                                             </div>
-                                        ) : recording?.status === 'available' && recording.recordingUrl ? (
+                                        ) : selectedChainItem?.status === 'available' && selectedChainItem.streamUrl ? (
                                             <video
-                                                src={resolveRecordingStreamUrl(recording.recordingUrl)}
+                                                key={selectedChainItem.classSessionId}
+                                                src={resolveRecordingStreamUrl(selectedChainItem.streamUrl)}
                                                 controls
                                                 style={{ width: '100%', maxHeight: '480px', borderRadius: '12px', background: '#111827', display: 'block' }}
                                                 // BE báo "available" theo dữ liệu ClassSession, nhưng file trên Drive có thể đã
                                                 // hỏng/token hết hạn — không có onError thì video treo spinner mặc định mãi mãi.
                                                 onError={() => setRecordingError(true)}
                                             />
-                                        ) : recording?.status === 'recording' ? (
+                                        ) : selectedChainItem?.status === 'recording' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
                                                     schedule
                                                 </span>
                                                 <p>Buổi học đang diễn ra — video sẽ có sau khi kết thúc.</p>
                                             </div>
-                                        ) : recording?.status === 'failed' ? (
+                                        ) : selectedChainItem?.status === 'failed' ? (
                                             // Đã ghi hình nhưng Agora không trả về file nào lúc đóng phòng: không có gì để
                                             // chờ thêm. Admin cần phân biệt với "chưa từng ghi hình" khi cân nhắc bằng chứng.
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -1215,7 +1259,7 @@ const AdminDisputeDetailPage = () => {
                                                 </span>
                                                 <p>Ghi hình không thành công — hệ thống đã bật ghi hình nhưng không tạo được file cho buổi này.</p>
                                             </div>
-                                        ) : recording?.status === 'processing' ? (
+                                        ) : selectedChainItem?.status === 'processing' ? (
                                             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '12px', display: 'block' }}>
                                                     schedule
@@ -1528,6 +1572,7 @@ const AdminDisputeDetailPage = () => {
                 onClose={() => setIsCloseModalOpen(false)}
                 disputeId={disputeDetail.disputeId}
                 onConfirm={handleCloseDispute}
+                relearnAvailable={disputeDetail.relearnAvailable}
             />
             <TutorWarningModal
                 isOpen={isWarningModalOpen}
