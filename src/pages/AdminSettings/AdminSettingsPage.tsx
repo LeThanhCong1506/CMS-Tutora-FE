@@ -4,6 +4,7 @@ import { PageContainer, SectionCard, StatCard, StatusBadge } from '../../compone
 import { getCommissionConfig, updateCommissionConfig } from '../../services/adminCommission.service';
 import { getWithdrawalLimitConfig, updateWithdrawalLimitConfig } from '../../services/adminWithdrawalLimit.service';
 import { formatVNDNumber } from '../../utils/formatters';
+import { apiErrorMessage } from '../../utils/apiError';
 
 import '../../styles/pages/admin-settings.css';
 
@@ -35,8 +36,8 @@ export const AdminSettingsPage = () => {
                 if (cancelled) return;
                 setParentFeePercent(config.parentFeePercent);
                 setTutorFeePercent(config.tutorFeePercent);
-            } catch {
-                if (!cancelled) toast.error('Không tải được cấu hình hoa hồng.');
+            } catch (error) {
+                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được cấu hình hoa hồng.'));
             } finally {
                 if (!cancelled) setLoadingCommission(false);
             }
@@ -46,8 +47,8 @@ export const AdminSettingsPage = () => {
                 const config = await getWithdrawalLimitConfig();
                 if (cancelled) return;
                 setMinWithdrawal(config.minWithdrawalAmount);
-            } catch {
-                if (!cancelled) toast.error('Không tải được ngưỡng rút tiền tối thiểu.');
+            } catch (error) {
+                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được ngưỡng rút tiền tối thiểu.'));
             } finally {
                 if (!cancelled) setLoadingWithdrawalLimit(false);
             }
@@ -68,8 +69,8 @@ export const AdminSettingsPage = () => {
             setTutorFeePercent(commission.tutorFeePercent);
             setMinWithdrawal(withdrawalLimit.minWithdrawalAmount);
             toast.success('Đã lưu cấu hình tài chính');
-        } catch {
-            toast.error('Không thể lưu cấu hình tài chính.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể lưu cấu hình tài chính.'));
         } finally {
             setSavingCommission(false);
         }
@@ -96,8 +97,9 @@ export const AdminSettingsPage = () => {
 
     return (
         <PageContainer
-            title="Cài đặt hệ thống"
-            subtitle="Quản lý cấu hình vận hành và quy tắc tài chính của nền tảng."
+            eyebrow="Hệ thống"
+            eyebrowInfo="Quản lý cấu hình vận hành và các quy tắc tài chính của nền tảng."
+            title="Cài đặt"
             headerAction={
                 <div className="admin-ui-actions">
                     <button
