@@ -39,6 +39,7 @@ import {
   type AssessmentQuestionPayload,
 } from '../../types/assessment.types';
 import type { Chapter } from '../../types/lookup.type';
+import { apiErrorMessage } from '../../utils/apiError';
 
 interface Props {
   assessment: AssessmentDetail;
@@ -298,10 +299,7 @@ export const AssessmentQuestionFormModal: React.FC<Props> = ({ assessment, quest
       onSaved();
     } catch (err) {
       // BE validate lại đáp án -> ưu tiên message của BE.
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        (isEdit ? 'Cập nhật câu hỏi thất bại.' : 'Thêm câu hỏi thất bại.');
-      toast.error(message);
+      toast.error(apiErrorMessage(err, isEdit ? 'Cập nhật câu hỏi thất bại.' : 'Thêm câu hỏi thất bại.'));
     } finally {
       setSaving(false);
     }
