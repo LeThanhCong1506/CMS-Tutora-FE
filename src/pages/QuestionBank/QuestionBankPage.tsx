@@ -39,6 +39,7 @@ import {
 import type { Chapter } from '../../types/lookup.type';
 import { PAGE_SIZE } from '../../constants/questions';
 import { QuestionFormModal } from '../../components/QuestionForm/QuestionFormModal';
+import { apiErrorMessage } from '../../utils/apiError';
 
 // 2 tabs cho question bank.
 const STATUS_TABS: { key: ReviewStatus; label: string }[] = [
@@ -131,7 +132,7 @@ const QuestionBankPage: React.FC = () => {
         setTotal(res.content.totalCount ?? 0);
       } catch (err) {
         if (!(err instanceof Error && err.name === 'CanceledError')) {
-          toast.error('Không tải được danh sách câu hỏi.');
+          toast.error(apiErrorMessage(err, 'Không tải được danh sách câu hỏi.'));
         }
       } finally {
         setLoading(false);
@@ -163,8 +164,8 @@ const QuestionBankPage: React.FC = () => {
       await updateQuestion(q.id, payload);
       toast.success('Đã cập nhật trạng thái.');
       fetchData();
-    } catch {
-      toast.error('Cập nhật thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Cập nhật thất bại.'));
     }
   };
 
@@ -174,8 +175,8 @@ const QuestionBankPage: React.FC = () => {
       await deleteQuestion(q.id);
       toast.success('Đã xoá câu hỏi.');
       fetchData();
-    } catch {
-      toast.error('Xoá thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Xoá thất bại.'));
     }
   };
 
@@ -211,8 +212,9 @@ const QuestionBankPage: React.FC = () => {
 
   return (
     <PageContainer
+      eyebrow="Tài nguyên"
+      eyebrowInfo="Quản lý ngân hàng câu hỏi, tải lên tài liệu PDF hoặc nhập câu hỏi thủ công."
       title="Ngân hàng câu hỏi"
-      subtitle="Quản lý Ngân hàng câu hỏi. Tải lên PDF hoặc nhập tay."
       maxWidth="wide"
       headerAction={
         <div className="flex gap-2">
