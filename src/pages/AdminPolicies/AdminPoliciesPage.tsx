@@ -19,6 +19,7 @@ import {
 } from '../../services/adminPolicy.service';
 import PolicyEditorModal from './components/PolicyEditorModal';
 import './admin-policies.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const STATUS_META: Record<PolicyStatus, { label: string; variant: StatusVariant }> = {
     draft: { label: 'Nháp', variant: 'warning' },
@@ -82,8 +83,8 @@ const AdminPoliciesPage = () => {
                 id: item.policyDocumentId,
             }));
             setDocuments(rows);
-        } catch {
-            toast.error('Không tải được danh sách văn bản chính sách.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không tải được danh sách văn bản chính sách.'));
         } finally {
             setLoading(false);
         }
@@ -110,8 +111,8 @@ const AdminPoliciesPage = () => {
             await setPolicyDocumentPublished(document.id, publish);
             toast.success(publish ? 'Đã xuất bản văn bản.' : 'Đã gỡ khỏi trang công khai.');
             await fetchDocuments();
-        } catch {
-            toast.error('Không thực hiện được thao tác.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thực hiện được thao tác.'));
         } finally {
             setBusyId(null);
         }
@@ -123,8 +124,8 @@ const AdminPoliciesPage = () => {
             await restorePolicyDocument(document.id);
             toast.success(`Đã khôi phục "${document.title}" về dạng nháp.`);
             await fetchDocuments();
-        } catch {
-            toast.error('Không khôi phục được văn bản.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không khôi phục được văn bản.'));
         } finally {
             setBusyId(null);
         }
@@ -265,6 +266,7 @@ const AdminPoliciesPage = () => {
         <>
             <PageContainer
                 eyebrow="Nội dung"
+                eyebrowInfo="Quản lý nội dung, trạng thái xuất bản và thứ tự hiển thị của các văn bản chính sách trên hệ thống."
                 title="Văn bản chính sách"
                 maxWidth="wide"
                 headerAction={
@@ -289,11 +291,6 @@ const AdminPoliciesPage = () => {
                             onChange={(key) => setView(key as PolicyView)}
                             ariaLabel="Lọc văn bản chính sách"
                         />
-                        <span className="policy-list__note">
-                            {isArchiveView
-                                ? `${documents.length} văn bản đã lưu trữ`
-                                : `${documents.length} văn bản · kéo để đổi thứ tự trên trang công khai`}
-                        </span>
                     </div>
 
                     <SortableDataTable
