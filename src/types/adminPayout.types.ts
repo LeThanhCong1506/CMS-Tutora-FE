@@ -186,6 +186,7 @@ export interface ApproveResult {
 export interface ApprovePayoutRequest {
     paidAt: string;
     note: string;
+    bankTransactionCode: string;
     proofImage: File;
 }
 

@@ -152,6 +152,7 @@ export const approvePayoutRequest = async (id: number, request: ApprovePayoutReq
         const formData = new FormData();
         formData.append('paidAt', request.paidAt);
         formData.append('note', request.note);
+        formData.append('bankTransactionCode', request.bankTransactionCode);
         formData.append('proofImage', request.proofImage);
 
         const { data } = await api.post(`/admin/payouts/${id}/approve`, formData);

@@ -8,6 +8,9 @@ const toLocalDateTimeInput = (date: Date): string => {
     return local.toISOString().slice(0, 16);
 };
 
+// Khớp [RegularExpression] của ApproveWithdrawalRequest.BankTransactionCode ở backend.
+const BANK_TRANSACTION_CODE_PATTERN = /^[A-Za-z0-9._/-]+$/;
+
 interface Props {
     open: boolean;
     onCancel: () => void;
@@ -33,6 +36,7 @@ const ApproveWithdrawalModal = ({
 }: Props) => {
     const [paidAt, setPaidAt] = useState(() => toLocalDateTimeInput(new Date()));
     const [note, setNote] = useState('');
+    const [bankTransactionCode, setBankTransactionCode] = useState('');
     const [proofImage, setProofImage] = useState<File | null>(null);
     const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState('');
@@ -70,6 +74,7 @@ const ApproveWithdrawalModal = ({
         event.preventDefault();
 
         const trimmedNote = note.trim();
+        const trimmedBankTransactionCode = bankTransactionCode.trim();
 
         if (!paidAt || Number.isNaN(new Date(paidAt).getTime())) {
             setError('Vui lòng nhập thời gian chuyển khoản hợp lệ');
@@ -83,6 +88,18 @@ const ApproveWithdrawalModal = ({
             setError('Vui lòng nhập ghi chú đối soát ít nhất 3 ký tự');
             return;
         }
+        if (trimmedBankTransactionCode.length < 4) {
+            setError('Mã tham chiếu ngân hàng phải có ít nhất 4 ký tự');
+            return;
+        }
+        if (trimmedBankTransactionCode.length > 100) {
+            setError('Mã tham chiếu ngân hàng không được vượt quá 100 ký tự');
+            return;
+        }
+        if (!BANK_TRANSACTION_CODE_PATTERN.test(trimmedBankTransactionCode)) {
+            setError('Mã tham chiếu ngân hàng chỉ được gồm chữ, số và các ký tự . _ - /');
+            return;
+        }
         if (!proofImage) {
             setError('Vui lòng tải ảnh biên lai chuyển khoản');
             return;
@@ -92,6 +109,7 @@ const ApproveWithdrawalModal = ({
         onConfirm({
             paidAt: new Date(paidAt).toISOString(),
             note: trimmedNote,
+            bankTransactionCode: trimmedBankTransactionCode,
             proofImage,
         });
     };
@@ -132,45 +150,48 @@ const ApproveWithdrawalModal = ({
                     </button>
                 </header>
 
-                <div className="payout-modal-body">
-                    <div className="payout-modal-alert warning" role="note">
-                        <span className="material-symbols-outlined" aria-hidden="true">warning</span>
-                        <p>
-                            Chỉ bấm xác nhận <strong>sau khi</strong> bạn đã chuyển khoản thủ công đúng số tiền
-                            vào tài khoản thụ hưởng bên dưới. Hệ thống sẽ chuyển yêu cầu sang trạng thái hoàn tất
-                            và thông báo cho người dùng — hành động này không thể hoàn tác.
-                        </p>
+                <div className="payout-modal-body payout-approve-layout">
+                    <div className="payout-approve-col payout-approve-col-context">
+                        <div className="payout-modal-alert warning" role="note">
+                            <span className="material-symbols-outlined" aria-hidden="true">warning</span>
+                            <p>
+                                Chỉ bấm xác nhận <strong>sau khi</strong> bạn đã chuyển khoản thủ công đúng số tiền
+                                vào tài khoản thụ hưởng bên dưới. Hệ thống sẽ chuyển yêu cầu sang trạng thái hoàn tất
+                                và thông báo cho người dùng — hành động này không thể hoàn tác.
+                            </p>
+                        </div>
+
+                        <div className="payout-modal-summary approve">
+                            <div className="payout-modal-summary-row">
+                                <span className="payout-modal-label">Người nhận tiền</span>
+                                <strong className="payout-modal-value">{tutorName}</strong>
+                            </div>
+                            <div className="payout-modal-summary-row">
+                                <span className="payout-modal-label">Số tiền chuyển khoản</span>
+                                <strong className="payout-modal-amount-success">{formatCurrency(amount)}</strong>
+                            </div>
+                            {bankName && (
+                                <div className="payout-modal-summary-row">
+                                    <span className="payout-modal-label">Ngân hàng</span>
+                                    <strong className="payout-modal-value">{bankName}</strong>
+                                </div>
+                            )}
+                            {accountNumber && (
+                                <div className="payout-modal-summary-row">
+                                    <span className="payout-modal-label">Số tài khoản</span>
+                                    <strong className="payout-modal-value">{accountNumber}</strong>
+                                </div>
+                            )}
+                            {accountHolderName && (
+                                <div className="payout-modal-summary-row">
+                                    <span className="payout-modal-label">Chủ tài khoản</span>
+                                    <strong className="payout-modal-value">{accountHolderName}</strong>
+                                </div>
+                            )}
+                    </div>
                     </div>
 
-                    <div className="payout-modal-summary approve">
-                        <div className="payout-modal-summary-row">
-                            <span className="payout-modal-label">Người nhận tiền</span>
-                            <strong className="payout-modal-value">{tutorName}</strong>
-                        </div>
-                        <div className="payout-modal-summary-row">
-                            <span className="payout-modal-label">Số tiền chuyển khoản</span>
-                            <strong className="payout-modal-amount-success">{formatCurrency(amount)}</strong>
-                        </div>
-                        {bankName && (
-                            <div className="payout-modal-summary-row">
-                                <span className="payout-modal-label">Ngân hàng</span>
-                                <strong className="payout-modal-value">{bankName}</strong>
-                            </div>
-                        )}
-                        {accountNumber && (
-                            <div className="payout-modal-summary-row">
-                                <span className="payout-modal-label">Số tài khoản</span>
-                                <strong className="payout-modal-value">{accountNumber}</strong>
-                            </div>
-                        )}
-                        {accountHolderName && (
-                            <div className="payout-modal-summary-row">
-                                <span className="payout-modal-label">Chủ tài khoản</span>
-                                <strong className="payout-modal-value">{accountHolderName}</strong>
-                            </div>
-                        )}
-                    </div>
-
+                    <div className="payout-approve-col payout-approve-col-form">
                     <label className="payout-modal-field" htmlFor="approve-withdrawal-paid-at">
                         <span>Thời gian chuyển khoản</span>
                         <input
@@ -203,6 +224,30 @@ const ApproveWithdrawalModal = ({
                             disabled={confirmLoading}
                             required
                         />
+                    </label>
+
+                    <label className="payout-modal-field" htmlFor="approve-withdrawal-bank-transaction-code">
+                        <span>Mã tham chiếu ngân hàng</span>
+                        <input
+                            id="approve-withdrawal-bank-transaction-code"
+                            className="payout-modal-input"
+                            type="text"
+                            value={bankTransactionCode}
+                            maxLength={100}
+                            onChange={(event) => {
+                                setBankTransactionCode(event.target.value);
+                                if (error) setError('');
+                            }}
+                            placeholder="Ví dụ: FT26082212345678"
+                            disabled={confirmLoading}
+                            autoComplete="off"
+                            spellCheck={false}
+                            required
+                        />
+                        <small>
+                            Mã tham chiếu (thường bắt đầu bằng &quot;FT&quot;) trên biên lai chuyển khoản — dùng để
+                            đối soát với sao kê ngân hàng. Không phải mã giao dịch riêng của app ngân hàng.
+                        </small>
                     </label>
 
                     <label className="payout-modal-field" htmlFor="approve-withdrawal-proof">
@@ -241,6 +286,7 @@ const ApproveWithdrawalModal = ({
                             {error}
                         </small>
                     )}
+                    </div>
                 </div>
 
                 <footer className="payout-modal-footer">
@@ -259,6 +305,7 @@ const ApproveWithdrawalModal = ({
                             confirmLoading
                             || !paidAt
                             || note.trim().length < 3
+                            || bankTransactionCode.trim().length < 4
                             || !proofImage
                         }
                     >

@@ -1017,6 +1017,41 @@
   text-align: right;
 }
 
+.payout-modal-dialog:has(.payout-approve-layout) {
+  width: min(920px, 100%);
+}
+
+.payout-modal-body.payout-approve-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.payout-approve-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* Cột trái dính lại khi cột phải (form) dài hơn và body cuộn. */
+.payout-approve-col-context {
+  position: sticky;
+  top: 0;
+}
+
+/* Khoảng cách đã do gap của .payout-approve-col lo — bỏ margin cũ
+   để không cộng dồn thành khoảng trắng kép. */
+.payout-approve-layout .payout-modal-alert,
+.payout-approve-layout .payout-modal-summary {
+  margin-bottom: 0;
+}
+
+.payout-approve-layout .payout-modal-summary {
+  margin-top: 0;
+}
+
 .payout-modal-field {
   display: flex;
   flex-direction: column;
@@ -1126,6 +1161,21 @@
 }
 
 /* ===== RESPONSIVE ===== */
+@media (max-width: 960px) {
+  .payout-modal-dialog:has(.payout-approve-layout) {
+    width: min(560px, 100%);
+  }
+
+  .payout-modal-body.payout-approve-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .payout-approve-col-context {
+    position: static;
+  }
+}
+
 @media (max-width: 768px) {
 
   .admin-payout-container {
@@ -1260,6 +1310,16 @@
   .payout-modal-footer {
     padding-right: 18px;
     padding-left: 18px;
+  }
+
+  .payout-modal-body.payout-approve-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  /* Một cột thì sticky không còn nghĩa gì, và sẽ che mất form khi cuộn. */
+  .payout-approve-col-context {
+    position: static;
   }
 
   .payout-modal-summary-row,
