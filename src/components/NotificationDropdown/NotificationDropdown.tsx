@@ -10,6 +10,8 @@ import {
 import { getPortalPrefix, getNotificationTargetPath } from '../../utils/notificationNavigation';
 import NotificationItem from '../NotificationItem/NotificationItem';
 import styles from './NotificationDropdown.module.css';
+import { toast } from 'react-toastify';
+import { apiErrorMessage } from '../../utils/apiError';
 
 interface NotificationDropdownProps {
     isOpen: boolean;
@@ -38,7 +40,10 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 if (!cancelled) setNotifications(data);
             } catch (error) {
                 console.error('Failed to fetch notifications:', error);
-                if (!cancelled) setNotifications([]);
+                if (!cancelled) {
+                    setNotifications([]);
+                    toast.error(apiErrorMessage(error, 'Không tải được thông báo.'));
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -89,6 +94,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             }
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
+            toast.error(apiErrorMessage(error, 'Không đánh dấu được thông báo đã đọc.'));
         }
         onClose();
         navigate(getNotificationTargetPath(notification));
@@ -104,6 +110,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             onCountUpdate?.();
         } catch (error) {
             console.error('Failed to mark all as read:', error);
+            toast.error(apiErrorMessage(error, 'Không đánh dấu được tất cả thông báo đã đọc.'));
         }
     };
 
