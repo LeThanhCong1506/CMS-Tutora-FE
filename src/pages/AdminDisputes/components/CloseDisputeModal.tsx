@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import type { CloseDisputeOutcome } from '../../../types/admin.types';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const MIN_NOTE = 10;
 
@@ -85,7 +86,7 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm, relearnAvail
             onClose();
         } catch (err) {
             console.error('Error closing dispute:', err);
-            toast.error('Không thể đóng phản ánh. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể đóng phản ánh. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }

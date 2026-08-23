@@ -8,6 +8,7 @@ import { getMyNotifications, markAllAsRead, markAsRead } from '../../services/no
 import { getNotificationTargetPath } from '../../utils/notificationNavigation';
 import { useTabParam } from '../../hooks/useTabParam';
 import styles from './styles.module.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const NOTIFICATION_FILTERS = ['all', 'unread', 'read'] as const;
 type NotificationFilter = (typeof NOTIFICATION_FILTERS)[number];
@@ -25,7 +26,7 @@ const NotificationsPage: React.FC = () => {
             setNotifications(data);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
-            toast.error('Không thể tải thông báo');
+            toast.error(apiErrorMessage(error, 'Không thể tải thông báo'));
         } finally {
             setLoading(false);
         }
@@ -67,7 +68,7 @@ const NotificationsPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
-            toast.error('Không thể cập nhật trạng thái thông báo');
+            toast.error(apiErrorMessage(error, 'Không thể cập nhật trạng thái thông báo'));
         }
 
         navigate(getNotificationTargetPath(notification));
@@ -82,14 +83,15 @@ const NotificationsPage: React.FC = () => {
             toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
         } catch (error) {
             console.error('Failed to mark all as read:', error);
-            toast.error('Không thể đánh dấu tất cả thông báo');
+            toast.error(apiErrorMessage(error, 'Không thể đánh dấu tất cả thông báo'));
         }
     };
 
     return (
         <PageContainer
+            eyebrow="Hệ thống"
+            eyebrowInfo="Theo dõi các sự kiện hệ thống, giao dịch và tác vụ cần quản trị viên xử lý."
             title="Thông báo"
-            subtitle="Theo dõi các sự kiện hệ thống, giao dịch và tác vụ cần admin xử lý."
             headerAction={
                 <div className="admin-ui-actions">
                     <button
@@ -140,17 +142,7 @@ const NotificationsPage: React.FC = () => {
                 />
             </div>
 
-            <SectionCard
-                title="Hộp thông báo"
-                subtitle="Click vào từng thông báo để mở đúng màn hình liên quan."
-                headerAction={
-                    unreadCount > 0 ? (
-                        <StatusBadge variant="warning">{unreadCount} chưa đọc</StatusBadge>
-                    ) : (
-                        <StatusBadge variant="success">Đã xử lý</StatusBadge>
-                    )
-                }
-            >
+            <SectionCard>
                 <div className="admin-ui-toolbar">
                     <FilterTabs
                         tabs={[
@@ -161,6 +153,11 @@ const NotificationsPage: React.FC = () => {
                         activeKey={activeFilter}
                         onChange={(key) => setActiveFilter(key as NotificationFilter)}
                     />
+                    {unreadCount > 0 ? (
+                        <StatusBadge variant="warning">{unreadCount} chưa đọc</StatusBadge>
+                    ) : (
+                        <StatusBadge variant="success">Đã xử lý</StatusBadge>
+                    )}
                 </div>
 
                 {loading ? (

@@ -26,6 +26,20 @@
   padding: 10px 13px;
 }
 
+.permission-list-toolbar {
+  justify-content: flex-end;
+}
+
+.permission-list-toolbar .permission-list-search {
+  width: min(360px, 100%);
+}
+
+.permission-list-count {
+  color: #64748b;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .permission-group-name {
   display: flex;
   align-items: center;

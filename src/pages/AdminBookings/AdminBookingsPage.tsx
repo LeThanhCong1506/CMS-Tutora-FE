@@ -13,8 +13,6 @@ import type { ListSortDirection } from '../../types/admin.types';
 import BookingFilterBar from './BookingFilterBar';
 import styles from './AdminBookings.module.css';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 20];
-
 export default function AdminBookingsPage() {
     const navigate = useNavigate();
 
@@ -26,8 +24,7 @@ export default function AdminBookingsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const page = Number(searchParams.get('page')) || 1;
     const status = searchParams.get('status') || '';
-    // Mặc định theo hằng số chung; ô chọn vẫn cho đổi sang 5 hoặc 20.
-    const [pageSize, setPageSize] = useState<number>(ADMIN_PAGE_SIZE);
+    const pageSize = ADMIN_PAGE_SIZE;
 
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
@@ -135,11 +132,6 @@ export default function AdminBookingsPage() {
     const handleSortDirectionChange = (value: ListSortDirection) => {
         setSortDirection(value);
         // Trang 2 của thứ tự cũ không tương ứng gì với thứ tự mới.
-        updateQuery({ page: 1 });
-    };
-
-    const handlePageSizeChange = (newPageSize: number) => {
-        setPageSize(newPageSize);
         updateQuery({ page: 1 });
     };
 
@@ -265,6 +257,7 @@ export default function AdminBookingsPage() {
     return (
         <PageContainer
             title="Quản lý đặt lịch"
+            titleInfo="Theo dõi, tìm kiếm và quản lý toàn bộ lịch đặt giữa học viên và gia sư."
             maxWidth="wide"
             headerAction={
                 <div className={styles.headerActions}>
@@ -287,25 +280,7 @@ export default function AdminBookingsPage() {
                 </div>
             }
         >
-            <SectionCard
-                title="Danh sách đặt lịch"
-                headerAction={
-                    <label className={styles.pageSizeControl}>
-                        <span>Số dòng</span>
-                        <select
-                            value={pageSize}
-                            onChange={(event) => handlePageSizeChange(Number(event.target.value))}
-                            aria-label="Số dòng mỗi trang"
-                        >
-                            {PAGE_SIZE_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                    {option}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                }
-            >
+            <SectionCard>
                 <BookingFilterBar
                     status={status}
                     onStatusChange={handleStatusChange}

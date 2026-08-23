@@ -8,6 +8,8 @@ import {
   reviewProfileUpdateRequest,
 } from '../../services/admin.service';
 import TutorDetailModal from './components/TutorDetailModal';
+import VettingSortSelect from './components/VettingSortSelect';
+import { VETTING_SORT_DEFAULT, getVettingSortLabel } from './utils/vettingSort';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
@@ -17,9 +19,10 @@ import { diffWords } from '../../utils/wordDiff';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useTabParam } from '../../hooks/useTabParam';
 import '../../styles/pages/admin-vetting.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
-const DEFAULT_ORDER = 'createdat_asc';
+const DEFAULT_ORDER = VETTING_SORT_DEFAULT;
 
 const VETTING_TABS = ['new', 'updates'] as const;
 type VettingTab = (typeof VETTING_TABS)[number];
@@ -191,7 +194,7 @@ const AdminVettingPage = () => {
   // (only on Enter / button click) so we don't hit the API on every keystroke.
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  // FIFO by default — oldest-waiting profiles surface first for review.
+  // Mặc định "Chờ lâu nhất trước" (FIFO) — hồ sơ chờ lâu nhất nổi lên đầu hàng đợi duyệt.
   const [orderBy, setOrderBy] = useState(DEFAULT_ORDER);
   const [selectedTutor, setSelectedTutor] = useState<PendingTutorFromAPI | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -358,7 +361,7 @@ const AdminVettingPage = () => {
       window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error approving profile update request:', err);
-      toast.error('Không thể duyệt yêu cầu. Vui lòng thử lại.');
+      toast.error(apiErrorMessage(err, 'Không thể duyệt yêu cầu. Vui lòng thử lại.'));
     } finally {
       setUpdateActionLoading(null);
     }
@@ -404,7 +407,7 @@ const AdminVettingPage = () => {
       window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error rejecting profile update request:', err);
-      toast.error('Không thể từ chối yêu cầu. Vui lòng thử lại.');
+      toast.error(apiErrorMessage(err, 'Không thể từ chối yêu cầu. Vui lòng thử lại.'));
     } finally {
       setUpdateActionLoading(null);
     }
@@ -442,7 +445,7 @@ const AdminVettingPage = () => {
       window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error approving tutor:', err);
-      toast.error('Không thể phê duyệt gia sư. Vui lòng thử lại.');
+      toast.error(apiErrorMessage(err, 'Không thể phê duyệt gia sư. Vui lòng thử lại.'));
     } finally {
       setActionLoading(null);
     }
@@ -471,7 +474,7 @@ const AdminVettingPage = () => {
       window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
     } catch (err) {
       console.error('Error rejecting tutor:', err);
-      toast.error('Không thể từ chối hồ sơ. Vui lòng thử lại.');
+      toast.error(apiErrorMessage(err, 'Không thể từ chối hồ sơ. Vui lòng thử lại.'));
     } finally {
       setActionLoading(null);
     }
@@ -634,7 +637,12 @@ const AdminVettingPage = () => {
   return (
     <>
       <div className="certificate-vetting-page">
-        <PageContainer title="Kiểm duyệt gia sư" maxWidth="wide">
+        <PageContainer
+          eyebrow="Kiểm duyệt"
+          eyebrowInfo="Theo dõi và xét duyệt hồ sơ gia sư mới cùng các yêu cầu cập nhật hồ sơ."
+          title="Hồ sơ gia sư"
+          maxWidth="wide"
+        >
           <div className="admin-ui-actions" style={{ marginBottom: 16 }}>
             {canViewNew && (
               <button
@@ -658,24 +666,11 @@ const AdminVettingPage = () => {
 
           {activeTab === 'new' && canViewNew && (
             <SectionCard
-              title="Hồ sơ chờ duyệt"
-              headerAction={
-                <button
-                  type="button"
-                  className="vetting-refresh-button"
-                  onClick={() => void fetchPendingTutors()}
-                  disabled={loading}
-                  aria-label="Làm mới danh sách hồ sơ chờ duyệt"
-                >
-                  <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
-                  Làm mới
-                </button>
-              }
-              footer={
+              footer={`${
                 searchQuery
                   ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
                   : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`
-              }
+              } · Đang xếp theo "${getVettingSortLabel(orderBy)}"`}
             >
               <div className="certificate-vetting-toolbar">
                 <div className="certificate-search-group">
@@ -705,24 +700,27 @@ const AdminVettingPage = () => {
                     </button>
                   )}
                 </div>
-                <label className="certificate-sort-control">
-                  <span>Sắp xếp</span>
-                  <select
+                <div className="certificate-vetting-toolbar-actions">
+                  <VettingSortSelect
                     id="vetting-sort"
-                    className="admin-ui-search-input vetting-sort-select"
+                    itemNoun="hồ sơ"
                     value={orderBy}
-                    onChange={(event) => {
-                      setOrderBy(event.target.value);
+                    onChange={(value) => {
+                      setOrderBy(value);
                       setPage(1);
                     }}
-                    aria-label="Sắp xếp"
+                  />
+                  <button
+                    type="button"
+                    className="vetting-refresh-button"
+                    onClick={() => void fetchPendingTutors()}
+                    disabled={loading}
+                    aria-label="Làm mới danh sách hồ sơ chờ duyệt"
                   >
-                    <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
-                    <option value="createdat_desc">Mới nhất trước</option>
-                    <option value="tutorname_asc">Tên gia sư A→Z</option>
-                    <option value="tutorname_desc">Tên gia sư Z→A</option>
-                  </select>
-                </label>
+                    <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+                    Làm mới
+                  </button>
+                </div>
               </div>
 
               {error && !loading ? (

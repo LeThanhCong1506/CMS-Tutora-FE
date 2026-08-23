@@ -30,6 +30,7 @@ import {
   deleteKbDocument,
 } from '../../services/knowledgeBase.service';
 import type { KbDocument, KbDocumentDetail } from '../../types/knowledgeBase.types';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const ACCEPT = '.pdf,.docx,.xlsx,.md,.markdown';
 const ACCEPT_EXT = ['.pdf', '.docx', '.xlsx', '.md', '.markdown'];
@@ -81,8 +82,8 @@ const KnowledgeBasePage: React.FC = () => {
     setDetailLoading(true);
     try {
       setDetail(await getKbDocumentDetail(doc.id));
-    } catch {
-      toast.error('Không tải được nội dung tài liệu.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Không tải được nội dung tài liệu.'));
     } finally {
       setDetailLoading(false);
     }
@@ -107,9 +108,7 @@ const KnowledgeBasePage: React.FC = () => {
       toast.success('Đã cập nhật nội dung tài liệu.');
       fetchDocs(); // số đoạn / loại có thể đổi
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Cập nhật thất bại.';
+      const msg = apiErrorMessage(err, 'Cập nhật thất bại.');
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -122,7 +121,7 @@ const KnowledgeBasePage: React.FC = () => {
       setDocs(await getKbDocuments(signal));
     } catch (err) {
       if (!(err instanceof Error && err.name === 'CanceledError'))
-        toast.error('Không tải được danh sách tài liệu.');
+        toast.error(apiErrorMessage(err, 'Không tải được danh sách tài liệu.'));
     } finally {
       setLoading(false);
     }
@@ -162,9 +161,7 @@ const KnowledgeBasePage: React.FC = () => {
       clearFile();
       fetchDocs();
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Nạp tài liệu thất bại.';
+      const msg = apiErrorMessage(err, 'Nạp tài liệu thất bại.');
       toast.error(msg);
     } finally {
       setUploading(false);
@@ -179,8 +176,8 @@ const KnowledgeBasePage: React.FC = () => {
       toast.success('Đã xoá tài liệu.');
       setDeleting(null);
       fetchDocs();
-    } catch {
-      toast.error('Xoá thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Xoá thất bại.'));
     } finally {
       setDeleteBusy(false);
     }
@@ -188,8 +185,9 @@ const KnowledgeBasePage: React.FC = () => {
 
   return (
     <PageContainer
-      title="Cơ sở tri thức"
-      subtitle="Nạp nội dung, chính sách Tutora (PDF, DOCX, XLSX, Markdown) để trợ lý trả lời câu hỏi thường gặp."
+      eyebrow="Hệ thống"
+      eyebrowInfo="Nạp nội dung và chính sách Tutora để trợ lý có thể trả lời các câu hỏi thường gặp."
+      title="Thông tin Hệ thống"
       maxWidth="wide"
     >
       {/* Dropzone upload */}

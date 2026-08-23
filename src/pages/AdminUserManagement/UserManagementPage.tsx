@@ -28,6 +28,7 @@ import SuspendUserModal from './components/SuspendUserModal';
 import UserFormModal from './components/UserFormModal';
 import { getRoleDisplay } from './roleDisplay';
 import { formatDateTime } from '../../utils/formatters';
+import { apiErrorMessage } from '../../utils/apiError';
 
 /** Customer roles this page can be scoped to (via the sidebar sub-menu). */
 export type CustomerRole = 'Student' | 'Parent' | 'Tutor';
@@ -190,8 +191,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             setIsBlockModalOpen(false);
             setIsDetailModalOpen(false);
             await fetchUsers();
-        } catch {
-            toast.error('Không thể vô hiệu hóa tài khoản');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể vô hiệu hóa tài khoản'));
         }
     };
 
@@ -204,8 +205,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             toast.success(`Đã mở khóa tài khoản ${selectedUser.fullname}`);
             setIsDetailModalOpen(false);
             await fetchUsers();
-        } catch {
-            toast.error('Không thể mở khóa tài khoản');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể mở khóa tài khoản'));
         }
     };
 
@@ -291,8 +292,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             setSelectedUser(null);
             await fetchUsers();
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(msg || 'Không thể xóa tài khoản');
+            toast.error(apiErrorMessage(err, 'Không thể xóa tài khoản'));
         } finally {
             setIsDeleting(false);
         }
@@ -523,8 +523,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
     const scopedRoleLabel = lockedRole ? getRoleDisplay(lockedRole).label : '';
     const roleLabel = scopedRoleLabel.toLowerCase();
-    const pageTitle = lockedRole ? scopedRoleLabel : 'Quản lý người dùng';
-    const pageSubtitle = lockedRole
+    const pageTitle = lockedRole ? scopedRoleLabel : 'Tất cả';
+    const pageDescription = lockedRole
         ? `Theo dõi hồ sơ và trạng thái tài khoản ${roleLabel} trong hệ thống.`
         : 'Theo dõi học viên, phụ huynh và gia sư trong cùng một không gian vận hành.';
     const addButtonLabel = lockedRole ? `Thêm ${roleLabel}` : 'Thêm người dùng';
@@ -538,9 +538,9 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     return (
         <>
             <PageContainer
-                eyebrow="Tài khoản"
+                eyebrow="Quản lý người dùng"
+                eyebrowInfo={pageDescription}
                 title={pageTitle}
-                subtitle={pageSubtitle}
                 maxWidth="wide"
                 headerAction={
                     can('user.update') || can('export.data') ? (
@@ -682,9 +682,6 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                                 {loading ? 'progress_activity' : 'manage_accounts'}
                             </span>
                             <strong>{resultSummary}</strong>
-                            {!loading && users.length > 0 && (
-                                <span className="um-result-hint">Chọn một dòng để xem chi tiết</span>
-                            )}
                         </div>
 
                         {loadError ? (

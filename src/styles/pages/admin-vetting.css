@@ -1980,17 +1980,17 @@
   max-width: 460px;
 }
 
+.certificate-vetting-toolbar-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
 .certificate-sort-control {
   display: flex;
   flex-direction: column;
-  flex: 0 0 220px;
-  gap: 6px;
-  color: var(--color-navy-60);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  flex: 0 0 240px;
 }
 
 .certificate-sort-control .vetting-sort-select {
@@ -1998,8 +1998,6 @@
   padding: 8px 36px 8px 12px;
   color: var(--color-navy);
   cursor: pointer;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .certificate-submitted-date {
@@ -2514,6 +2512,10 @@
     width: min(100%, 320px);
   }
 
+  .certificate-vetting-toolbar-actions {
+    width: 100%;
+  }
+
   .certificate-detail-content {
     grid-template-columns: minmax(300px, 0.9fr) minmax(380px, 1.1fr);
   }
@@ -2585,6 +2587,18 @@
 
   .certificate-detail-footer > .admin-ui-button,
   .certificate-detail-decisions .admin-ui-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .certificate-vetting-toolbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .certificate-sort-control,
+  .certificate-vetting-toolbar-actions .vetting-refresh-button {
     width: 100%;
   }
 }

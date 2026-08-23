@@ -7,6 +7,7 @@ import katexModule from 'katex';
 import 'katex/dist/katex.min.css';
 import { updateQuestion, deleteQuestion } from '../../services/question.service';
 import type { Question, UpdateQuestionPayload } from '../../types/question.types';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const katex = katexModule;
 
@@ -60,8 +61,8 @@ export const ExtractedQuestionCard: React.FC<Props> = ({ question, index, onRemo
       } else {
         toast.success(`Câu ${index + 1} đã lưu.`);
       }
-    } catch {
-      toast.error('Lưu thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Lưu thất bại.'));
     } finally {
       setBusy(false);
     }
@@ -74,8 +75,8 @@ export const ExtractedQuestionCard: React.FC<Props> = ({ question, index, onRemo
       await deleteQuestion(question.id);
       onRemoved(question.id);
       toast.success(`Đã xoá câu ${index + 1}.`);
-    } catch {
-      toast.error('Xoá thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Xoá thất bại.'));
       setBusy(false);
     }
   };

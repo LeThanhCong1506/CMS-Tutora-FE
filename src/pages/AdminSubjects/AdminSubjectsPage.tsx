@@ -14,8 +14,9 @@ const SubjectsGradesPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="Môn học & Khối lớp"
-      subtitle="Danh mục nền của hệ thống — dùng cho hồ sơ gia sư, đặt lịch và ngân hàng câu hỏi."
+      eyebrow="Cấu hình chương trình"
+      eyebrowInfo="Danh mục nền của hệ thống, dùng cho hồ sơ gia sư, đặt lịch và ngân hàng câu hỏi."
+      title="Môn & Lớp"
       maxWidth="wide"
     >
       <div className="space-y-4">

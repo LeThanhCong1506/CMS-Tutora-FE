@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingCertificates, adminVerifyCertificate } from '../../services/admin.service';
+import VettingSortSelect from './components/VettingSortSelect';
+import { VETTING_SORT_DEFAULT, getVettingSortLabel } from './utils/vettingSort';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
@@ -8,6 +10,7 @@ import type { PendingCertificate } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import '../../styles/pages/admin-vetting.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
@@ -113,8 +116,8 @@ const AdminCertificateVettingPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  // FIFO by default — oldest-waiting certificates surface first.
-  const [orderBy, setOrderBy] = useState('createdat_asc');
+  // Mặc định "Chờ lâu nhất trước" (FIFO) — chứng chỉ chờ lâu nhất nổi lên đầu hàng đợi.
+  const [orderBy, setOrderBy] = useState(VETTING_SORT_DEFAULT);
   const [certActionLoading, setCertActionLoading] = useState<string | null>(null);
   const [selectedCert, setSelectedCert] = useState<PendingCertificate | null>(null);
   // Reject flow: the cert awaiting a rejection reason + the note text.
@@ -212,7 +215,7 @@ const AdminCertificateVettingPage = () => {
       return true;
     } catch (err) {
       console.error('Error verifying certificate:', err);
-      toast.error('Không thể cập nhật chứng chỉ. Vui lòng thử lại.');
+      toast.error(apiErrorMessage(err, 'Không thể cập nhật chứng chỉ. Vui lòng thử lại.'));
       return false;
     } finally {
       setCertActionLoading(null);
@@ -314,26 +317,18 @@ const AdminCertificateVettingPage = () => {
 
   return (
     <div className="certificate-vetting-page">
-      <PageContainer title="Kiểm duyệt chứng chỉ" maxWidth="wide">
+      <PageContainer
+        eyebrow="Kiểm duyệt"
+        eyebrowInfo="Theo dõi và xác minh chứng chỉ do gia sư gửi lên hệ thống."
+        title="Chứng chỉ"
+        maxWidth="wide"
+      >
         <SectionCard
-          title="Chứng chỉ chờ duyệt"
-          headerAction={
-            <button
-              type="button"
-              className="vetting-refresh-button"
-              onClick={() => void fetchCertificates()}
-              disabled={loading}
-              aria-label="Làm mới danh sách chứng chỉ chờ duyệt"
-            >
-              <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
-              Làm mới
-            </button>
-          }
-          footer={
+          footer={`${
             searchQuery
               ? `Tìm thấy ${total} chứng chỉ khớp với "${searchQuery}"`
               : `Hiển thị ${visibleCerts.length} / ${total} chứng chỉ chờ duyệt`
-          }
+          } · Đang xếp theo "${getVettingSortLabel(orderBy)}"`}
         >
           <div className="certificate-vetting-toolbar">
             <div className="certificate-search-group">
@@ -362,23 +357,27 @@ const AdminCertificateVettingPage = () => {
                 </button>
               )}
             </div>
-            <label className="certificate-sort-control">
-              <span>Sắp xếp</span>
-              <select
-                className="admin-ui-search-input vetting-sort-select"
+            <div className="certificate-vetting-toolbar-actions">
+              <VettingSortSelect
+                id="certificate-vetting-sort"
+                itemNoun="chứng chỉ"
                 value={orderBy}
-                onChange={(event) => {
-                  setOrderBy(event.target.value);
+                onChange={(value) => {
+                  setOrderBy(value);
                   setPage(1);
                 }}
-                aria-label="Sắp xếp"
+              />
+              <button
+                type="button"
+                className="vetting-refresh-button"
+                onClick={() => void fetchCertificates()}
+                disabled={loading}
+                aria-label="Làm mới danh sách chứng chỉ chờ duyệt"
               >
-                <option value="createdat_asc">Cũ nhất trước (FIFO)</option>
-                <option value="createdat_desc">Mới nhất trước</option>
-                <option value="tutorname_asc">Tên gia sư A→Z</option>
-                <option value="tutorname_desc">Tên gia sư Z→A</option>
-              </select>
-            </label>
+                <span className={`material-symbols-outlined ${loading ? 'vetting-spinning' : ''}`}>refresh</span>
+                Làm mới
+              </button>
+            </div>
           </div>
 
           {error && !loading ? (

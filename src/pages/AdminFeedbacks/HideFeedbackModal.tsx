@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import type { AdminFeedbackItem } from '../../services/adminFeedback.service';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const MIN_REASON = 20;
 
@@ -52,7 +53,7 @@ const HideFeedbackModal = ({ isOpen, onClose, feedback, onHide }: HideFeedbackMo
             onClose();
         } catch (err) {
             console.error('Error hiding feedback:', err);
-            toast.error('Không thể ẩn đánh giá. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể ẩn đánh giá. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }

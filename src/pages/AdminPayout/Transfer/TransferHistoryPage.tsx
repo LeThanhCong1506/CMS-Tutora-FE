@@ -12,6 +12,7 @@ import ProofImageModal from '../ProofImageModal';
 import TransferMoneyModal from './TransferMoneyModal';
 import TopUpFundModal from './TopUpFundModal';
 import '../../../styles/pages/admin-payout.css';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const ROLE_LABEL: Record<string, string> = {
     tutor: 'Gia sư',
@@ -44,8 +45,8 @@ const TransferHistoryPage: React.FC = () => {
             const result = await getTransferHistory(currentPage, ADMIN_PAGE_SIZE);
             setTransfers(result.items);
             setTotalCount(result.totalCount);
-        } catch {
-            toast.error('Không thể tải lịch sử chuyển tiền.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể tải lịch sử chuyển tiền.'));
         } finally {
             setLoading(false);
         }
@@ -54,8 +55,8 @@ const TransferHistoryPage: React.FC = () => {
     const fetchFund = useCallback(async () => {
         try {
             setFund(await getFundBalance());
-        } catch {
-            toast.error('Không thể tải số dư quỹ hệ thống.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể tải số dư quỹ hệ thống.'));
         }
     }, []);
 
@@ -65,8 +66,8 @@ const TransferHistoryPage: React.FC = () => {
             const result = await getFundTopupHistory(topupPage, ADMIN_PAGE_SIZE);
             setTopups(result.items);
             setTopupTotalCount(result.totalCount);
-        } catch {
-            toast.error('Không thể tải lịch sử nạp quỹ.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể tải lịch sử nạp quỹ.'));
         } finally {
             setTopupLoading(false);
         }

@@ -9,6 +9,7 @@ import { getTransactions } from '../../../services/admin.service';
 import { formatCurrency, formatDateTime, formatTransactionType } from '../../../utils/formatters';
 // TEMP: mock fallback for local UI preview while the backend is offline — see src/mocks/financialsMockFallback.ts
 import { mockLedgerTransactions } from '../../../mocks/financialsMockFallback';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const ledgerPageSize = ADMIN_PAGE_SIZE;
 
@@ -78,6 +79,9 @@ const TransactionLedger = () => {
             console.error('Error fetching transactions:', err);
             // TEMP: mock fallback for local UI preview — remove once backend is reachable.
             setTransactions(mockLedgerTransactions);
+            toast.error(
+                `${apiErrorMessage(err, 'Không tải được sổ giao dịch.')} Bảng đang hiển thị là dữ liệu mẫu, không phải số thật.`,
+            );
             setTotal(mockLedgerTransactions.length);
         } finally {
             setLoading(false);
@@ -120,7 +124,7 @@ const TransactionLedger = () => {
             toast.success('Đã xuất dữ liệu trang hiện tại thành công!');
         } catch (err) {
             console.error('Error exporting CSV:', err);
-            toast.error('Không thể xuất CSV');
+            toast.error(apiErrorMessage(err, 'Không thể xuất CSV'));
         } finally {
             setIsExporting(false);
         }

@@ -9,6 +9,7 @@ import type { StaffListItem } from '../../types/staff.types';
 import type { PermissionGroupSummary } from '../../types/access.types';
 import CreateStaffModal from './components/CreateStaffModal';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
+import { apiErrorMessage } from '../../utils/apiError';
 
 import '../../styles/pages/admin-user-management.css';
 import '../../styles/pages/admin-vetting-modal.css';
@@ -19,11 +20,6 @@ const PAGE_SIZE = ADMIN_PAGE_SIZE;
 const avatarFor = (staff: StaffListItem): string =>
   staff.avatarurl ||
   `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.fullname || staff.username || 'NV')}&background=random`;
-
-const errorMessage = (error: unknown, fallback: string) => {
-  if (!axios.isAxiosError(error)) return fallback;
-  return String(error.response?.data?.message ?? error.response?.data?.content ?? fallback);
-};
 
 const StaffManagementPage = () => {
   const [staffs, setStaffs] = useState<StaffListItem[]>([]);
@@ -42,7 +38,7 @@ const StaffManagementPage = () => {
       setHasMore(more);
     } catch (error) {
       console.error('Error fetching staffs:', error);
-      toast.error('Không thể tải danh sách nhân viên.');
+      toast.error(apiErrorMessage(error, 'Không thể tải danh sách nhân viên.'));
     } finally {
       setLoading(false);
     }
@@ -52,7 +48,7 @@ const StaffManagementPage = () => {
     try {
       setGroups(await getPermissionGroups());
     } catch (error) {
-      toast.error(errorMessage(error, 'Không thể tải danh sách nhóm quyền.'));
+      toast.error(apiErrorMessage(error, 'Không thể tải danh sách nhóm quyền.'));
     }
   }, []);
 
@@ -79,7 +75,7 @@ const StaffManagementPage = () => {
         toast.warning('Nhân viên đã được quản trị viên khác cập nhật. Danh sách sẽ được tải lại.');
         await fetchStaffs();
       } else {
-        toast.error(errorMessage(error, 'Không thể cập nhật nhóm quyền.'));
+        toast.error(apiErrorMessage(error, 'Không thể cập nhật nhóm quyền.'));
       }
     } finally {
       setAssigningStaffId(null);
@@ -149,6 +145,8 @@ const StaffManagementPage = () => {
   return (
     <>
       <PageContainer
+        eyebrow="Nhân sự & phân quyền"
+        eyebrowInfo="Quản lý tài khoản nhân viên và nhóm quyền được gán cho từng người."
         title="Quản lý nhân viên"
         maxWidth="wide"
         headerAction={
@@ -162,10 +160,7 @@ const StaffManagementPage = () => {
           </button>
         }
       >
-        <SectionCard
-          title="Danh sách nhân viên"
-          footer={`Hiển thị ${staffs.length} nhân viên`}
-        >
+        <SectionCard footer={`Hiển thị ${staffs.length} nhân viên`}>
           <DataTable<StaffListItem>
             columns={columns}
             data={staffs}

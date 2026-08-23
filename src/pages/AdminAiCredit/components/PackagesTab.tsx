@@ -18,6 +18,7 @@ import type {
 } from '../../../types/aiCredit.types';
 import { PACKAGE_FORM_DEFAULT } from '../../../types/aiCredit.types';
 import { formatVNDNumber } from '../../../utils/formatters';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 import '../../../styles/pages/admin-shared.css';
 import '../../../styles/pages/admin-ai-credit.css';
@@ -75,8 +76,8 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
       setField('iconUrl', updated.iconUrl ?? '');
       toast.success('Đã tải icon lên.');
       onSaved(); // refresh list để icon mới hiện ở bảng
-    } catch {
-      toast.error('Tải icon thất bại. Vui lòng thử lại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Tải icon thất bại. Vui lòng thử lại.'));
     } finally {
       setUploadingIcon(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -125,10 +126,10 @@ const PackageModal: React.FC<PackageModalProps> = ({ mode, initialData, onClose,
       };
       const code = apiErr?.response?.data?.errorCode;
       if (apiErr?.response?.status === 409 || code === 'AI_CREDIT_PACKAGE_CODE_EXISTS') {
-        toast.error('Mã gói đã tồn tại. Vui lòng chọn mã khác.');
+        toast.error(apiErrorMessage(err, 'Mã gói đã tồn tại. Vui lòng chọn mã khác.'));
         setErrors({ code: 'Mã gói đã tồn tại' });
       } else {
-        toast.error(apiErr?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+        toast.error(apiErrorMessage(apiErr, 'Có lỗi xảy ra, vui lòng thử lại.'));
       }
     } finally {
       setSaving(false);
@@ -411,8 +412,8 @@ export const PackagesTab: React.FC = () => {
       const data = await getAiCreditPackages();
       data.sort((a, b) => a.sortOrder - b.sortOrder || a.packageId - b.packageId);
       setPackages(data);
-    } catch {
-      toast.error('Không thể tải danh sách gói AI Credit.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Không thể tải danh sách gói AI Credit.'));
     } finally {
       setLoading(false);
     }
@@ -439,8 +440,8 @@ export const PackagesTab: React.FC = () => {
       toast.success('Đã vô hiệu hóa gói.');
       setDeleteConfirm({ open: false });
       await loadPackages();
-    } catch {
-      toast.error('Không thể vô hiệu hóa gói. Vui lòng thử lại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Không thể vô hiệu hóa gói. Vui lòng thử lại.'));
     } finally {
       setDeleting(false);
     }

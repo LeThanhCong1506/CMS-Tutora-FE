@@ -63,6 +63,7 @@
 }
 
 .payout-last-updated {
+  margin-left: auto;
   color: var(--color-navy-50);
   font-size: 12px;
   white-space: nowrap;

@@ -30,6 +30,7 @@ import {
 } from '../../types/assessment.types';
 import { AssessmentFormModal } from '../../components/AssessmentForm/AssessmentFormModal';
 import { PAGE_SIZE } from '../../constants/questions';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const STATUS_TABS: { key: AssessmentStatus; label: string }[] = [
   { key: 'published', label: 'Đang dùng' },
@@ -95,7 +96,7 @@ const AssessmentsPage: React.FC = () => {
         setTotal(res.content.totalCount ?? 0);
       } catch (err) {
         if (!(err instanceof Error && err.name === 'CanceledError')) {
-          toast.error('Không tải được danh sách bộ đề.');
+          toast.error(apiErrorMessage(err, 'Không tải được danh sách bộ đề.'));
         }
       } finally {
         setLoading(false);
@@ -118,9 +119,7 @@ const AssessmentsPage: React.FC = () => {
       fetchData();
     } catch (err) {
       // BE chặn phát hành đề thiếu câu -> hiện lý do.
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Cập nhật trạng thái thất bại.';
+      const message = apiErrorMessage(err, 'Cập nhật trạng thái thất bại.');
       toast.error(message);
     }
   };
@@ -131,8 +130,8 @@ const AssessmentsPage: React.FC = () => {
       await deleteAssessment(a.id);
       toast.success('Đã xoá bộ đề.');
       fetchData();
-    } catch {
-      toast.error('Xoá thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Xoá thất bại.'));
     }
   };
 
@@ -146,8 +145,9 @@ const AssessmentsPage: React.FC = () => {
 
   return (
     <PageContainer
+      eyebrow="Tài nguyên"
+      eyebrowInfo="Quản lý đề đánh giá đầu vào để hệ thống xác định trình độ và gợi ý lộ trình học cho học sinh."
       title="Bộ đề đánh giá"
-      subtitle="Đề đánh giá đầu vào — học sinh làm để hệ thống xác định trình độ và gợi ý lộ trình học."
       maxWidth="wide"
       headerAction={
         <Button onClick={() => setCreating(true)}>

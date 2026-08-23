@@ -8,6 +8,7 @@ import type { AdminUserWarningSummary, AdminWarningHistoryItem } from '../../typ
 import { Can } from '../../contexts/AccessContext';
 import { useTabParam } from '../../hooks/useTabParam';
 import '../../styles/pages/admin-warnings.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 interface SuspensionListItem {
     suspensionId: number;
@@ -99,8 +100,8 @@ const AdminWarningsPage: React.FC = () => {
             const parsed = parsePagedItems<SuspensionListItem>(response);
             setSuspensions(parsed.items);
             setSuspensionsTotal(parsed.total);
-        } catch {
-            toast.error('Không thể tải danh sách đình chỉ.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể tải danh sách đình chỉ.'));
             setSuspensions([]);
             setSuspensionsTotal(0);
         } finally {
@@ -123,8 +124,8 @@ const AdminWarningsPage: React.FC = () => {
             await unsuspendUser(userId);
             toast.success(`Đã gỡ đình chỉ cho ${userName || userId}`);
             await fetchSuspensions();
-        } catch {
-            toast.error('Không thể gỡ đình chỉ. Vui lòng thử lại.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể gỡ đình chỉ. Vui lòng thử lại.'));
         }
     }, [fetchSuspensions]);
 
@@ -269,9 +270,9 @@ const AdminWarningsPage: React.FC = () => {
 
     return (
         <PageContainer
-            eyebrow="Vận hành"
-            title="Quản lý cảnh báo & đình chỉ"
-            subtitle="Theo dõi đình chỉ đang hoạt động và tra cứu lịch sử cảnh báo theo user."
+            eyebrow="Tranh chấp"
+            eyebrowInfo="Theo dõi tài khoản đang bị ẩn hồ sơ hoặc khóa, đồng thời tra cứu lịch sử cảnh báo theo người dùng."
+            title="Cảnh báo"
             maxWidth="wide"
             headerAction={
                 <div className="admin-ui-actions">
@@ -287,22 +288,17 @@ const AdminWarningsPage: React.FC = () => {
                 </div>
             }
         >
-            <SectionCard>
-                <div className="admin-ui-toolbar warnings-tabs-toolbar">
-                    <FilterTabs
-                        tabs={tabs}
-                        activeKey={activeTab}
-                        onChange={(key) => setActiveTab(key as TabKey)}
-                    />
-                </div>
-            </SectionCard>
-
             {activeTab === 'suspensions' && (
                 <SectionCard
-                    title="Đình chỉ đang hoạt động"
-                    subtitle="Các tài khoản đang bị ẩn hồ sơ hoặc khóa do vi phạm chính sách."
                     footer={`Hiển thị ${suspensions.length} / ${suspensionsTotal.toLocaleString('vi-VN')} đình chỉ`}
                 >
+                    <div className="admin-ui-toolbar warnings-tabs-toolbar">
+                        <FilterTabs
+                            tabs={tabs}
+                            activeKey={activeTab}
+                            onChange={(key) => setActiveTab(key as TabKey)}
+                        />
+                    </div>
                     <DataTable<SuspensionListItem>
                         columns={suspensionColumns}
                         data={suspensions}
@@ -331,10 +327,14 @@ const AdminWarningsPage: React.FC = () => {
 
             {activeTab === 'lookup' && (
                 <>
-                    <SectionCard
-                        title="Tra cứu cảnh báo"
-                        subtitle="Nhập User ID để xem tổng quan cảnh báo, trạng thái đình chỉ và lịch sử vi phạm."
-                    >
+                    <SectionCard>
+                        <div className="admin-ui-toolbar warnings-tabs-toolbar">
+                            <FilterTabs
+                                tabs={tabs}
+                                activeKey={activeTab}
+                                onChange={(key) => setActiveTab(key as TabKey)}
+                            />
+                        </div>
                         <div className="admin-ui-toolbar warnings-lookup-toolbar">
                             <div className="admin-ui-search warnings-lookup-search">
                                 <span className="material-symbols-outlined admin-ui-search-icon">search</span>

@@ -1,5 +1,10 @@
 /* ===== ADMIN FINANCIALS PAGE ===== */
 
+.financial-tabs-toolbar {
+    justify-content: flex-start;
+    padding: 14px 18px;
+}
+
 .financial-table-user {
     display: flex;
     align-items: center;

@@ -16,6 +16,7 @@ import {
   DIFFICULTY_LABEL,
 } from '../../types/question.types';
 import type { Chapter } from '../../types/lookup.type';
+import { apiErrorMessage } from '../../utils/apiError';
 
 interface Props {
   question: Question | null; // null = thêm mới
@@ -102,8 +103,8 @@ export const QuestionFormModal: React.FC<Props> = ({ question, onClose, onSaved 
       else await createQuestion(payload);
       toast.success(reviewStatus === 'published' ? 'Đã lưu & duyệt câu hỏi.' : 'Đã lưu câu hỏi.');
       onSaved();
-    } catch {
-      toast.error('Lưu thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Lưu thất bại.'));
     } finally {
       setSaving(false);
     }
