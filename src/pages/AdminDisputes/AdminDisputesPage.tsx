@@ -8,6 +8,8 @@ import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, List
 import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
 import { parseIdFilter } from '../../utils/idFilter';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
+import { toast } from 'react-toastify';
+import { apiErrorMessage } from '../../utils/apiError';
 
 type DisputeTab = 'all' | DisputeStatus;
 
@@ -121,7 +123,7 @@ const AdminDisputesPage = () => {
             console.error('Error fetching disputes:', err);
             setDisputes([]);
             setTotalCount(0);
-            setLoadError('Không thể tải danh sách phản ánh. Vui lòng kiểm tra kết nối và thử lại.');
+            setLoadError(apiErrorMessage(err, 'Không thể tải danh sách phản ánh. Vui lòng kiểm tra kết nối và thử lại.'));
         } finally {
             if (requestId === latestRequest.current) setLoading(false);
         }
@@ -173,6 +175,7 @@ const AdminDisputesPage = () => {
             setStats(data);
         } catch (err) {
             console.error('Error fetching dispute stats:', err);
+            toast.error(apiErrorMessage(err, 'Không tải được số liệu tổng hợp phản ánh.'));
         }
     }, []);
 
@@ -307,8 +310,9 @@ const AdminDisputesPage = () => {
 
     return (
         <PageContainer
-            eyebrow="Vận hành"
-            title="Phản ánh buổi học"
+            eyebrow="Tranh chấp"
+            eyebrowInfo="Theo dõi, điều tra và xử lý các khiếu nại phát sinh từ buổi học."
+            title="Khiếu nại"
             maxWidth="wide"
             headerAction={
                 <button
@@ -352,21 +356,20 @@ const AdminDisputesPage = () => {
             </div>
 
             <SectionCard
-                title="Danh sách hồ sơ"
-                headerAction={
-                    <FilterTabs
-                        tabs={disputeTabs}
-                        activeKey={activeTab}
-                        onChange={handleStatusChange}
-                        ariaLabel="Lọc hồ sơ theo trạng thái"
-                    />
-                }
                 footer={
                     classSessionFilter !== undefined
                         ? `Hiển thị ${disputes.length} / ${totalCount} hồ sơ về buổi học #${classSessionFilter}`
                         : `Hiển thị ${disputes.length} / ${totalCount} hồ sơ`
                 }
             >
+                <div className="admin-ui-toolbar dispute-list-tabs-toolbar">
+                    <FilterTabs
+                        tabs={disputeTabs}
+                        activeKey={activeTab}
+                        onChange={handleStatusChange}
+                        ariaLabel="Lọc hồ sơ theo trạng thái"
+                    />
+                </div>
                 <div className="admin-ui-toolbar dispute-list-toolbar">
                     <form
                         className="dispute-list-search-form"
