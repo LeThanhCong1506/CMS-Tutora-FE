@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import {
   getPendingTutors,
@@ -15,6 +15,7 @@ import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
 import type { PendingTutorFromAPI, ProfileUpdateRequestFromAPI, SubjectGradePriceItem } from '../../types/admin.types';
 import { getFallbackAvatar, cssBackgroundUrl } from '../../utils/avatar';
+import { matchesSearch } from '../../utils/vietnameseSearch';
 import { diffWords } from '../../utils/wordDiff';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -23,6 +24,12 @@ import { apiErrorMessage } from '../../utils/apiError';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 const DEFAULT_ORDER = VETTING_SORT_DEFAULT;
+
+// Độ dài tối thiểu của lý do từ chối, dùng chung cho cả hai hàng đợi. BE không ràng buộc tối
+// thiểu (chỉ chặn trên 500 ký tự) nên con số này thuần là quy ước UI: cả hai loại lý do đều
+// được gửi thẳng cho gia sư đọc, nên đòi hỏi giống nhau — trước đây hồ sơ mới bắt 20 ký tự còn
+// yêu cầu cập nhật chỉ bắt 10, cùng một ô nhập trên cùng một trang mà hai luật khác nhau.
+const REJECTION_NOTE_MIN_LENGTH = 20;
 
 const VETTING_TABS = ['new', 'updates'] as const;
 type VettingTab = (typeof VETTING_TABS)[number];
@@ -137,6 +144,20 @@ const getSubjectPriceDiffGroups = (request: ProfileUpdateRequestFromAPI): Subjec
     .filter((group) => group.grades.some((g) => g.type !== 'same'));
 };
 
+/**
+ * Tên các mục THỰC SỰ đổi trong 1 yêu cầu — dùng chung cho cột "Thay đổi" ngoài bảng và cho
+ * badge "N thay đổi" trong modal, nên hai chỗ luôn đếm ra cùng một con số.
+ *
+ * Trước đây cột ngoài bảng chỉ kiểm tra `proposed !== null` nên liệt kê cả những field BE mirror
+ * y hệt giá trị cũ: bảng ghi "Tiêu đề, Thành phố, Quận/huyện, Bio, Học vấn, Kinh nghiệm" trong
+ * khi mở ra chỉ có 1-2 mục đổi thật — Admin đọc xong tưởng modal hiển thị thiếu.
+ */
+const getChangedLabels = (request: ProfileUpdateRequestFromAPI): string[] => {
+  const labels = getChangedProfileUpdateFields(request).map((f) => f.label);
+  if (getSubjectPriceDiffGroups(request).length > 0) labels.push('Môn học & Bảng giá');
+  return labels;
+};
+
 const formatPricePerHour = (n: number): string => `${n.toLocaleString('vi-VN')}đ/giờ`;
 
 const formatGradePriceTitle = (item?: SubjectGradePriceItem): string | undefined =>
@@ -209,6 +230,13 @@ const AdminVettingPage = () => {
   const [updateRequestsLoading, setUpdateRequestsLoading] = useState(canViewUpdates);
   const [updateRequestsError, setUpdateRequestsError] = useState<string | null>(null);
   const [updateActionLoading, setUpdateActionLoading] = useState<string | null>(null);
+  // Tab "updates" lọc/sắp xếp/phân trang ở CLIENT, khác tab "new" (BE nhận searchTerm/orderBy/page):
+  // endpoint /admin/tutor-profile-update-requests trả nguyên danh sách, không có tham số nào.
+  // Trạng thái tách riêng khỏi tab "new" để chuyển qua lại không mất ô tìm kiếm của tab kia.
+  const [updateSearchInput, setUpdateSearchInput] = useState('');
+  const [updateSearchQuery, setUpdateSearchQuery] = useState('');
+  const [updateOrderBy, setUpdateOrderBy] = useState(DEFAULT_ORDER);
+  const [updatePage, setUpdatePage] = useState(1);
   const [updateRejectionNote, setUpdateRejectionNote] = useState('');
   const [showUpdateRejectModal, setShowUpdateRejectModal] = useState<string | null>(null);
   const [selectedUpdateRequest, setSelectedUpdateRequest] = useState<ProfileUpdateRequestFromAPI | null>(null);
@@ -321,9 +349,14 @@ const AdminVettingPage = () => {
    * không tự cập nhật real-time — nếu Tutor vừa nộp thêm thay đổi trong lúc Admin đang xem,
    * ta phải phát hiện ra và đồng bộ lại UI thay vì để Admin duyệt nhầm nội dung chưa từng thấy.
    */
-  const verifyProfileUpdateRequestFreshness = async (tutorId: string): Promise<'fresh' | 'stale' | 'gone'> => {
+  const verifyProfileUpdateRequestFreshness = async (
+    tutorId: string,
+  ): Promise<
+    | { status: 'gone'; request: null }
+    | { status: 'fresh' | 'stale'; request: ProfileUpdateRequestFromAPI }
+  > => {
     const fresh = await getProfileUpdateRequestDetail(tutorId);
-    if (!fresh) return 'gone';
+    if (!fresh) return { status: 'gone', request: null };
 
     const known = updateRequests.find((r) => r.tutorId === tutorId);
     const changed = known ? hasProfileUpdateRequestChanged(known, fresh) : false;
@@ -333,7 +366,9 @@ const AdminVettingPage = () => {
     setUpdateRequests((prev) => prev.map((r) => (r.tutorId === tutorId ? fresh : r)));
     setSelectedUpdateRequest((prev) => (prev && prev.tutorId === tutorId ? fresh : prev));
 
-    return changed ? 'stale' : 'fresh';
+    // Trả kèm bản mới để phía gọi mở lại modal diff đúng nội dung vừa lấy về — luồng Từ chối
+    // đã đóng modal diff trước đó nên không còn gì để setSelectedUpdateRequest ở trên bám vào.
+    return { status: changed ? 'stale' : 'fresh', request: fresh };
   };
 
   const handleApproveUpdateRequest = async (tutorId: string) => {
@@ -341,12 +376,13 @@ const AdminVettingPage = () => {
       setUpdateActionLoading(tutorId);
 
       const freshness = await verifyProfileUpdateRequestFreshness(tutorId);
-      if (freshness === 'gone') {
+      if (freshness.status === 'gone') {
         toast.info('Yêu cầu này không còn tồn tại — có thể đã được xử lý trước đó. Danh sách đang được làm mới.');
+        setSelectedUpdateRequest(null);
         await fetchPendingUpdateRequests();
         return;
       }
-      if (freshness === 'stale') {
+      if (freshness.status === 'stale') {
         toast.warning('Tutor vừa nộp thêm thay đổi mới trong lúc bạn xem. Vui lòng xem lại nội dung mới rồi bấm Duyệt lại.');
         return;
       }
@@ -356,6 +392,7 @@ const AdminVettingPage = () => {
       // ngay trong khoảng giữa lúc verifyProfileUpdateRequestFreshness và lúc PUT này chạy)
       // — luôn ưu tiên hiển thị message thật từ server thay vì text tĩnh.
       toast.success(response?.message || 'Duyệt cập nhật hồ sơ thành công. Marketplace đã hiển thị thông tin mới.');
+      setSelectedUpdateRequest(null);
       await fetchPendingUpdateRequests();
       // Đồng bộ với badge "Hồ sơ gia sư" ở sidebar — xem comment ở handleApprove bên dưới.
       window.dispatchEvent(new Event('tutora:admin-badge-refresh'));
@@ -367,15 +404,18 @@ const AdminVettingPage = () => {
     }
   };
 
+  // Đóng modal diff trước khi mở modal nhập lý do — hai overlay chồng nhau sẽ che mất ô nhập.
+  // Cùng cách TutorDetailModal gọi onOpenReject() rồi onClose() ở tab "new".
   const handleOpenUpdateRejectModal = (tutorId: string) => {
+    setSelectedUpdateRequest(null);
     setShowUpdateRejectModal(tutorId);
     setUpdateRejectionNote('');
   };
 
   const handleRejectUpdateRequest = async () => {
     if (!showUpdateRejectModal) return;
-    if (updateRejectionNote.trim().length < 10) {
-      toast.error('Lý do từ chối phải có ít nhất 10 ký tự.');
+    if (updateRejectionNote.trim().length < REJECTION_NOTE_MIN_LENGTH) {
+      toast.error(`Lý do từ chối phải có ít nhất ${REJECTION_NOTE_MIN_LENGTH} ký tự.`);
       return;
     }
 
@@ -385,17 +425,19 @@ const AdminVettingPage = () => {
       setUpdateActionLoading(tutorId);
 
       const freshness = await verifyProfileUpdateRequestFreshness(tutorId);
-      if (freshness === 'gone') {
+      if (freshness.status === 'gone') {
         toast.info('Yêu cầu này không còn tồn tại — có thể đã được xử lý trước đó. Danh sách đang được làm mới.');
         setShowUpdateRejectModal(null);
         setUpdateRejectionNote('');
         await fetchPendingUpdateRequests();
         return;
       }
-      if (freshness === 'stale') {
+      if (freshness.status === 'stale') {
         toast.warning('Tutor vừa nộp thêm thay đổi mới trong lúc bạn xem. Vui lòng xem lại nội dung mới rồi từ chối lại nếu cần.');
         setShowUpdateRejectModal(null);
         setUpdateRejectionNote('');
+        // Mở lại diff với nội dung mới thay vì bắt Admin tự tìm lại dòng đó trong danh sách.
+        openUpdateRequestModal(freshness.request);
         return;
       }
 
@@ -433,6 +475,28 @@ const AdminVettingPage = () => {
     setPage(1);
   };
 
+  // Bộ ba tương ứng cho tab "updates". Giữ cùng nhịp "gõ xong mới tìm" như tab "new" (Enter hoặc
+  // bấm nút) dù ở đây lọc tại client và lọc ngay theo từng ký tự cũng được — hai tab cạnh nhau mà
+  // một bên lọc tức thì, một bên phải bấm nút thì thao tác tay quen ở tab này sẽ hụt ở tab kia.
+  const commitUpdateSearch = () => {
+    const next = updateSearchInput.trim();
+    if (next !== updateSearchQuery) setUpdateSearchQuery(next);
+    setUpdatePage(1);
+  };
+
+  const handleUpdateSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitUpdateSearch();
+    }
+  };
+
+  const clearUpdateSearch = () => {
+    setUpdateSearchInput('');
+    setUpdateSearchQuery('');
+    setUpdatePage(1);
+  };
+
   const handleApprove = async (tutorId: string) => {
     try {
       setActionLoading(tutorId);
@@ -458,8 +522,8 @@ const AdminVettingPage = () => {
 
   const handleReject = async () => {
     if (!showRejectModal) return;
-    if (rejectionNote.trim().length < 20) {
-      toast.error('Lý do từ chối phải có ít nhất 20 ký tự.');
+    if (rejectionNote.trim().length < REJECTION_NOTE_MIN_LENGTH) {
+      toast.error(`Lý do từ chối phải có ít nhất ${REJECTION_NOTE_MIN_LENGTH} ký tự.`);
       return;
     }
 
@@ -484,6 +548,34 @@ const AdminVettingPage = () => {
   // that response locally while preserving server-side page slices.
   const visibleTutors =
     total > PAGE_SIZE && total === tutors.length ? tutors.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : tutors;
+
+  // Tìm theo tên/email gia sư, bỏ dấu (matchesSearch) để gõ "duong thanh phat" vẫn ra "Dương
+  // Thành Phát". Sắp xếp theo submittedAt, dùng chung 2 lựa chọn với tab "new" nên nhãn "Chờ lâu
+  // nhất trước" ở hai tab nghĩa như nhau.
+  const filteredUpdateRequests = useMemo(() => {
+    const matched = updateRequests.filter((req) =>
+      matchesSearch(updateSearchQuery, req.tutorFullName, req.tutorEmail),
+    );
+    const direction = updateOrderBy === DEFAULT_ORDER ? 1 : -1;
+    return [...matched].sort(
+      (a, b) => direction * (new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()),
+    );
+  }, [updateRequests, updateSearchQuery, updateOrderBy]);
+
+  const updateTotal = filteredUpdateRequests.length;
+
+  // Duyệt/từ chối dòng cuối của trang cuối làm danh sách ngắn lại — kéo Admin về trang còn dữ
+  // liệu thay vì để đứng nhìn trang trống (tab "new" xử lý việc này ngay trong fetchPendingTutors).
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(updateTotal / PAGE_SIZE));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (updatePage > lastPage) setUpdatePage(lastPage);
+  }, [updateTotal, updatePage]);
+
+  const visibleUpdateRequests = filteredUpdateRequests.slice(
+    (updatePage - 1) * PAGE_SIZE,
+    updatePage * PAGE_SIZE,
+  );
 
   const vettingColumns: DataTableColumn<PendingTutorFromAPI>[] = [
     {
@@ -575,8 +667,7 @@ const AdminVettingPage = () => {
       title: 'Thay đổi',
       minWidth: 190,
       render: (req) => {
-        const changedLabels = PROFILE_UPDATE_DIFF_FIELDS.filter((f) => req[f.proposed] !== null).map((f) => f.label);
-        if (req.hasProposedSubjectGradePrices) changedLabels.push('Môn học & Bảng giá');
+        const changedLabels = getChangedLabels(req);
         return (
           <span className="admin-ui-entity-secondary">
             {changedLabels.length > 0 ? changedLabels.join(', ') : 'Không có thay đổi nào được ghi nhận'}
@@ -600,37 +691,28 @@ const AdminVettingPage = () => {
       key: 'actions',
       title: 'Hành động',
       align: 'right',
+      // Duyệt/Từ chối nằm trong modal chứ không phải ngoài bảng — giống hệt tab "new". Ngoài
+      // việc cho 2 tab cùng hình dạng, đây còn là điều kiện để cơ chế chống-duyệt-nhầm hoạt
+      // động: verifyProfileUpdateRequestFreshness() cảnh báo "tutor vừa nộp thêm thay đổi" rồi
+      // vẽ lại nội dung mới, mà cảnh báo đó vô nghĩa nếu Admin bấm Duyệt từ ngoài danh sách,
+      // chưa từng mở diff ra xem.
       render: (req) => (
         <div className="certificate-row-actions">
-          <Can permission="tutor_profile_update.decide">
-          <button
-            type="button"
-            className="admin-ui-button admin-ui-button-success"
-            onClick={() => handleApproveUpdateRequest(req.tutorId)}
-            disabled={updateActionLoading === req.tutorId}
-          >
-            <span className="material-symbols-outlined">check</span>
-            Duyệt
-          </button>
-          <button
-            type="button"
-            className="admin-ui-button admin-ui-button-danger"
-            onClick={() => handleOpenUpdateRejectModal(req.tutorId)}
-            disabled={updateActionLoading === req.tutorId}
-          >
-            Từ chối
-          </button>
-          </Can>
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => openUpdateRequestModal(req)}
+            onClick={(event) => {
+              event.stopPropagation();
+              openUpdateRequestModal(req);
+            }}
+            aria-label={`Xem chi tiết yêu cầu cập nhật của ${req.tutorFullName || 'gia sư'}`}
           >
-            Xem thay đổi
+            <span className="material-symbols-outlined">visibility</span>
+            Chi tiết
           </button>
         </div>
       ),
-      minWidth: 300,
+      minWidth: 140,
     },
   ];
 
@@ -643,7 +725,7 @@ const AdminVettingPage = () => {
           title="Hồ sơ gia sư"
           maxWidth="wide"
         >
-          <div className="admin-ui-actions" style={{ marginBottom: 16 }}>
+          <div className="admin-ui-actions vetting-tab-row">
             {canViewNew && (
               <button
                 type="button"
@@ -767,24 +849,69 @@ const AdminVettingPage = () => {
 
           {activeTab === 'updates' && canViewUpdates && (
             <SectionCard
-              title="Yêu cầu cập nhật hồ sơ"
-              subtitle="Tutor đã Active gửi chỉnh sửa hồ sơ — Marketplace vẫn hiển thị thông tin cũ cho đến khi duyệt ở đây."
-              headerAction={
-                <button
-                  type="button"
-                  className="vetting-refresh-button"
-                  onClick={() => void fetchPendingUpdateRequests()}
-                  disabled={updateRequestsLoading}
-                  aria-label="Làm mới danh sách yêu cầu cập nhật hồ sơ"
-                >
-                  <span className={`material-symbols-outlined ${updateRequestsLoading ? 'vetting-spinning' : ''}`}>
-                    refresh
-                  </span>
-                  Làm mới
-                </button>
-              }
-              footer={`Hiển thị ${updateRequests.length} yêu cầu`}
+              footer={`${
+                updateSearchQuery
+                  ? `Tìm thấy ${updateTotal} yêu cầu khớp với "${updateSearchQuery}"`
+                  : `Hiển thị ${visibleUpdateRequests.length} / ${updateTotal} yêu cầu chờ duyệt`
+              } · Đang xếp theo "${getVettingSortLabel(updateOrderBy)}"`}
             >
+              <div className="certificate-vetting-toolbar">
+                <div className="certificate-search-group">
+                  <div className="admin-ui-search">
+                    <span className="material-symbols-outlined admin-ui-search-icon">search</span>
+                    <input
+                      id="vetting-update-search"
+                      type="search"
+                      className="admin-ui-search-input"
+                      placeholder="Tìm theo tên, email gia sư..."
+                      value={updateSearchInput}
+                      onChange={(event) => setUpdateSearchInput(event.target.value)}
+                      onKeyDown={handleUpdateSearchKeyDown}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-ui-button admin-ui-button-primary"
+                    onClick={commitUpdateSearch}
+                    disabled={updateRequestsLoading}
+                  >
+                    Tìm kiếm
+                  </button>
+                  {updateSearchQuery && (
+                    <button
+                      type="button"
+                      className="admin-ui-button admin-ui-button-secondary"
+                      onClick={clearUpdateSearch}
+                    >
+                      Xóa tìm kiếm
+                    </button>
+                  )}
+                </div>
+                <div className="certificate-vetting-toolbar-actions">
+                  <VettingSortSelect
+                    id="vetting-update-sort"
+                    itemNoun="yêu cầu cập nhật"
+                    value={updateOrderBy}
+                    onChange={(value) => {
+                      setUpdateOrderBy(value);
+                      setUpdatePage(1);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="vetting-refresh-button"
+                    onClick={() => void fetchPendingUpdateRequests()}
+                    disabled={updateRequestsLoading}
+                    aria-label="Làm mới danh sách yêu cầu cập nhật hồ sơ"
+                  >
+                    <span className={`material-symbols-outlined ${updateRequestsLoading ? 'vetting-spinning' : ''}`}>
+                      refresh
+                    </span>
+                    Làm mới
+                  </button>
+                </div>
+              </div>
+
               {updateRequestsError && !updateRequestsLoading ? (
                 <div className="vetting-error-state">
                   <span className="material-symbols-outlined vetting-state-icon">error</span>
@@ -800,18 +927,29 @@ const AdminVettingPage = () => {
               ) : (
                 <DataTable<ProfileUpdateRequestFromAPI>
                   columns={updateRequestColumns}
-                  data={updateRequests}
+                  data={visibleUpdateRequests}
                   rowKey="tutorId"
                   loading={updateRequestsLoading}
                   loadingText="Đang tải danh sách yêu cầu cập nhật..."
-                  emptyText="Không có yêu cầu cập nhật hồ sơ nào đang chờ duyệt"
+                  emptyText={
+                    updateSearchQuery
+                      ? 'Không tìm thấy yêu cầu phù hợp'
+                      : 'Không có yêu cầu cập nhật hồ sơ nào đang chờ duyệt'
+                  }
                   emptyIcon={
                     <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#94a3b8' }}>
                       check_circle
                     </span>
                   }
+                  onRowClick={(req) => openUpdateRequestModal(req)}
                   tableLabel="Yêu cầu cập nhật hồ sơ"
-                  minWidth={920}
+                  pagination={{
+                    current: updatePage,
+                    pageSize: PAGE_SIZE,
+                    total: updateTotal,
+                    onChange: setUpdatePage,
+                  }}
+                  minWidth={900}
                   variant="embedded"
                   density="compact"
                   adaptive
@@ -858,12 +996,14 @@ const AdminVettingPage = () => {
               <p>Vui lòng nhập lý do từ chối hồ sơ. Lý do này sẽ được gửi đến gia sư để họ có thể cải thiện hồ sơ.</p>
               <textarea
                 className="vetting-rejection-textarea"
-                placeholder="Nhập lý do từ chối (ít nhất 20 ký tự)..."
+                placeholder={`Nhập lý do từ chối (ít nhất ${REJECTION_NOTE_MIN_LENGTH} ký tự)...`}
                 value={rejectionNote}
                 onChange={(e) => setRejectionNote(e.target.value)}
                 rows={4}
               />
-              <p className="vetting-char-count">{rejectionNote.length}/20 ký tự tối thiểu</p>
+              <p className="vetting-char-count">
+                {rejectionNote.length}/{REJECTION_NOTE_MIN_LENGTH} ký tự tối thiểu
+              </p>
             </div>
             <div className="certificate-reject-footer">
               <button
@@ -877,7 +1017,7 @@ const AdminVettingPage = () => {
                 type="button"
                 className="admin-ui-button admin-ui-button-danger"
                 onClick={handleReject}
-                disabled={rejectionNote.trim().length < 20 || actionLoading !== null}
+                disabled={rejectionNote.trim().length < REJECTION_NOTE_MIN_LENGTH || actionLoading !== null}
               >
                 {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>
@@ -893,10 +1033,16 @@ const AdminVettingPage = () => {
 
         return (
           <div className="vetting-modal-overlay" onClick={() => setSelectedUpdateRequest(null)}>
-            <div className="vetting-modal profile-diff-modal" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="vetting-modal profile-diff-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="profile-diff-title"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="vetting-modal-header profile-diff-header">
                 <div>
-                  <h3>Thay đổi hồ sơ đề xuất</h3>
+                  <h3 id="profile-diff-title">Thay đổi hồ sơ đề xuất</h3>
                   <p className="profile-diff-header-subtitle">
                     {selectedUpdateRequest.tutorFullName || 'Chưa rõ tên'}
                     <span className="profile-diff-count-badge">
@@ -1072,46 +1218,100 @@ const AdminVettingPage = () => {
                   </div>
                 )}
               </div>
-              <div className="vetting-modal-footer">
-                <button className="vetting-btn vetting-btn-outline" onClick={() => setSelectedUpdateRequest(null)}>
+              {/* Cùng bố cục với footer của TutorDetailModal ở tab "new": Đóng bên trái, cặp
+                  quyết định bên phải, để thao tác duyệt ở hai hàng đợi nằm đúng một chỗ. */}
+              <div className="vetting-modal-footer profile-diff-footer">
+                <button
+                  type="button"
+                  className="admin-ui-button admin-ui-button-secondary"
+                  onClick={() => setSelectedUpdateRequest(null)}
+                >
                   Đóng
                 </button>
+                <div>
+                  <Can permission="tutor_profile_update.decide">
+                    <button
+                      type="button"
+                      className="admin-ui-button admin-ui-button-danger"
+                      onClick={() => handleOpenUpdateRejectModal(selectedUpdateRequest.tutorId)}
+                      disabled={updateActionLoading !== null}
+                    >
+                      Từ chối cập nhật
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-ui-button admin-ui-button-success"
+                      onClick={() => void handleApproveUpdateRequest(selectedUpdateRequest.tutorId)}
+                      disabled={updateActionLoading !== null}
+                    >
+                      <span className="material-symbols-outlined">check</span>
+                      {updateActionLoading ? 'Đang xử lý...' : 'Duyệt cập nhật'}
+                    </button>
+                  </Can>
+                </div>
               </div>
             </div>
           </div>
         );
       })()}
 
+      {/* Cùng khuôn với hộp thoại từ chối hồ sơ mới ở trên (certificate-reject-*): cùng icon,
+          cùng bố cục nút, cùng thuộc tính trợ năng. Bản cũ ở đây dùng bộ class vetting-modal-*
+          đời trước nên hai hộp thoại cùng việc mà trông khác hẳn nhau. */}
       {canViewUpdates && showUpdateRejectModal && (
-        <div className="vetting-modal-overlay" onClick={() => setShowUpdateRejectModal(null)}>
-          <div className="vetting-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="vetting-modal-header">
-              <h3>Từ chối cập nhật hồ sơ</h3>
-              <button className="vetting-modal-close" onClick={() => setShowUpdateRejectModal(null)}>
+        <div className="certificate-modal-overlay" onMouseDown={() => setShowUpdateRejectModal(null)}>
+          <div
+            className="certificate-reject-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-update-reject-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="certificate-reject-header">
+              <div>
+                <span className="material-symbols-outlined">report</span>
+                <h3 id="profile-update-reject-title">Từ chối cập nhật hồ sơ</h3>
+              </div>
+              <button
+                type="button"
+                className="certificate-modal-close"
+                onClick={() => setShowUpdateRejectModal(null)}
+                aria-label="Đóng hộp thoại từ chối"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="vetting-modal-body">
-              <p className="vetting-modal-description">
-                Vui lòng nhập lý do từ chối. Hồ sơ hiện tại của tutor trên Marketplace sẽ không bị ảnh hưởng.
+            <div className="certificate-reject-body">
+              <p>
+                Vui lòng nhập lý do từ chối. Lý do này sẽ được gửi đến gia sư; hồ sơ hiện tại của họ trên
+                Marketplace không bị ảnh hưởng.
               </p>
               <textarea
                 className="vetting-rejection-textarea"
-                placeholder="Nhập lý do từ chối (ít nhất 10 ký tự)..."
+                placeholder={`Nhập lý do từ chối (ít nhất ${REJECTION_NOTE_MIN_LENGTH} ký tự)...`}
                 value={updateRejectionNote}
                 onChange={(e) => setUpdateRejectionNote(e.target.value)}
                 rows={4}
               />
-              <p className="vetting-char-count">{updateRejectionNote.length}/10 ký tự tối thiểu</p>
+              <p className="vetting-char-count">
+                {updateRejectionNote.length}/{REJECTION_NOTE_MIN_LENGTH} ký tự tối thiểu
+              </p>
             </div>
-            <div className="vetting-modal-footer">
-              <button className="vetting-btn vetting-btn-outline" onClick={() => setShowUpdateRejectModal(null)}>
+            <div className="certificate-reject-footer">
+              <button
+                type="button"
+                className="admin-ui-button admin-ui-button-secondary"
+                onClick={() => setShowUpdateRejectModal(null)}
+              >
                 Hủy
               </button>
               <button
-                className="vetting-btn vetting-btn-reject"
+                type="button"
+                className="admin-ui-button admin-ui-button-danger"
                 onClick={handleRejectUpdateRequest}
-                disabled={updateRejectionNote.trim().length < 10 || updateActionLoading !== null}
+                disabled={
+                  updateRejectionNote.trim().length < REJECTION_NOTE_MIN_LENGTH || updateActionLoading !== null
+                }
               >
                 {updateActionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>

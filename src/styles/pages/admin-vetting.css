@@ -3441,3 +3441,32 @@ iframe.profile-intro-video {
     border-bottom: 1px solid #eceae4;
   }
 }
+
+/* Hàng nút chuyển tab của trang "Hồ sơ gia sư". */
+.vetting-tab-row {
+  margin-bottom: 16px;
+}
+
+/* Footer modal "Thay đổi hồ sơ đề xuất" — cùng bố cục với .profile-detail-footer
+   của modal duyệt hồ sơ mới: Đóng bên trái, cặp quyết định dồn về bên phải. */
+.profile-diff-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-diff-footer > div {
+  display: flex;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .profile-diff-footer,
+  .profile-diff-footer > div {
+    flex-wrap: wrap;
+  }
+
+  .profile-diff-footer > div {
+    flex: 1;
+    justify-content: flex-end;
+  }
+}
