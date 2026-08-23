@@ -14,8 +14,9 @@ const ChaptersTypesPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="Chương học & Loại câu hỏi"
-      subtitle="Phân loại dùng cho ngân hàng câu hỏi — chương gắn theo cặp môn học và khối lớp."
+      eyebrow="Cấu hình chương trình"
+      eyebrowInfo="Phân loại dùng cho ngân hàng câu hỏi; mỗi chương được gắn theo cặp môn học và khối lớp."
+      title="Chương & Loại câu"
       maxWidth="wide"
     >
       <div className="space-y-4">

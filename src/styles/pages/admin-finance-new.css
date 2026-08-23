@@ -1,5 +1,9 @@
 /* ===== ADMIN FINANCE (v2) PAGE (proposal — mock data) ===== */
 
+.finance-new-tabs-toolbar {
+    justify-content: flex-start;
+}
+
 .fin2-stack {
     display: flex;
     flex-direction: column;

@@ -9,6 +9,7 @@ import {
     type CommissionConfigWithHistory,
 } from '../../../services/adminCommission.service';
 import { formatDate } from '../../../utils/formatters';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const historyColumns: DataTableColumn<CommissionConfigHistoryItem>[] = [
     { key: 'date', title: 'Ngày áp dụng', render: (r) => formatDate(r.changedAt) },
@@ -33,8 +34,8 @@ const CommissionConfigTab = () => {
                 setConfig(data);
                 setParentFeePercent(String(data.parentFeePercent));
                 setTutorFeePercent(String(data.tutorFeePercent));
-            } catch {
-                if (!cancelled) toast.error('Không tải được cấu hình hoa hồng.');
+            } catch (error) {
+                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được cấu hình hoa hồng.'));
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -65,8 +66,8 @@ const CommissionConfigTab = () => {
             setParentFeePercent(String(updated.parentFeePercent));
             setTutorFeePercent(String(updated.tutorFeePercent));
             toast.success('Đã cập nhật phí sàn.');
-        } catch {
-            toast.error('Không thể lưu cấu hình hoa hồng.');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể lưu cấu hình hoa hồng.'));
         } finally {
             setSaving(false);
         }

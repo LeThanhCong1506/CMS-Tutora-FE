@@ -13,6 +13,8 @@ import TransactionLedger from './components/TransactionLedger';
 // TEMP: mock fallback for local UI preview while the backend is offline — see src/mocks/financialsMockFallback.ts
 import { mockFinancialMetrics, mockWithdrawalRequests } from '../../mocks/financialsMockFallback';
 import '../../styles/pages/admin-financial.css';
+import { toast } from 'react-toastify';
+import { apiErrorMessage } from '../../utils/apiError';
 
 type FinancialTab = 'withdrawals' | 'ledger' | 'commission';
 const FINANCIAL_TAB_KEYS: readonly FinancialTab[] = ['withdrawals', 'ledger', 'commission'];
@@ -44,6 +46,9 @@ const AdminFinancialsPage = () => {
             console.error('Error fetching financial metrics:', err);
             // TEMP: mock fallback for local UI preview — remove once backend is reachable.
             setMetrics(mockFinancialMetrics);
+            toast.error(
+                `${apiErrorMessage(err, 'Không tải được số liệu tài chính.')} Số liệu đang hiển thị là dữ liệu mẫu, không phải số thật.`,
+            );
         } finally {
             setMetricsLoading(false);
         }
@@ -59,6 +64,9 @@ const AdminFinancialsPage = () => {
             console.error('Error fetching withdrawal requests:', err);
             // TEMP: mock fallback for local UI preview — remove once backend is reachable.
             setWithdrawalRequests(mockWithdrawalRequests);
+            toast.error(
+                `${apiErrorMessage(err, 'Không tải được yêu cầu rút tiền.')} Danh sách đang hiển thị là dữ liệu mẫu, không phải số thật.`,
+            );
             setWithdrawalTotal(mockWithdrawalRequests.length);
         } finally {
             setWithdrawalLoading(false);
@@ -77,9 +85,9 @@ const AdminFinancialsPage = () => {
 
     return (
         <PageContainer
-            eyebrow="Tổng quan"
-            title="Tổng quan Tài chính"
-            subtitle="Theo dõi doanh thu, tiền đang giữ và các yêu cầu rút tiền cần xử lý."
+            eyebrow="Báo cáo"
+            eyebrowInfo="Theo dõi doanh thu, tiền đang giữ, dòng tiền và các yêu cầu rút tiền cần xử lý."
+            title="Tài chính"
             maxWidth="wide"
         >
             <div className="admin-ui-kpi-grid">
@@ -117,15 +125,6 @@ const AdminFinancialsPage = () => {
             </div>
 
             <SectionCard
-                title="Dòng tiền và thanh toán"
-                subtitle="Ưu tiên xử lý các yêu cầu rút tiền đang chờ để giảm backlog vận hành."
-                headerAction={
-                    <FilterTabs
-                        tabs={financialTabs}
-                        activeKey={activeTab}
-                        onChange={(key) => setActiveTab(key as FinancialTab)}
-                    />
-                }
                 footer={
                     activeTab === 'withdrawals' ? (
                         <button
@@ -138,6 +137,13 @@ const AdminFinancialsPage = () => {
                     ) : undefined
                 }
             >
+                <div className="admin-ui-toolbar financial-tabs-toolbar">
+                    <FilterTabs
+                        tabs={financialTabs}
+                        activeKey={activeTab}
+                        onChange={(key) => setActiveTab(key as FinancialTab)}
+                    />
+                </div>
                 {activeTab === 'withdrawals' && (
                     <WithdrawalRequestTable
                         data={withdrawalRequests}

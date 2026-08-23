@@ -300,7 +300,8 @@ const AdminDashboardPageEnhanced = () => {
 
     return (
         <PageContainer
-            title="Tổng quan quản trị"
+            title="Tổng quan hệ thống"
+            titleInfo="Theo dõi các chỉ số vận hành chính của hệ thống trong khoảng thời gian đã chọn."
             maxWidth="wide"
             headerAction={<DashboardRangePicker selection={selection} onChange={setSelection} />}
         >

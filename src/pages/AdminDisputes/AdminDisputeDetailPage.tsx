@@ -56,6 +56,7 @@ import {
     TUTOR_ACTION_PERMISSIONS,
     validateResolution,
 } from './disputeWorkflow';
+import { apiErrorMessage } from '../../utils/apiError';
 
 import '../../styles/pages/admin-dashboard.css';
 import '../../styles/pages/admin-dispute-detail.css';
@@ -263,6 +264,7 @@ const AdminDisputeDetailPage = () => {
         } catch (err) {
             console.error('Error fetching chat history:', err);
             setChatMessages([]);
+            toast.error(apiErrorMessage(err, 'Không tải được lịch sử chat của buổi học.'));
         } finally {
             setChatLoading(false);
         }
@@ -318,6 +320,7 @@ const AdminDisputeDetailPage = () => {
             setTutorThread(await getDisputeThread(disputeId, 'tutor'));
         } catch (err) {
             console.error('Error fetching tutor thread:', err);
+            toast.error(apiErrorMessage(err, 'Không tải được trao đổi với gia sư.'));
         } finally {
             setTutorThreadLoading(false);
         }
@@ -330,6 +333,7 @@ const AdminDisputeDetailPage = () => {
             setParentThread(await getDisputeThread(disputeId, 'parent'));
         } catch (err) {
             console.error('Error fetching parent thread:', err);
+            toast.error(apiErrorMessage(err, 'Không tải được trao đổi với phụ huynh.'));
         } finally {
             setParentThreadLoading(false);
         }
@@ -364,7 +368,7 @@ const AdminDisputeDetailPage = () => {
             await fetchTutorThread();
         } catch (err) {
             console.error('Error sending tutor thread message:', err);
-            toast.error('Không thể gửi tin nhắn');
+            toast.error(apiErrorMessage(err, 'Không thể gửi tin nhắn'));
         } finally {
             setTutorThreadSending(false);
         }
@@ -379,7 +383,7 @@ const AdminDisputeDetailPage = () => {
             await fetchParentThread();
         } catch (err) {
             console.error('Error sending parent thread message:', err);
-            toast.error('Không thể gửi tin nhắn');
+            toast.error(apiErrorMessage(err, 'Không thể gửi tin nhắn'));
         } finally {
             setParentThreadSending(false);
         }
@@ -408,7 +412,7 @@ const AdminDisputeDetailPage = () => {
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error resolving dispute:', err);
-            toast.error('Không thể hoàn tất xử lý hồ sơ');
+            toast.error(apiErrorMessage(err, 'Không thể hoàn tất xử lý hồ sơ'));
         } finally {
             setIsSubmitting(false);
         }
@@ -439,7 +443,7 @@ const AdminDisputeDetailPage = () => {
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error investigating dispute:', err);
-            toast.error('Không thể bắt đầu xem xét hồ sơ');
+            toast.error(apiErrorMessage(err, 'Không thể bắt đầu xem xét hồ sơ'));
         } finally {
             setIsSubmitting(false);
         }
@@ -459,7 +463,7 @@ const AdminDisputeDetailPage = () => {
             await fetchDisputeDetail(disputeId);
         } catch (err) {
             console.error('Error confirming tutor no-show:', err);
-            toast.error('Không thể xác nhận vắng mặt');
+            toast.error(apiErrorMessage(err, 'Không thể xác nhận vắng mặt'));
         } finally {
             setIsSubmitting(false);
         }

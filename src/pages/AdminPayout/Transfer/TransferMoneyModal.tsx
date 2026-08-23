@@ -4,6 +4,7 @@ import { getAllUsers } from '../../../services/admin.service';
 import { transferToUser } from '../../../services/adminPayout.service';
 import { formatCurrency } from '../../../utils/formatters';
 import type { UserListItem } from '../../../types/admin.types';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const MIN_REASON = 10;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -110,8 +111,7 @@ const TransferMoneyModal = ({ isOpen, onClose, onSuccess }: TransferMoneyModalPr
             onClose();
         } catch (err) {
             console.error('Error transferring money:', err);
-            const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(message || 'Không thể chuyển tiền. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể chuyển tiền. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }

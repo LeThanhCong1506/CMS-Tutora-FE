@@ -20,6 +20,7 @@ import type { Question } from '../../types/question.types';
 import { ExtractedQuestionCard } from './ExtractedQuestionCard';
 import { DocumentHistoryModal } from './DocumentHistoryModal';
 import { QuestionFormModal } from '../../components/QuestionForm/QuestionFormModal';
+import { apiErrorMessage } from '../../utils/apiError';
 
 type Stage = 'idle' | 'ready' | 'uploading' | 'done' | 'failed';
 
@@ -107,9 +108,7 @@ const UploadPdfPage: React.FC = () => {
       setStage('done');
       toast.success(res.message || 'Xử lý PDF thành công.');
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Xử lý PDF thất bại.';
+      const msg = apiErrorMessage(err, 'Xử lý PDF thất bại.');
       setErrorMsg(msg);
       setStage('failed');
       toast.error(msg);

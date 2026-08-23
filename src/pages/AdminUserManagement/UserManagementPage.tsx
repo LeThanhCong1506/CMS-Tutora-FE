@@ -8,9 +8,16 @@ import {
     issueWarning,
     suspendTutor,
     deleteUser,
+    exportUsersToExcel,
 } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 import { useAccess } from '../../contexts/AccessContext';
 import type { UserListItem } from '../../types/admin.types';
 import type { FlatUserDetail } from './userTypes';
@@ -21,6 +28,7 @@ import SuspendUserModal from './components/SuspendUserModal';
 import UserFormModal from './components/UserFormModal';
 import { getRoleDisplay } from './roleDisplay';
 import { formatDateTime } from '../../utils/formatters';
+import { apiErrorMessage } from '../../utils/apiError';
 
 /** Customer roles this page can be scoped to (via the sidebar sub-menu). */
 export type CustomerRole = 'Student' | 'Parent' | 'Tutor';
@@ -41,6 +49,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [limit] = useState(ADMIN_PAGE_SIZE);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Filters. When the view is locked to a role, that role is the effective
     // filter and the dropdown is hidden.
@@ -182,8 +191,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             setIsBlockModalOpen(false);
             setIsDetailModalOpen(false);
             await fetchUsers();
-        } catch {
-            toast.error('Không thể vô hiệu hóa tài khoản');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể vô hiệu hóa tài khoản'));
         }
     };
 
@@ -196,8 +205,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             toast.success(`Đã mở khóa tài khoản ${selectedUser.fullname}`);
             setIsDetailModalOpen(false);
             await fetchUsers();
-        } catch {
-            toast.error('Không thể mở khóa tài khoản');
+        } catch (error) {
+            toast.error(apiErrorMessage(error, 'Không thể mở khóa tài khoản'));
         }
     };
 
@@ -283,8 +292,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             setSelectedUser(null);
             await fetchUsers();
         } catch (err: unknown) {
-            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(msg || 'Không thể xóa tài khoản');
+            toast.error(apiErrorMessage(err, 'Không thể xóa tài khoản'));
         } finally {
             setIsDeleting(false);
         }
@@ -326,6 +334,35 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
         setStatusFilter('all');
         setRoleFilter('all');
         setPage(1);
+    };
+
+    /**
+     * Xuất Excel. `effectiveRole` LUÔN được áp — kể cả scope='all' — vì khi trang bị khoá
+     * theo vai trò (vd "/users/tutors" → lockedRole="Tutor"), đó là danh tính của TRANG,
+     * không phải bộ lọc admin tự chọn nên không được phép "bỏ qua" như tìm kiếm/trạng thái.
+     * scope='filtered' cộng thêm tìm kiếm/trạng thái đang áp dụng; scope='all' chỉ bỏ 2
+     * cái đó, không bỏ vai trò bị khoá.
+     */
+    const handleExport = async (scope: 'filtered' | 'all') => {
+        setIsExporting(true);
+        try {
+            const filters = {
+                role: effectiveRole !== 'all' ? effectiveRole : undefined,
+                ...(scope === 'filtered'
+                    ? {
+                        searchTerm: searchQuery || undefined,
+                        status: statusFilter === 'active' ? 1 : statusFilter === 'blocked' ? 0 : undefined,
+                    }
+                    : {}),
+            };
+            await exportUsersToExcel(filters);
+            toast.success('Đã xuất danh sách người dùng ra Excel.');
+        } catch (err) {
+            console.error('Export users error:', err);
+            toast.error('Xuất Excel thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const getStatusVariant = (status: string): 'success' | 'warning' | 'error' | 'neutral' => {
@@ -486,8 +523,8 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
     const scopedRoleLabel = lockedRole ? getRoleDisplay(lockedRole).label : '';
     const roleLabel = scopedRoleLabel.toLowerCase();
-    const pageTitle = lockedRole ? scopedRoleLabel : 'Quản lý người dùng';
-    const pageSubtitle = lockedRole
+    const pageTitle = lockedRole ? scopedRoleLabel : 'Tất cả';
+    const pageDescription = lockedRole
         ? `Theo dõi hồ sơ và trạng thái tài khoản ${roleLabel} trong hệ thống.`
         : 'Theo dõi học viên, phụ huynh và gia sư trong cùng một không gian vận hành.';
     const addButtonLabel = lockedRole ? `Thêm ${roleLabel}` : 'Thêm người dùng';
@@ -501,21 +538,45 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     return (
         <>
             <PageContainer
-                eyebrow="Tài khoản"
+                eyebrow="Quản lý người dùng"
+                eyebrowInfo={pageDescription}
                 title={pageTitle}
-                subtitle={pageSubtitle}
                 maxWidth="wide"
                 headerAction={
-                    can('user.update') ? (
+                    can('user.update') || can('export.data') ? (
                         <div className="admin-ui-actions um-page-actions">
-                            <button
-                                type="button"
-                                className="admin-ui-button admin-ui-button-primary"
-                                onClick={openCreateModal}
-                            >
-                                <span className="material-symbols-outlined">person_add</span>
-                                {addButtonLabel}
-                            </button>
+                            {can('export.data') && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger render={
+                                        <button
+                                            type="button"
+                                            className="admin-ui-button admin-ui-button-secondary"
+                                            disabled={isExporting}
+                                        >
+                                            <span className="material-symbols-outlined">file_download</span>
+                                            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+                                        </button>
+                                    } />
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleExport('filtered')}>
+                                            Xuất theo bộ lọc hiện tại
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleExport('all')}>
+                                            {lockedRole ? `Xuất toàn bộ ${scopedRoleLabel}` : 'Xuất toàn bộ'}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                            {can('user.update') && (
+                                <button
+                                    type="button"
+                                    className="admin-ui-button admin-ui-button-primary"
+                                    onClick={openCreateModal}
+                                >
+                                    <span className="material-symbols-outlined">person_add</span>
+                                    {addButtonLabel}
+                                </button>
+                            )}
                         </div>
                     ) : undefined
                 }
@@ -621,9 +682,6 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                                 {loading ? 'progress_activity' : 'manage_accounts'}
                             </span>
                             <strong>{resultSummary}</strong>
-                            {!loading && users.length > 0 && (
-                                <span className="um-result-hint">Chọn một dòng để xem chi tiết</span>
-                            )}
                         </div>
 
                         {loadError ? (

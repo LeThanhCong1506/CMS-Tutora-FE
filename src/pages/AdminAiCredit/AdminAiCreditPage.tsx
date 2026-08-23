@@ -14,8 +14,9 @@ const AdminAiCreditPage: React.FC = () => {
 
   return (
     <PageContainer
-      title="Gói & Hạn Mức AI Credit"
-      subtitle="Quản lý gói hạn mức cho AI Giải bài tập và cấu hình thưởng tặng kèm khi có đặt gia sư."
+      eyebrow="Tài nguyên AI"
+      eyebrowInfo="Quản lý gói hạn mức cho AI Giải bài tập và cấu hình thưởng tặng kèm khi có đặt gia sư."
+      title="Gói & Hạn Mức"
       maxWidth="full"
     >
       <div className="space-y-4">

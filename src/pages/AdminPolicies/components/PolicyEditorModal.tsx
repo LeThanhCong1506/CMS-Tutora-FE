@@ -7,6 +7,7 @@ import {
     type PolicyDocument,
 } from '../../../services/adminPolicy.service';
 import PolicyContentEditor from './PolicyContentEditor';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 interface PolicyEditorModalProps {
     /** null = tạo mới. */
@@ -60,8 +61,8 @@ const PolicyEditorModal = ({ policyDocumentId, readOnly, onClose, onSaved }: Pol
             try {
                 const document = await getPolicyDocument(policyDocumentId);
                 if (!cancelled && document) setForm(toFormState(document));
-            } catch {
-                if (!cancelled) toast.error('Không tải được nội dung văn bản.');
+            } catch (error) {
+                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được nội dung văn bản.'));
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -105,8 +106,7 @@ const PolicyEditorModal = ({ policyDocumentId, readOnly, onClose, onSaved }: Pol
             }
             onSaved();
         } catch (error) {
-            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(message || 'Không lưu được văn bản.');
+            toast.error(apiErrorMessage(error, 'Không lưu được văn bản.'));
         } finally {
             setSaving(false);
         }

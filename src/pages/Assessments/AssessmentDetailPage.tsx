@@ -53,6 +53,7 @@ import {
 import { DIFFICULTY_LABEL } from '../../types/question.types';
 import { AssessmentFormModal } from '../../components/AssessmentForm/AssessmentFormModal';
 import { AssessmentQuestionFormModal } from '../../components/AssessmentForm/AssessmentQuestionFormModal';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const STATUS_META: Record<AssessmentStatus, string> = {
   draft: 'bg-slate-100 text-slate-700 hover:bg-slate-100',
@@ -89,7 +90,7 @@ const AssessmentDetailPage: React.FC = () => {
         setAssessment(res.content);
       } catch (err) {
         if (!(err instanceof Error && err.name === 'CanceledError')) {
-          toast.error('Không tải được bộ đề.');
+          toast.error(apiErrorMessage(err, 'Không tải được bộ đề.'));
         }
       } finally {
         setLoading(false);
@@ -112,9 +113,7 @@ const AssessmentDetailPage: React.FC = () => {
       toast.success('Đã cập nhật trạng thái.');
       fetchData();
     } catch (err) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Cập nhật trạng thái thất bại.';
+      const message = apiErrorMessage(err, 'Cập nhật trạng thái thất bại.');
       toast.error(message);
     }
   };
@@ -126,8 +125,8 @@ const AssessmentDetailPage: React.FC = () => {
       await deleteAssessmentQuestion(assessment.id, q.id);
       toast.success('Đã xoá câu hỏi.');
       fetchData();
-    } catch {
-      toast.error('Xoá thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Xoá thất bại.'));
     }
   };
 
@@ -150,8 +149,8 @@ const AssessmentDetailPage: React.FC = () => {
         assessment.id,
         reordered.map((q) => q.id),
       );
-    } catch {
-      toast.error('Không đổi được thứ tự câu hỏi.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Không đổi được thứ tự câu hỏi.'));
       fetchData();
     } finally {
       setReordering(false);
@@ -179,8 +178,8 @@ const AssessmentDetailPage: React.FC = () => {
       });
       toast.success('Đã nhân bản câu hỏi.');
       fetchData();
-    } catch {
-      toast.error('Nhân bản thất bại.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Nhân bản thất bại.'));
     }
   };
 
@@ -207,8 +206,8 @@ const AssessmentDetailPage: React.FC = () => {
         points,
         imageUrls: q.imageUrls,
       });
-    } catch {
-      toast.error('Không đổi được điểm câu hỏi.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'Không đổi được điểm câu hỏi.'));
       fetchData();
     }
   };

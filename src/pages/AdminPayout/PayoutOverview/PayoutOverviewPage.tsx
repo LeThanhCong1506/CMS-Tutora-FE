@@ -8,6 +8,7 @@ import { FilterTabs, PageContainer, SectionCard } from '../../../components/shar
 import PayoutStatsCards from './components/PayoutStatsCards';
 import WithdrawalRequestTable from './components/WithdrawalRequestTable';
 import '../../../styles/pages/admin-payout.css';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const payoutTabs = [
   { key: 'all', label: 'Tất cả' },
@@ -70,7 +71,7 @@ const PayoutOverviewPage: React.FC = () => {
       setLastLoadedAt(new Date());
     } catch (error) {
       console.error('Failed to fetch payout data:', error);
-      toast.error('Không thể tải dữ liệu thanh toán');
+      toast.error(apiErrorMessage(error, 'Không thể tải dữ liệu thanh toán'));
     } finally {
       setLoading(false);
     }
@@ -88,8 +89,9 @@ const PayoutOverviewPage: React.FC = () => {
   return (
     <PageContainer
       className="payout-overview-page"
-      eyebrow="Thanh toán"
-      title="Quản lý thanh toán"
+      eyebrow="Tài chính"
+      eyebrowInfo="Theo dõi yêu cầu rút tiền, chuyển tiền chủ động và lịch sử thanh toán cho gia sư."
+      title="Payout"
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">
@@ -129,15 +131,6 @@ const PayoutOverviewPage: React.FC = () => {
 
       <SectionCard
         className="payout-requests-card"
-        title="Yêu cầu rút tiền"
-        headerAction={
-          lastLoadedAt ? (
-            <span className="payout-last-updated">
-              Cập nhật lúc{' '}
-              {lastLoadedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          ) : undefined
-        }
         footer={`Hiển thị ${requests.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
       >
         <div className="admin-ui-toolbar payout-filter-toolbar">
@@ -184,6 +177,12 @@ const PayoutOverviewPage: React.FC = () => {
               ariaLabel="Lọc yêu cầu theo trạng thái"
             />
           </div>
+          {lastLoadedAt && (
+            <span className="payout-last-updated">
+              Cập nhật lúc{' '}
+              {lastLoadedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
         <WithdrawalRequestTable
           data={requests}

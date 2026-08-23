@@ -731,6 +731,30 @@ export const getAllUsers = async (
 };
 
 /**
+ * Xuất danh sách người dùng ra Excel (GET /export/users, dùng chung permission export.data).
+ * Không truyền `filters` (hoặc để undefined các trường) → BE xuất toàn bộ user thuộc phạm vi
+ * người gọi được thấy. Truyền đúng bộ lọc đang áp dụng trên trang → chỉ xuất tập đang khớp.
+ */
+export const exportUsersToExcel = async (filters?: {
+  searchTerm?: string;
+  role?: string;
+  status?: number;
+  createdFrom?: string;
+  createdTo?: string;
+}): Promise<void> => {
+  const query = new URLSearchParams();
+  if (filters?.searchTerm) query.set('searchTerm', filters.searchTerm);
+  if (filters?.role) query.set('role', filters.role);
+  if (filters?.status !== undefined) query.set('status', String(filters.status));
+  if (filters?.createdFrom) query.set('createdFrom', filters.createdFrom);
+  if (filters?.createdTo) query.set('createdTo', filters.createdTo);
+
+  const qs = query.toString();
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+  await exportToCSV(`/export/users${qs ? `?${qs}` : ''}`, `Export_Users_${stamp}.xlsx`);
+};
+
+/**
  * Update user fields (admin)
  * Backend: PUT /api/admin/users/{id}
  */

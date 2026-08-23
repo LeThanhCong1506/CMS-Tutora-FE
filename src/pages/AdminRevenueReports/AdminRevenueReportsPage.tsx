@@ -48,8 +48,9 @@ const AdminRevenueReportsPage = () => {
 
     return (
         <PageContainer
+            eyebrow="Báo cáo"
+            eyebrowInfo={tabSubtitle[active]}
             title="Báo cáo doanh thu"
-            subtitle={tabSubtitle[active]}
             maxWidth="wide"
         >
             <div className="rev-toolbar">

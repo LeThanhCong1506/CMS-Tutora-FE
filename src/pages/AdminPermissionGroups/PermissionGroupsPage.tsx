@@ -23,6 +23,7 @@ import {
   removePermissionsWithDependents,
 } from '../../utils/permissionAccess';
 import './PermissionGroupsPage.css';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const PAGE_SIZE = ADMIN_PAGE_SIZE;
 
@@ -45,14 +46,6 @@ const actionLabels: Record<string, string> = {
 
 const labelForAction = (permission: PermissionDefinition) =>
   actionLabels[permission.action.toLowerCase()] || permission.label;
-
-const apiErrorMessage = (error: unknown, fallback: string) => {
-  if (!axios.isAxiosError(error)) return fallback;
-  const data = error.response?.data as
-    | { message?: string; Message?: string; content?: string; Content?: string }
-    | undefined;
-  return data?.message || data?.Message || data?.content || data?.Content || fallback;
-};
 
 interface TriCheckboxProps {
   checked: boolean;
@@ -431,6 +424,8 @@ const PermissionGroupsPage = () => {
   return (
     <>
       <PageContainer
+        eyebrow="Nhân sự & phân quyền"
+        eyebrowInfo="Tạo và quản lý các nhóm quyền dùng để phân công phạm vi truy cập cho nhân viên."
         title="Nhóm quyền"
         maxWidth="wide"
         headerAction={
@@ -447,10 +442,8 @@ const PermissionGroupsPage = () => {
           </button>
         }
       >
-        <SectionCard
-          title="Danh sách nhóm quyền"
-          subtitle={groups.length + ' nhóm quyền trong hệ thống'}
-          headerAction={
+        <SectionCard>
+          <div className="admin-ui-toolbar permission-list-toolbar">
             <input
               className="permission-list-search"
               type="search"
@@ -461,8 +454,8 @@ const PermissionGroupsPage = () => {
                 setPage(1);
               }}
             />
-          }
-        >
+            <span className="permission-list-count">{groups.length} nhóm quyền</span>
+          </div>
           <DataTable
             columns={columns}
             data={visibleGroups}
