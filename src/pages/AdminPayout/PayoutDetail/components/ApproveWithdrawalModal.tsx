@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 import type { ApprovePayoutRequest } from '../../../../types/adminPayout.types';
@@ -39,8 +39,12 @@ const ApproveWithdrawalModal = ({
     const [note, setNote] = useState('');
     const [bankTransactionCode, setBankTransactionCode] = useState('');
     const [proofImage, setProofImage] = useState<File | null>(null);
-    const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState('');
+
+    const proofPreviewUrl = useMemo(
+        () => (proofImage ? URL.createObjectURL(proofImage) : null),
+        [proofImage],
+    );
 
     useEffect(() => {
         if (!open) return undefined;
@@ -55,16 +59,11 @@ const ApproveWithdrawalModal = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [confirmLoading, onCancel, open]);
 
+    // Effect chỉ còn lo thu hồi object URL cũ — đây mới đúng là việc của effect.
     useEffect(() => {
-        if (!proofImage) {
-            setProofPreviewUrl(null);
-            return undefined;
-        }
-
-        const objectUrl = URL.createObjectURL(proofImage);
-        setProofPreviewUrl(objectUrl);
-        return () => URL.revokeObjectURL(objectUrl);
-    }, [proofImage]);
+        if (!proofPreviewUrl) return undefined;
+        return () => URL.revokeObjectURL(proofPreviewUrl);
+    }, [proofPreviewUrl]);
 
     const handleClose = () => {
         if (confirmLoading) return;
