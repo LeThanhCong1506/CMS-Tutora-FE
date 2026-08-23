@@ -1,17 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { StatusBadge } from '../../components/shared';
-import { getAdminBookingDetail } from '../../services/adminBooking.service';
+import { Can } from '../../contexts/AccessContext';
+import { getAdminBookingDetail, cancelGhostBooking } from '../../services/adminBooking.service';
 import type { AdminBookingDetailResponse } from '../../types/adminBooking.types';
 import { formatDateTime } from '../../utils/formatters';
 import {
     getBookingStatusDisplay,
     getTeachingModeLabel,
+    isTerminalBookingStatus,
 } from './bookingDisplay';
 import BookingTimelineCard from './BookingTimelineCard';
 import LessonsListCard from './LessonsListCard';
 import PaymentBreakdownCard from './PaymentBreakdownCard';
+import TransactionHistoryCard from './TransactionHistoryCard';
+import CancelGhostBookingModal from './CancelGhostBookingModal';
 import styles from './AdminBookings.module.css';
 
 /**
@@ -36,24 +40,18 @@ export default function AdminBookingDetailPage() {
     const [data, setData] = useState<AdminBookingDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [isCancelGhostModalOpen, setIsCancelGhostModalOpen] = useState(false);
 
-    useEffect(() => {
-        if (Number.isNaN(bookingId)) {
-            setErrorMsg('Mã đặt lịch không hợp lệ.');
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-        (async () => {
+    const fetchBookingDetail = useCallback(
+        async (signal?: AbortSignal) => {
             setLoading(true);
             setErrorMsg(null);
             try {
                 const res = await getAdminBookingDetail(bookingId);
-                if (cancelled) return;
+                if (signal?.aborted) return;
                 setData(res.content);
             } catch (err: unknown) {
-                if (cancelled) return;
+                if (signal?.aborted) return;
                 const status = (err as { response?: { status?: number } })?.response?.status;
                 if (status === 404) {
                     setErrorMsg('Không tìm thấy lịch đặt này.');
@@ -64,14 +62,30 @@ export default function AdminBookingDetailPage() {
                     });
                 }
             } finally {
-                if (!cancelled) setLoading(false);
+                if (!signal?.aborted) setLoading(false);
             }
-        })();
+        },
+        [bookingId],
+    );
 
-        return () => {
-            cancelled = true;
-        };
-    }, [bookingId]);
+    useEffect(() => {
+        if (Number.isNaN(bookingId)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- invalid route param, not a render loop
+            setErrorMsg('Mã đặt lịch không hợp lệ.');
+            setLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        void fetchBookingDetail(controller.signal);
+
+        return () => controller.abort();
+    }, [bookingId, fetchBookingDetail]);
+
+    const handleCancelGhostBooking = async (reason: string) => {
+        await cancelGhostBooking(bookingId, reason);
+        await fetchBookingDetail();
+    };
 
     // Loading state
     if (loading) {
@@ -146,6 +160,22 @@ export default function AdminBookingDetailPage() {
                 </div>
                 <div className={styles.detailHeaderRight}>
                     <StatusBadge variant={statusDisplay.variant}>{statusDisplay.label}</StatusBadge>
+                    {!isTerminalBookingStatus(data.status) && (
+                        <Can permission="booking.cancel">
+                            <button
+                                type="button"
+                                className="admin-ui-button admin-ui-button-secondary"
+                                style={{ marginLeft: 12 }}
+                                onClick={() => setIsCancelGhostModalOpen(true)}
+                                title="Hủy booking do phụ huynh nghỉ ngang (xác minh qua tổng đài)"
+                            >
+                                <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', fontSize: 18, marginRight: 4 }}>
+                                    person_off
+                                </span>
+                                Hủy booking (PH nghỉ ngang)
+                            </button>
+                        </Can>
+                    )}
                 </div>
             </section>
 
@@ -319,6 +349,9 @@ export default function AdminBookingDetailPage() {
                 {/* Danh sách buổi học — full row */}
                 <LessonsListCard lessons={data.classSessions} />
 
+                {/* Lịch sử giao dịch ví (Refund/EscrowRelease/EscrowReversal...) — full row */}
+                <TransactionHistoryCard transactions={data.transactions} />
+
                 {/* Cancellation — chỉ hiện khi booking đã hủy */}
                 {data.cancellation?.isCancelled && (
                     <section className={`${styles.card} ${styles.cancelCard} ${styles.cardFull}`}>
@@ -340,6 +373,13 @@ export default function AdminBookingDetailPage() {
                     </section>
                 )}
             </div>
+
+            <CancelGhostBookingModal
+                isOpen={isCancelGhostModalOpen}
+                onClose={() => setIsCancelGhostModalOpen(false)}
+                bookingId={data.bookingId}
+                onConfirm={handleCancelGhostBooking}
+            />
         </div>
     );
 }

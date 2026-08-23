@@ -680,7 +680,20 @@
 }
 
 .payout-audit-code {
-  font-size: 12px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(26, 34, 56, 0.1);
+  border-radius: 8px;
+  background: rgba(26, 34, 56, 0.075);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums slashed-zero;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .payout-audit-proof {
@@ -705,6 +718,24 @@
 
 .payout-proof-image {
   margin-top: 0;
+}
+
+/* Ảnh biên lai là nút mở lightbox (không phải link sang tab mới) — dọn style mặc định của button. */
+.payout-proof-image-trigger {
+  display: block;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+/* Trạng thái chờ tải / lỗi của ảnh biên lai (ảnh phải tải qua JS vì endpoint đòi token). */
+.payout-proof-image-note {
+  display: block;
+  margin: 8px 0 0;
+  color: var(--color-navy-50);
+  font-size: 13px;
+  font-style: italic;
 }
 
 .payout-info-hint {
@@ -871,6 +902,39 @@
   box-shadow: var(--shadow-strong);
 }
 
+.payout-modal-dialog--approve {
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(61, 74, 62, 0.42) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.payout-modal-dialog--approve::-webkit-scrollbar {
+  width: 8px;
+}
+
+.payout-modal-dialog--approve::-webkit-scrollbar-track {
+  margin-block: 12px;
+  background: transparent;
+}
+
+.payout-modal-dialog--approve::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background: rgba(61, 74, 62, 0.38);
+  background-clip: padding-box;
+}
+
+.payout-modal-dialog--approve::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(61, 74, 62, 0.58);
+}
+
+.payout-modal-dialog--approve::-webkit-scrollbar-button,
+.payout-modal-dialog--approve::-webkit-scrollbar-corner {
+  display: none;
+}
+
 .payout-modal-header {
   display: flex;
   align-items: flex-start;
@@ -923,6 +987,16 @@
   line-height: 1.55;
 }
 
+.payout-modal-dialog--approve .payout-modal-header,
+.payout-modal-dialog--approve .payout-modal-title-group {
+  align-items: center;
+}
+
+.payout-modal-dialog--approve .payout-modal-header {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
 .payout-modal-close {
   display: inline-flex;
   align-items: center;
@@ -949,6 +1023,27 @@
 
 .payout-modal-body {
   padding: 22px 24px;
+}
+
+.payout-modal-dialog--approve .payout-modal-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.payout-modal-dialog--approve .payout-modal-alert,
+.payout-modal-dialog--approve .payout-modal-summary {
+  margin-bottom: 0;
+}
+
+.payout-modal-dialog--approve .payout-modal-summary {
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.payout-modal-dialog--approve .payout-modal-textarea {
+  min-height: 88px;
 }
 
 .payout-modal-alert {

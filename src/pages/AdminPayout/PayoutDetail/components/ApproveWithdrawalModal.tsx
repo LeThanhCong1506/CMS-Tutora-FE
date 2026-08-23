@@ -3,13 +3,14 @@ import type { FormEvent } from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 import type { ApprovePayoutRequest } from '../../../../types/adminPayout.types';
 
+// Phải khớp với [RegularExpression] trên ApproveWithdrawalRequest.BankTransactionCode ở BE —
+// lệch nhau thì staff bị BE từ chối sau khi form đã cho bấm gửi.
+const BANK_TRANSACTION_CODE_PATTERN = /^[A-Za-z0-9._/-]+$/;
+
 const toLocalDateTimeInput = (date: Date): string => {
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
     return local.toISOString().slice(0, 16);
 };
-
-// Khớp [RegularExpression] của ApproveWithdrawalRequest.BankTransactionCode ở backend.
-const BANK_TRANSACTION_CODE_PATTERN = /^[A-Za-z0-9._/-]+$/;
 
 interface Props {
     open: boolean;
@@ -119,11 +120,11 @@ const ApproveWithdrawalModal = ({
     return (
         <div className="payout-modal-overlay" onClick={handleClose} role="presentation">
             <form
-                className="payout-modal-dialog"
+                className="payout-modal-dialog payout-modal-dialog--approve"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="approve-withdrawal-title"
-                aria-describedby="approve-withdrawal-description"
+                aria-describedby="approve-withdrawal-warning"
                 onClick={(event) => event.stopPropagation()}
                 onSubmit={handleSubmit}
             >
@@ -134,9 +135,6 @@ const ApproveWithdrawalModal = ({
                         </span>
                         <div>
                             <h2 id="approve-withdrawal-title">Xác nhận đã chuyển khoản</h2>
-                            <p id="approve-withdrawal-description">
-                                Đánh dấu yêu cầu hoàn tất sau khi bạn đã chuyển tiền thủ công cho người dùng.
-                            </p>
                         </div>
                     </div>
                     <button
@@ -152,7 +150,7 @@ const ApproveWithdrawalModal = ({
 
                 <div className="payout-modal-body payout-approve-layout">
                     <div className="payout-approve-col payout-approve-col-context">
-                        <div className="payout-modal-alert warning" role="note">
+                        <div id="approve-withdrawal-warning" className="payout-modal-alert warning" role="note">
                             <span className="material-symbols-outlined" aria-hidden="true">warning</span>
                             <p>
                                 Chỉ bấm xác nhận <strong>sau khi</strong> bạn đã chuyển khoản thủ công đúng số tiền
@@ -188,11 +186,11 @@ const ApproveWithdrawalModal = ({
                                     <strong className="payout-modal-value">{accountHolderName}</strong>
                                 </div>
                             )}
-                    </div>
+                        </div>
                     </div>
 
                     <div className="payout-approve-col payout-approve-col-form">
-                    <label className="payout-modal-field" htmlFor="approve-withdrawal-paid-at">
+                        <label className="payout-modal-field" htmlFor="approve-withdrawal-paid-at">
                         <span>Thời gian chuyển khoản</span>
                         <input
                             id="approve-withdrawal-paid-at"

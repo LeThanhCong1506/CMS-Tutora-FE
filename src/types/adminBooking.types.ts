@@ -46,8 +46,8 @@ export interface AdminBookingListItem {
     // Progress
     sessionCount?: number;
     sessionsRemaining?: number;
-    lessonsCompleted: number;
-    lessonsTotal: number;
+    classSessionsCompleted: number;
+    classSessionsTotal: number;
 
     // Dates
     startDate?: string;
@@ -149,6 +149,9 @@ export interface AdminBookingDetailResponse {
     timeline: BookingTimelineEvent[];
     classSessions: AdminBookingClassSessionItem[];
     paymentBreakdown: AdminBookingPaymentBreakdown;
+
+    /** Lịch sử từng dòng Wallettransaction gắn với booking này (mới nhất trước). */
+    transactions: AdminBookingWalletTransactionItem[];
 }
 
 // ───── Timeline ──────────────────────────────────────────────────────────────
@@ -176,6 +179,12 @@ export interface AdminBookingClassSessionItem {
     classSessionPrice?: number;
     isSettled?: boolean;
     isMakeup?: boolean;
+    /** Buổi phụ (Link 2) — sinh ra khi originalClassSessionId bị báo ngắt giữa chừng. */
+    isContinuation?: boolean;
+    /** Buổi học lại (Link 3) — sinh ra khi hoà giải dispute chọn "học lại". */
+    isDisputeRelearn?: boolean;
+    /** Buổi gốc mà buổi bù/buổi phụ/buổi học lại này trỏ về — undefined nếu đây là buổi gốc. */
+    originalClassSessionId?: number;
     tutorNotes?: string;
     meetingLink?: string;
     // TODO: BE chưa trả 2 field attendance — đã yêu cầu Công bổ sung:
@@ -201,4 +210,20 @@ export interface AdminBookingPaymentBreakdown {
     refundStatus?: string;
     paymentStatus?: string;
     paymentDueAt?: string;
+}
+
+// ───── Wallet transaction history ───────────────────────────────────────────
+
+export type WalletOwnerRole = 'tutor' | 'parent' | 'student';
+
+export interface AdminBookingWalletTransactionItem {
+    transactionId: number;
+    /** Deposit / DepositPayment / RemainingPayment / EscrowCredit / EscrowRelease / EscrowReversal / Refund / ... */
+    transactionType?: string;
+    /** Số dương = tiền vào ví; số âm = tiền bị rút khỏi ví (vd EscrowReversal). */
+    amount?: number;
+    description?: string;
+    createdAt?: string;
+    walletOwnerRole?: WalletOwnerRole | null;
+    walletOwnerName?: string;
 }

@@ -88,9 +88,23 @@ export default function LessonsListCard({ lessons = [] }: Props) {
                                             {lesson.isMakeup && (
                                                 <span className={styles.lessonTag}>Buổi bù</span>
                                             )}
-                                            {!lesson.isMakeup && !lesson.isSettled && lesson.status !== 'completed' && (
-                                                <span className={styles.dim}>—</span>
+                                            {lesson.isContinuation && (
+                                                <span className={styles.lessonTag}>
+                                                    Buổi phụ{lesson.originalClassSessionId ? ` của #${lesson.originalClassSessionId}` : ''}
+                                                </span>
                                             )}
+                                            {lesson.isDisputeRelearn && (
+                                                <span className={styles.lessonTag}>
+                                                    Học lại do khiếu nại{lesson.originalClassSessionId ? ` #${lesson.originalClassSessionId}` : ''}
+                                                </span>
+                                            )}
+                                            {!lesson.isMakeup &&
+                                                !lesson.isContinuation &&
+                                                !lesson.isDisputeRelearn &&
+                                                !lesson.isSettled &&
+                                                lesson.status !== 'completed' && (
+                                                    <span className={styles.dim}>—</span>
+                                                )}
                                         </div>
                                     </td>
                                     <td className={styles.lessonMoney}>{formatVND(lesson.classSessionPrice)}</td>
