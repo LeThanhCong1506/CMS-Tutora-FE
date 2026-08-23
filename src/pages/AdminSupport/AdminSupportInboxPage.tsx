@@ -307,9 +307,9 @@ export const AdminSupportInboxPage: React.FC = () => {
 
   return (
     <PageContainer
-      eyebrow="Hỗ trợ người dùng"
+      eyebrow="Hệ thống"
+      eyebrowInfo="Trao đổi trực tiếp với gia sư, phụ huynh và học sinh trong hộp thư hỗ trợ."
       title="Nhắn tin hỗ trợ"
-      subtitle="Trao đổi trực tiếp với gia sư, phụ huynh và học sinh."
       maxWidth="full"
     >
       <SectionCard className={styles.card}>
