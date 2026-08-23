@@ -54,3 +54,20 @@ export const getAdminBookingDetail = async (
     );
     return response.data;
 };
+
+/**
+ * POST /api/admin/bookings/{id}/cancel-ghost — Staff hủy booking sau khi xác minh NGOÀI hệ thống
+ * (qua tổng đài) rằng phụ huynh đã "nghỉ ngang". Giải ngân toàn bộ escrow còn lại cho gia sư.
+ * Yêu cầu quyền booking.cancel.
+ */
+export const cancelGhostBooking = async (
+    id: number,
+    reason: string,
+): Promise<ApiResponse<null>> => {
+    const response = await api.post<ApiResponse<null>>(
+        `/admin/bookings/${id}/cancel-ghost`,
+        { reason },
+        { headers: getAuthHeaders() },
+    );
+    return response.data;
+};

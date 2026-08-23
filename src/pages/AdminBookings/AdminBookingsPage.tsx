@@ -207,8 +207,8 @@ export default function AdminBookingsPage() {
             minWidth: 142,
             hideOnMobile: true,
             render: (record) => {
-                const total = record.lessonsTotal || record.sessionCount || 0;
-                const completed = Math.min(record.lessonsCompleted || 0, total);
+                const total = record.classSessionsTotal || record.sessionCount || 0;
+                const completed = Math.min(record.classSessionsCompleted || 0, total);
                 const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
                 return (
