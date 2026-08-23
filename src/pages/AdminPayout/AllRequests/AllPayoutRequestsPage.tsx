@@ -7,6 +7,7 @@ import type { WithdrawalRequestItem } from '../../../types/adminPayout.types';
 import { PageContainer, SectionCard } from '../../../components/shared';
 import WithdrawalRequestTable from '../PayoutOverview/components/WithdrawalRequestTable';
 import '../../../styles/pages/admin-payout.css';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 type PayoutRequestFilters = {
     page: number;
@@ -53,7 +54,7 @@ const AllPayoutRequestsPage: React.FC = () => {
             setTotal(response.total);
         } catch (error) {
             console.error('Failed to fetch payout requests:', error);
-            toast.error('Không thể tải danh sách yêu cầu');
+            toast.error(apiErrorMessage(error, 'Không thể tải danh sách yêu cầu'));
         } finally {
             setLoading(false);
         }

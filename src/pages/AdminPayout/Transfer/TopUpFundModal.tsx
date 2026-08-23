@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { toast } from 'react-toastify';
 import { topUpFund } from '../../../services/adminPayout.service';
 import { formatCurrency } from '../../../utils/formatters';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const MIN_REASON = 10;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -86,8 +87,7 @@ const TopUpFundModal = ({ isOpen, onClose, onSuccess }: TopUpFundModalProps) => 
             onSuccess();
             onClose();
         } catch (err) {
-            const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(message || 'Không thể nạp quỹ. Vui lòng thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể nạp quỹ. Vui lòng thử lại.'));
         } finally {
             setIsSubmitting(false);
         }
