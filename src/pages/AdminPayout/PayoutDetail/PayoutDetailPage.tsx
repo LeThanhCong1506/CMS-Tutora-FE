@@ -20,19 +20,7 @@ import ApproveWithdrawalModal from './components/ApproveWithdrawalModal';
 import RejectWithdrawalModal from './components/RejectWithdrawalModal';
 import ProofImageModal from '../ProofImageModal';
 import '../../../styles/pages/admin-payout.css';
-
-type ApiError = {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-};
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  const apiError = error as ApiError;
-  return apiError?.response?.data?.message || fallback;
-};
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const decisionVariant = (decision: string | null): 'success' | 'warning' | 'error' | 'neutral' => {
   switch (decision) {
@@ -120,7 +108,7 @@ const PayoutDetailPage: React.FC = () => {
       setDetail(data);
     } catch (error) {
       console.error('Failed to fetch payout detail:', error);
-      toast.error('Không thể tải chi tiết yêu cầu');
+      toast.error(apiErrorMessage(error, 'Không thể tải chi tiết yêu cầu'));
     } finally {
       setLoading(false);
     }
@@ -139,7 +127,7 @@ const PayoutDetailPage: React.FC = () => {
       toast.success(result.message || 'Đã nhận xử lý yêu cầu');
       await fetchDetail();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Không thể nhận xử lý yêu cầu'));
+      toast.error(apiErrorMessage(error, 'Không thể nhận xử lý yêu cầu'));
     } finally {
       setActionLoading(false);
     }
@@ -153,7 +141,7 @@ const PayoutDetailPage: React.FC = () => {
       toast.success(result.message || 'Đã trả yêu cầu về hàng đợi');
       await fetchDetail();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Không thể trả yêu cầu về hàng đợi'));
+      toast.error(apiErrorMessage(error, 'Không thể trả yêu cầu về hàng đợi'));
     } finally {
       setActionLoading(false);
     }
@@ -172,7 +160,7 @@ const PayoutDetailPage: React.FC = () => {
         toast.error(result.message || 'Phê duyệt thất bại');
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Có lỗi xảy ra khi phê duyệt'));
+      toast.error(apiErrorMessage(error, 'Có lỗi xảy ra khi phê duyệt'));
     } finally {
       setActionLoading(false);
     }
@@ -191,7 +179,7 @@ const PayoutDetailPage: React.FC = () => {
         toast.error(result.message || 'Từ chối thất bại');
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Có lỗi xảy ra khi từ chối'));
+      toast.error(apiErrorMessage(error, 'Có lỗi xảy ra khi từ chối'));
     } finally {
       setActionLoading(false);
     }

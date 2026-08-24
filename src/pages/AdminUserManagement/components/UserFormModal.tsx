@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { createUser, updateUser } from '../../../services/admin.service';
 import { getRoleDisplay } from '../roleDisplay';
 import type { FlatUserDetail } from '../userTypes';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 // Roles an admin may create through this modal. Internal accounts (Staff/Admin)
 // have their own flow, so they are intentionally excluded here.
@@ -113,8 +114,7 @@ const UserFormModal = ({ isOpen, mode, user, lockedRole, onClose, onSaved }: Use
             onClose();
         } catch (err: unknown) {
             // Surface the backend's message when present (duplicate phone/email, etc.).
-            const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            toast.error(apiMessage || (isCreate ? 'Không thể tạo tài khoản.' : 'Không thể cập nhật tài khoản.'));
+            toast.error(apiErrorMessage(err, isCreate ? 'Không thể tạo tài khoản.' : 'Không thể cập nhật tài khoản.'));
         } finally {
             setIsSubmitting(false);
         }

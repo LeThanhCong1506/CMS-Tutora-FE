@@ -7,6 +7,7 @@ import type { PendingReviewItem, WithdrawalRequestItem } from '../../../types/ad
 import { PageContainer, SectionCard } from '../../../components/shared';
 import WithdrawalRequestTable from '../PayoutOverview/components/WithdrawalRequestTable';
 import '../../../styles/pages/admin-payout.css';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 const PendingReviewPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -24,7 +25,7 @@ const PendingReviewPage: React.FC = () => {
             setTotal(data.total);
         } catch (error) {
             console.error('Failed to fetch pending reviews:', error);
-            toast.error('Không thể tải danh sách chờ duyệt');
+            toast.error(apiErrorMessage(error, 'Không thể tải danh sách chờ duyệt'));
         } finally {
             setLoading(false);
         }

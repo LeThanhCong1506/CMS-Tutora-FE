@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { SectionCard } from '../../../components/shared';
 import { useAccess } from '../../../contexts/AccessContext';
 import { getBookingBonus, updateBookingBonus } from '../../../services/aiCredit.service';
+import { apiErrorMessage } from '../../../utils/apiError';
 
 import '../../../styles/pages/admin-shared.css';
 import '../../../styles/pages/admin-ai-credit.css';
@@ -23,8 +24,8 @@ export const BookingBonusTab: React.FC = () => {
         const cfg = await getBookingBonus();
         setAmount(cfg.amount);
         setSavedAmount(cfg.amount);
-      } catch {
-        toast.error('Không thể tải cấu hình hạn mức. Vui lòng thử lại.');
+      } catch (error) {
+        toast.error(apiErrorMessage(error, 'Không thể tải cấu hình hạn mức. Vui lòng thử lại.'));
       } finally {
         setLoading(false);
       }
@@ -51,9 +52,9 @@ export const BookingBonusTab: React.FC = () => {
       };
       const code = apiErr?.response?.data?.errorCode;
       if (apiErr?.response?.status === 400 || code === 'AI_CREDIT_INVALID_AMOUNT') {
-        toast.error('Số lượt không hợp lệ. Phải ≥ 0.');
+        toast.error(apiErrorMessage(err, 'Số lượt không hợp lệ. Phải ≥ 0.'));
       } else {
-        toast.error(apiErr?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+        toast.error(apiErrorMessage(apiErr, 'Có lỗi xảy ra, vui lòng thử lại.'));
       }
     } finally {
       setSaving(false);

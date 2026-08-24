@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { apiErrorMessage } from '../../utils/apiError';
 
 const MIN_REASON = 10;
 
@@ -50,7 +51,7 @@ const CancelGhostBookingModal = ({
             onClose();
         } catch (err) {
             console.error('Error cancelling ghost booking:', err);
-            toast.error('Không thể hủy booking. Vui lòng kiểm tra lại trạng thái booking rồi thử lại.');
+            toast.error(apiErrorMessage(err, 'Không thể hủy booking. Vui lòng kiểm tra lại trạng thái booking rồi thử lại.'));
         } finally {
             setIsSubmitting(false);
         }

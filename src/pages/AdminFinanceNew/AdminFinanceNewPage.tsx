@@ -50,9 +50,9 @@ const AdminFinanceNewPage = () => {
 
     return (
         <PageContainer
-            eyebrow="Mới · Bản đề xuất"
+            eyebrow="Báo cáo"
+            eyebrowInfo="Quản lý thanh khoản, hoa hồng, escrow, hoàn tiền và báo cáo tài chính trong cùng một không gian vận hành."
             title="Quản lý tài chính (mới)"
-            subtitle="Hoa hồng, escrow, hoàn tiền và báo cáo — phần còn thiếu so với bản hiện tại."
             maxWidth="wide"
         >
             <div className="admin-ui-kpi-grid">
@@ -87,17 +87,14 @@ const AdminFinanceNewPage = () => {
                 />
             </div>
 
-            <SectionCard
-                title="Vận hành tài chính"
-                subtitle="Các nghiệp vụ chưa có trong bản Tổng quan Tài chính hiện tại."
-                headerAction={
+            <SectionCard>
+                <div className="admin-ui-toolbar finance-new-tabs-toolbar">
                     <FilterTabs
                         tabs={financeTabs}
                         activeKey={activeTab}
                         onChange={(key) => setActiveTab(key as FinanceTab)}
                     />
-                }
-            >
+                </div>
                 {activeTab === 'liquidity' && <LiquidityReconciliationTab />}
                 {activeTab === 'commission' && <CommissionConfigTab />}
                 {activeTab === 'escrow' && <EscrowManagementTab />}
