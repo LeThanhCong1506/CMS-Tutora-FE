@@ -149,7 +149,7 @@ const AdminDisputeDetailPage = () => {
     const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'tutor', {
         paramKey: 'chat',
     });
-    const [verdict, setVerdict] = useState<ResolutionType>('refund_100');
+    const [verdict, setVerdict] = useState<ResolutionType>('cancel_course');
     const [adminNotes, setAdminNotes] = useState('');
     const [customPercentage, setCustomPercentage] = useState(50);
     const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
@@ -1354,19 +1354,6 @@ const AdminDisputeDetailPage = () => {
                                                         type="radio"
                                                         name="verdict"
                                                         className="dispute-radio-input"
-                                                        checked={verdict === 'refund_100'}
-                                                        onChange={() => setVerdict('refund_100')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Hoàn tiền cho Học viên</span>
-                                                        <span className="dispute-radio-desc">Số tiền hoàn sẽ được tính dựa trên những buổi chưa học</span>
-                                                    </div>
-                                                </label>
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
                                                         checked={verdict === 'cancel_course'}
                                                         onChange={() => setVerdict('cancel_course')}
                                                     />
@@ -1398,7 +1385,11 @@ const AdminDisputeDetailPage = () => {
                                                                 <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.parentRefundAmount)}</span>
                                                             </div>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                                                <span style={{ color: '#374151' }}>Escrow gia sư bị rút lại:</span>
+                                                                <span style={{ color: '#374151' }}>Giải ngân cho gia sư ({courseCancelPreview.deliveredSessionsCount} buổi đã dạy):</span>
+                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.tutorEscrowReleased)}</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                                                <span style={{ color: '#374151' }}>Escrow gia sư bị rút lại (buổi chưa dạy):</span>
                                                                 <span style={{ fontWeight: 700, color: '#b91c1c' }}>{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</span>
                                                             </div>
                                                             {courseCancelPreview.warnings.length > 0 && (
