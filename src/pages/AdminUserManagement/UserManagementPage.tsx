@@ -239,7 +239,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             const impact = response?.content?.refundImpact;
             if (impact && impact.bookingsAffected > 0) {
                 toast.info(
-                    `Đã hủy ${impact.sessionsCancelled} buổi học và hoàn ${impact.totalRefunded.toLocaleString('vi-VN')}đ cho người học.`,
+                    `Đã hủy ${impact.sessionsCancelled} buổi học và hoàn ${impact.totalRefunded.toLocaleString('vi-VN')}đ cho người đã thanh toán.`,
                 );
             }
             if (impact && impact.bookingsNeedingManualReview.length > 0) {
