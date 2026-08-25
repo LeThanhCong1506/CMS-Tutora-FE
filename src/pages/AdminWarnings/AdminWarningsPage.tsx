@@ -74,8 +74,9 @@ const formatDate = (dateStr?: string | null) => {
     });
 };
 
+/** Đỏ cho lệnh không tự hết hạn — 'permanent' là từ hiện dùng, 'account_locked' là bản cũ. */
 const getSuspensionVariant = (type: string): StatusVariant => (
-    type === 'account_locked' ? 'error' : 'warning'
+    type === 'permanent' || type === 'account_locked' ? 'error' : 'warning'
 );
 
 const getWarningVariant = (level: number): StatusVariant => (

@@ -3,49 +3,97 @@ import { toast } from 'react-toastify';
 import type { FlatUserDetail } from '../userTypes';
 import { getRoleDisplay } from '../roleDisplay';
 import { apiErrorMessage } from '../../../utils/apiError';
+import { getSuspensionImpact, type SuspensionRefundImpact } from '../../../services/admin.service';
 
 const MIN_REASON = 15;
-const DURATION_PRESETS = [3, 7, 14, 30, 60, 90];
+
+/** 0 = vô thời hạn: không tự mở lại, admin phải bấm Mở khóa. */
+const INDEFINITE = 0;
+const DURATION_PRESETS = [3, 7, 14, 30, INDEFINITE];
+const MIN_DAYS = 1;
+const MAX_DAYS = 365;
+
+const presetLabel = (days: number) => (days === INDEFINITE ? 'Vô thời hạn' : `${days} ngày`);
+
+const formatVnd = (amount: number) => `${amount.toLocaleString('vi-VN')}đ`;
 
 interface SuspendUserModalProps {
     isOpen: boolean;
     onClose: () => void;
     user: FlatUserDetail | null;
+    /** `durationDays === 0` means indefinite — the page maps that to a permanent suspension. */
     onSuspend: (userId: string, reason: string, durationDays: number) => Promise<void>;
 }
 
+/**
+ * The single "Tạm ngưng" action.
+ *
+ * It used to be two buttons — a fixed-term suspension and an open-ended block — sitting side by
+ * side with no visible difference, which left operators guessing. They are the same decision with
+ * a different end date, so they are one form now, and the duration chip carries the distinction.
+ */
 const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModalProps) => {
     const [reason, setReason] = useState('');
     const [durationDays, setDurationDays] = useState(7);
-    const [durationDaysText, setDurationDaysText] = useState('7');
+    const [customDays, setCustomDays] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [impact, setImpact] = useState<SuspensionRefundImpact | null>(null);
 
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!isOpen) return;
         setReason('');
         setDurationDays(7);
-        setDurationDaysText('7');
+        setCustomDays('');
         setError('');
+        setImpact(null);
     }, [isOpen]);
     /* eslint-enable react-hooks/set-state-in-effect */
+
+    const isIndefinite = !customDays && durationDays === INDEFINITE;
+    const durationInvalid = !isIndefinite && (durationDays < MIN_DAYS || durationDays > MAX_DAYS);
+
+    // Suspending cancels the tutor's upcoming sessions and refunds the payers, so price that before
+    // the operator commits — and re-price on every duration change, since a longer suspension
+    // reaches further into the calendar.
+    const userId = user?.userid;
+    useEffect(() => {
+        if (!isOpen || !userId || durationInvalid) return;
+
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            getSuspensionImpact(userId, durationDays)
+                .then((result) => {
+                    if (!cancelled) setImpact(result);
+                })
+                .catch((err) => {
+                    // A missing preview must not block the suspension itself.
+                    console.error('Error loading suspension impact:', err);
+                    if (!cancelled) setImpact(null);
+                });
+        }, 300); // typing a custom number should not fire one request per digit
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [isOpen, userId, durationDays, durationInvalid]);
 
     if (!isOpen || !user) return null;
 
     const tooShort = reason.trim().length < MIN_REASON;
-    const durationInvalid = durationDays < 1 || durationDays > 365;
 
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + durationDays);
 
     const handleSuspend = async () => {
-        if (tooShort) {
-            setError(`Lý do tạm ngưng phải có ít nhất ${MIN_REASON} ký tự.`);
+        if (durationInvalid) {
+            setError(`Số ngày phải từ ${MIN_DAYS} đến ${MAX_DAYS}.`);
             return;
         }
-        if (durationInvalid) {
-            setError('Thời gian tạm ngưng phải từ 1 đến 365 ngày.');
+        if (tooShort) {
+            setError(`Lý do cần ít nhất ${MIN_REASON} ký tự.`);
             return;
         }
 
@@ -53,11 +101,15 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
             setIsSubmitting(true);
             setError('');
             await onSuspend(user.userid, reason.trim(), durationDays);
-            toast.success(`Đã tạm ngưng hồ sơ ${user.fullname} trong ${durationDays} ngày`);
+            toast.success(
+                isIndefinite
+                    ? `Đã tạm ngưng ${user.fullname} vô thời hạn`
+                    : `Đã tạm ngưng ${user.fullname} ${durationDays} ngày`,
+            );
             onClose();
         } catch (err) {
             console.error('Error suspending user:', err);
-            toast.error(apiErrorMessage(err, 'Không thể tạm ngưng hồ sơ. Vui lòng thử lại.'));
+            toast.error(apiErrorMessage(err, 'Không thể tạm ngưng tài khoản.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -80,7 +132,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                     <div className="um-modal-head-main">
                         <h3 id="suspend-dialog-title" className="um-modal-title um-modal-title-danger">
                             <span className="material-symbols-outlined">pause_circle</span>
-                            Tạm ngưng hồ sơ gia sư
+                            Tạm ngưng tài khoản
                         </h3>
                     </div>
                     <button
@@ -99,9 +151,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                         <div className="um-identity-avatar" style={{ backgroundImage: `url('${user.avatarurl}')` }} />
                         <div className="um-identity-main">
                             <p className="um-identity-name">{user.fullname}</p>
-                            <p className="um-identity-sub">
-                                {getRoleDisplay(user.primaryrole).label} • {user.email}
-                            </p>
+                            <p className="um-identity-sub">{getRoleDisplay(user.primaryrole).label}</p>
                         </div>
                         {user.suspensioncount > 0 && (
                             <span className="um-badge um-badge-danger">{user.suspensioncount} lần</span>
@@ -110,64 +160,54 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
 
                     <div className="um-field">
                         <span className="um-label">
-                            Thời gian tạm ngưng <span className="um-req">*</span>
+                            Thời hạn <span className="um-req">*</span>
                         </span>
                         <div className="um-chips">
                             {DURATION_PRESETS.map((days) => (
                                 <button
                                     key={days}
                                     type="button"
-                                    className={`um-chip ${durationDays === days ? 'um-chip-active' : ''}`}
+                                    className={`um-chip ${durationDays === days && !customDays ? 'um-chip-active' : ''}`}
                                     onClick={() => {
                                         setDurationDays(days);
-                                        setDurationDaysText(String(days));
+                                        setCustomDays('');
                                         setError('');
                                     }}
                                 >
-                                    {days} ngày
+                                    {presetLabel(days)}
                                 </button>
                             ))}
+                            <span className="um-chip-input">
+                                <input
+                                    className={durationInvalid ? 'um-input-error' : ''}
+                                    type="text"
+                                    inputMode="numeric"
+                                    aria-label="Số ngày tùy chỉnh"
+                                    placeholder="Khác"
+                                    value={customDays}
+                                    onChange={(e) => {
+                                        // Digits only, and no leading zero so "7" cannot read as "07".
+                                        const digits = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                                        setCustomDays(digits);
+                                        setDurationDays(digits === '' ? 7 : parseInt(digits, 10));
+                                        setError('');
+                                    }}
+                                />
+                                <span>ngày</span>
+                            </span>
                         </div>
-                    </div>
-
-                    <div className="um-grid-2">
-                        <div className="um-field">
-                            <label className="um-label" htmlFor="susp-days">
-                                Số ngày tuỳ chỉnh
-                            </label>
-                            <input
-                                id="susp-days"
-                                className={`um-input ${durationInvalid ? 'um-input-error' : ''}`}
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                value={durationDaysText}
-                                onChange={(e) => {
-                                    // Bỏ ký tự không phải số và số 0 thừa ở đầu (để "1" không hiển thành "01").
-                                    const digitsOnly = e.target.value.replace(/\D/g, '');
-                                    const normalized = digitsOnly.replace(/^0+(?=\d)/, '');
-                                    setDurationDaysText(normalized);
-                                    setDurationDays(normalized === '' ? 0 : parseInt(normalized, 10));
-                                    setError('');
-                                }}
-                            />
-                            <p className="um-hint">Từ 1 đến 365 ngày.</p>
-                        </div>
-
-                        <div className="um-field">
-                            <span className="um-label">Dự kiến kết thúc</span>
-                            <input
-                                className="um-input"
-                                value={durationInvalid ? '—' : endDate.toLocaleDateString('vi-VN')}
-                                disabled
-                            />
-                            <p className="um-hint">Hồ sơ tự mở lại sau ngày này.</p>
-                        </div>
+                        <p className={durationInvalid ? 'um-error' : 'um-hint'}>
+                            {durationInvalid
+                                ? `Từ ${MIN_DAYS} đến ${MAX_DAYS} ngày.`
+                                : isIndefinite
+                                  ? 'Không tự mở lại — cần bấm Mở khóa.'
+                                  : `Tự mở lại ngày ${endDate.toLocaleDateString('vi-VN')}.`}
+                        </p>
                     </div>
 
                     <div className="um-field">
                         <label className="um-label" htmlFor="susp-reason">
-                            Lý do tạm ngưng <span className="um-req">*</span>
+                            Lý do <span className="um-req">*</span>
                             <span className="um-counter">
                                 {reason.trim().length}/{MIN_REASON}
                             </span>
@@ -181,20 +221,23 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                                 setReason(e.target.value);
                                 if (error) setError('');
                             }}
-                            placeholder="Ví dụ: Nhiều khiếu nại từ học viên về chất lượng buổi học và thái độ giảng dạy trong tháng qua."
+                            placeholder="Ví dụ: Nhiều khiếu nại về chất lượng buổi học trong tháng qua."
                         />
                         {error && <p className="um-error">{error}</p>}
                     </div>
 
-                    <div className="um-callout um-callout-warn" style={{ marginBottom: 0 }}>
-                        <span className="material-symbols-outlined">info</span>
-                        <div>
-                            <p className="um-callout-title">Lưu ý</p>
-                            <p className="um-callout-text">
-                                Tạm ngưng trên 30 ngày sẽ khoá tài khoản; dưới 30 ngày chỉ ẩn hồ sơ khỏi marketplace.
-                            </p>
+                    {/* Money leaves escrow the moment this is confirmed — show the bill, not a warning to read. */}
+                    {impact && impact.bookingsAffected > 0 && (
+                        <div className="um-callout um-callout-warn" style={{ marginBottom: 0 }}>
+                            <span className="material-symbols-outlined">account_balance_wallet</span>
+                            <div>
+                                <p className="um-callout-text">
+                                    Sẽ hủy <strong>{impact.sessionsCancelled} buổi</strong> và hoàn{' '}
+                                    <strong>{formatVnd(impact.totalRefunded)}</strong> cho người học.
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div className="um-modal-foot">
@@ -207,7 +250,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                         disabled={isSubmitting || tooShort || durationInvalid}
                     >
                         <span className="material-symbols-outlined">pause_circle</span>
-                        {isSubmitting ? 'Đang xử lý…' : `Tạm ngưng ${durationDays} ngày`}
+                        {isSubmitting ? 'Đang xử lý…' : 'Tạm ngưng'}
                     </button>
                 </div>
             </div>

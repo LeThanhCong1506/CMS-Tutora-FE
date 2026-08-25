@@ -1323,7 +1323,12 @@ export interface IssueWarningRequest {
 
 export interface SuspendUserRequest {
   userid: string;
-  suspensiontype: 'hidden_1_week' | 'account_locked';
+  /**
+   * BE vocabulary (SuspensionType.cs). 'permanent' is the only value that leaves the end date
+   * open, so it is what an indefinite hold has to send. The older 'hidden_1_week'/'account_locked'
+   * pair stays accepted for rows written before the CMS switched over.
+   */
+  suspensiontype: 'temporary' | 'permanent' | 'hidden_1_week' | 'account_locked';
   reason: string;
   durationDays?: number;
 }

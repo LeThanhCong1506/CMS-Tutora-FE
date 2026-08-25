@@ -211,16 +211,6 @@ export const getWarningLevelFromSeverity = (severity: string): 1 | 2 | 3 => {
     }
 };
 
-// ── Tạm ngưng gia sư ────────────────────────────────────────────────────────
-
-export type SuspensionType = 'hidden_1_week' | 'account_locked';
-
-/** Quá 30 ngày thì coi là khóa tài khoản, ngắn hơn thì chỉ ẩn hồ sơ khỏi tìm kiếm. */
-export const LONG_SUSPENSION_THRESHOLD_DAYS = 30;
-
-export const getSuspensionTypeForDuration = (durationDays: number): SuspensionType =>
-    durationDays > LONG_SUSPENSION_THRESHOLD_DAYS ? 'account_locked' : 'hidden_1_week';
-
 // ── Quyền cho từng hành động lên gia sư ─────────────────────────────────────
 
 /**
