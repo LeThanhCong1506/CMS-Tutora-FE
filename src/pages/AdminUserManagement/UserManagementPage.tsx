@@ -3,13 +3,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import {
     getAllUsers,
-    deactivateUser,
     reactivateUser,
     issueWarning,
     suspendTutor,
     deleteUser,
+    getPurgePreflight,
     exportUsersToExcel,
 } from '../../services/admin.service';
+import type { UserPurgePreflight } from '../../services/admin.service';
 import { DataTable, PageContainer, SectionCard } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import {
@@ -22,7 +23,6 @@ import { useAccess } from '../../contexts/AccessContext';
 import type { UserListItem } from '../../types/admin.types';
 import type { FlatUserDetail } from './userTypes';
 import UserDetailModal from './components/UserDetailModal';
-import BlockUserModal from './components/BlockUserModal';
 import IssueWarningModal from './components/IssueWarningModal';
 import SuspendUserModal from './components/SuspendUserModal';
 import UserFormModal from './components/UserFormModal';
@@ -70,13 +70,14 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
     // Modals
     const [selectedUser, setSelectedUser] = useState<FlatUserDetail | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [purgePreflight, setPurgePreflight] = useState<UserPurgePreflight | null>(null);
+    const [purgePhrase, setPurgePhrase] = useState('');
 
     const fetchUsers = useCallback(async () => {
         // Abort any in-flight fetch — protects against out-of-order responses
@@ -182,20 +183,6 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
         setIsDetailModalOpen(true);
     };
 
-    const handleBlockUser = async (userId: string, reason: string) => {
-        void reason;
-
-        try {
-            await deactivateUser(userId);
-            toast.success('Đã vô hiệu hóa tài khoản người dùng');
-            setIsBlockModalOpen(false);
-            setIsDetailModalOpen(false);
-            await fetchUsers();
-        } catch (error) {
-            toast.error(apiErrorMessage(error, 'Không thể vô hiệu hóa tài khoản'));
-        }
-    };
-
     const handleUnblockUser = async () => {
         if (!selectedUser) return;
         try {
@@ -236,14 +223,31 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
     const handleSuspendUser = async (userId: string, reason: string, durationDays: number) => {
         try {
-            await suspendTutor({
+            // 0 = vô thời hạn, and "permanent" is the only value CreateSuspensionAsync leaves the
+            // end date open for — the old FE heuristic ("hidden_1_week"/"account_locked", chosen by
+            // day count) always produced an end date, so it could not express an indefinite hold.
+            const isIndefinite = durationDays === 0;
+            const response = await suspendTutor({
                 userid: userId,
-                // FE doesn't have a type selector — fall back to the same heuristic
-                // used in AdminDisputes: long suspensions = full lock, short = soft hide.
-                suspensiontype: durationDays > 30 ? 'account_locked' : 'hidden_1_week',
+                suspensiontype: isIndefinite ? 'permanent' : 'temporary',
                 reason,
                 durationDays,
             });
+
+            // The modal announces the suspension itself; this reports the refunds it triggered,
+            // which the operator previewed but should still see confirmed against real numbers.
+            const impact = response?.content?.refundImpact;
+            if (impact && impact.bookingsAffected > 0) {
+                toast.info(
+                    `Đã hủy ${impact.sessionsCancelled} buổi học và hoàn ${impact.totalRefunded.toLocaleString('vi-VN')}đ cho người học.`,
+                );
+            }
+            if (impact && impact.bookingsNeedingManualReview.length > 0) {
+                toast.warning(
+                    `${impact.bookingsNeedingManualReview.length} khóa không hoàn tiền tự động được (#${impact.bookingsNeedingManualReview.join(', #')}) — cần xử lý thủ công.`,
+                );
+            }
+
             setIsSuspendModalOpen(false);
             setIsDetailModalOpen(false);
             await fetchUsers();
@@ -278,18 +282,51 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
 
     const closeDeleteModal = () => {
         setIsDeleteModalOpen(false);
+        setPurgePreflight(null);
+        setPurgePhrase('');
         setIsDetailModalOpen(true);
     };
 
+    // The erase is irreversible, so the dialog is not usable until the server has said what would
+    // be destroyed, whether it is allowed, and which sentence has to be typed back.
+    useEffect(() => {
+        if (!isDeleteModalOpen || !selectedUser) return;
+
+        let cancelled = false;
+        getPurgePreflight(selectedUser.userid)
+            .then((result) => {
+                if (!cancelled) setPurgePreflight(result);
+            })
+            .catch((err) => {
+                console.error('Error loading purge preflight:', err);
+                if (!cancelled) {
+                    toast.error(apiErrorMessage(err, 'Không kiểm tra được điều kiện xóa tài khoản'));
+                    setIsDeleteModalOpen(false);
+                    setIsDetailModalOpen(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isDeleteModalOpen, selectedUser]);
+
     const handleDeleteUser = async () => {
-        if (!selectedUser) return;
+        if (!selectedUser || !purgePreflight?.canPurge) return;
         try {
             setIsDeleting(true);
-            await deleteUser(selectedUser.userid);
-            toast.success(`Đã xóa tài khoản ${selectedUser.fullname}`);
+            const result = await deleteUser(selectedUser.userid, purgePhrase.trim());
+            const removed = result?.deleted;
+            toast.success(
+                removed
+                    ? `Đã xóa vĩnh viễn ${selectedUser.fullname}: ${removed.bookings} khóa học, ${removed.classSessions} buổi học, ${removed.walletTransactions} giao dịch ví.`
+                    : `Đã xóa vĩnh viễn tài khoản ${selectedUser.fullname}`,
+            );
             setIsDeleteModalOpen(false);
             setIsDetailModalOpen(false);
             setSelectedUser(null);
+            setPurgePreflight(null);
+            setPurgePhrase('');
             await fetchUsers();
         } catch (err: unknown) {
             toast.error(apiErrorMessage(err, 'Không thể xóa tài khoản'));
@@ -297,6 +334,13 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             setIsDeleting(false);
         }
     };
+
+    /** Same normalisation the server applies before comparing: collapse whitespace, ignore case.
+     *  Anything stricter would leave the button dead after an otherwise-correct paste. */
+    const normalisePhrase = (value: string) => value.split(/\s+/).filter(Boolean).join(' ').toLowerCase();
+    const phraseMatches =
+        !!purgePreflight &&
+        normalisePhrase(purgePhrase) === normalisePhrase(purgePreflight.confirmationPhrase);
 
     /** Reset-password is intentionally not wired: BE has no endpoint for an
      *  admin-initiated password reset (only student self-service). The button
@@ -746,7 +790,6 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                     setSelectedUser(null);
                 }}
                 user={selectedUser}
-                onBlockUser={() => openUserActionModal(setIsBlockModalOpen)}
                 onUnblockUser={handleUnblockUser}
                 onIssueWarning={() => openUserActionModal(setIsWarningModalOpen)}
                 onSuspendUser={() => openUserActionModal(setIsSuspendModalOpen)}
@@ -754,13 +797,6 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                 onDeleteUser={() => openUserActionModal(setIsDeleteModalOpen)}
                 /* onResetPassword intentionally omitted — BE has no admin
                    reset-password endpoint yet, so the button stays hidden. */
-            />
-
-            <BlockUserModal
-                isOpen={isBlockModalOpen}
-                onClose={() => closeUserActionModal(setIsBlockModalOpen)}
-                user={selectedUser}
-                onBlock={handleBlockUser}
             />
 
             <IssueWarningModal
@@ -807,7 +843,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                                     <span className="material-symbols-outlined">delete</span>
                                     Xóa tài khoản
                                 </h3>
-                                <p className="um-modal-sub">Tài khoản sẽ bị khóa và không thể đăng nhập lại. CMS hiện chưa có chức năng khôi phục.</p>
+                                <p className="um-modal-sub">Không thể hoàn tác.</p>
                             </div>
                             <button
                                 type="button"
@@ -834,18 +870,64 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                                 </div>
                             </div>
 
-                            <div className="um-callout um-callout-danger">
-                                <span className="material-symbols-outlined">error</span>
-                                <div>
-                                    <p className="um-callout-title">Không xóa dữ liệu khỏi hệ thống</p>
-                                    <p className="um-callout-text">
-                                        Tài khoản và dữ liệu liên quan vẫn được giữ lại — hành động này chỉ khóa đăng
-                                        nhập và đánh dấu tài khoản đã xóa. Nếu chỉ cần tạm ngăn đăng nhập và có thể mở
-                                        lại sau, hãy dùng “Chặn tài khoản” thay vì xoá, vì CMS hiện chưa có nút khôi
-                                        phục cho tài khoản đã xóa.
-                                    </p>
+                            {!purgePreflight && (
+                                <div className="um-callout">
+                                    <span className="material-symbols-outlined">hourglass_top</span>
+                                    <div>
+                                        <p className="um-callout-text">Đang kiểm tra điều kiện xóa…</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Refused: name what is still outstanding instead of showing a dead button. */}
+                            {purgePreflight && !purgePreflight.canPurge && (
+                                <div className="um-callout um-callout-danger">
+                                    <span className="material-symbols-outlined">block</span>
+                                    <div>
+                                        <p className="um-callout-title">Chưa thể xóa tài khoản này</p>
+                                        <ul className="um-callout-text" style={{ margin: 0, paddingLeft: 18 }}>
+                                            {purgePreflight.blockers.map((blocker) => (
+                                                <li key={blocker}>{blocker}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+
+                            {purgePreflight?.canPurge && (
+                                <>
+                                    {/* Counts, not prose — the operator needs the scale of the delete at a glance. */}
+                                    <div className="um-callout um-callout-danger">
+                                        <span className="material-symbols-outlined">delete_forever</span>
+                                        <div>
+                                            <p className="um-callout-title">Sẽ xóa khỏi hệ thống</p>
+                                            <p className="um-callout-text">
+                                                {purgePreflight.footprint.bookings} khóa học ·{' '}
+                                                {purgePreflight.footprint.classSessions} buổi học ·{' '}
+                                                {purgePreflight.footprint.walletTransactions} giao dịch ví ·{' '}
+                                                {purgePreflight.footprint.feedbacks} đánh giá ·{' '}
+                                                {purgePreflight.footprint.chatMessages} tin nhắn ·{' '}
+                                                {purgePreflight.footprint.warnings} cảnh cáo
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="um-field">
+                                        <label className="um-label" htmlFor="purge-phrase">
+                                            Gõ lại câu này để xác nhận <span className="um-req">*</span>
+                                        </label>
+                                        <p className="um-purge-phrase">{purgePreflight.confirmationPhrase}</p>
+                                        <input
+                                            id="purge-phrase"
+                                            className="um-input"
+                                            type="text"
+                                            autoComplete="off"
+                                            value={purgePhrase}
+                                            onChange={(e) => setPurgePhrase(e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="um-modal-foot">
@@ -856,9 +938,13 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                             >
                                 Hủy
                             </button>
-                            <button className="um-btn um-btn-danger" onClick={handleDeleteUser} disabled={isDeleting}>
-                                <span className="material-symbols-outlined">delete</span>
-                                {isDeleting ? 'Đang xóa…' : 'Xóa tài khoản'}
+                            <button
+                                className="um-btn um-btn-danger"
+                                onClick={handleDeleteUser}
+                                disabled={isDeleting || !purgePreflight?.canPurge || !phraseMatches}
+                            >
+                                <span className="material-symbols-outlined">delete_forever</span>
+                                {isDeleting ? 'Đang xóa…' : 'Xóa vĩnh viễn'}
                             </button>
                         </div>
                     </div>

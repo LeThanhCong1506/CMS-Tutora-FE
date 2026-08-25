@@ -24,7 +24,6 @@ interface UserDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     user: FlatUserDetail | null;
-    onBlockUser: () => void;
     onUnblockUser: () => void;
     onIssueWarning: () => void;
     onSuspendUser: () => void;
@@ -60,12 +59,12 @@ const getWarningLevelMeta = (level: number) =>
     WARNING_LEVEL_META[level] ?? (level > 3 ? WARNING_LEVEL_META[3] : WARNING_LEVEL_META[1]);
 
 /**
- * DB chứa hai bộ từ vựng cho loại tạm ngưng: 'temporary'/'permanent' do hệ thống
- * tự áp, và 'hidden_1_week'/'account_locked' do admin thao tác từ CMS.
+ * CMS và hệ thống cùng ghi 'temporary'/'permanent'. Hai giá trị còn lại là bản ghi cũ
+ * từ thời CMS tự đoán loại theo số ngày — vẫn phải hiển thị được.
  */
 const SUSPENSION_TYPE_LABEL: Record<string, string> = {
-    temporary: 'Tạm thời',
-    permanent: 'Vĩnh viễn',
+    temporary: 'Có thời hạn',
+    permanent: 'Vô thời hạn',
     hidden_1_week: 'Ẩn hồ sơ',
     account_locked: 'Khóa tài khoản',
 };
@@ -101,7 +100,6 @@ const UserDetailModal = ({
     isOpen,
     onClose,
     user,
-    onBlockUser,
     onUnblockUser,
     onIssueWarning,
     onSuspendUser,
@@ -407,6 +405,10 @@ const UserDetailModal = ({
           ? 'Đã liên kết'
           : 'Chưa liên kết';
     const isBlocked = user.accountstatus === 'blocked';
+    const isSuspended = user.accountstatus === 'suspended';
+    // Blocked and suspended are the same thing to the account holder — they cannot sign in — so
+    // both collapse to one state here and the footer offers "Mở khóa" for either.
+    const isOffline = isBlocked || isSuspended;
     const roleDisplay = getRoleDisplay(user.primaryrole);
     const status = STATUS_META[user.accountstatus] ?? { label: user.accountstatus, variant: 'neutral' };
 
@@ -883,23 +885,24 @@ const UserDetailModal = ({
                         </Can>
                     )}
 
-                    <Can permission="warning.create">
-                        <button className="um-btn um-btn-warn" onClick={onIssueWarning}>
-                            <span className="material-symbols-outlined">warning</span>
-                            Cảnh cáo
-                        </button>
-                    </Can>
-
-                    {isTutor && !isBlocked && (
-                        <Can permission="suspension.manage">
-                            <button className="um-btn um-btn-secondary" onClick={onSuspendUser}>
-                                <span className="material-symbols-outlined">pause_circle</span>
-                                Tạm ngưng
+                    {/* Cảnh cáo chỉ có nghĩa với tài khoản đang hoạt động — BE bỏ qua nếu đang bị treo. */}
+                    {!isOffline && (
+                        <Can permission="warning.create">
+                            <button
+                                className="um-btn um-btn-warn"
+                                onClick={onIssueWarning}
+                                title="Ghi nhận vi phạm. Đủ ngưỡng, hệ thống tự tạm ngưng."
+                            >
+                                <span className="material-symbols-outlined">warning</span>
+                                Cảnh cáo
                             </button>
                         </Can>
                     )}
 
-                    {isBlocked ? (
+                    {/* Một hành động duy nhất: thời hạn chọn trong modal, "Vô thời hạn" thay cho
+                        nút Chặn cũ. Hai nút riêng chỉ khác nhau ở ngày hết hạn nên không đáng
+                        bắt người dùng phân biệt. */}
+                    {isOffline ? (
                         <Can permission="user.deactivate">
                             <button className="um-btn um-btn-primary" onClick={onUnblockUser}>
                                 <span className="material-symbols-outlined">check_circle</span>
@@ -907,10 +910,10 @@ const UserDetailModal = ({
                             </button>
                         </Can>
                     ) : (
-                        <Can permission="user.deactivate">
-                            <button className="um-btn um-btn-danger" onClick={onBlockUser}>
-                                <span className="material-symbols-outlined">block</span>
-                                Chặn tài khoản
+                        <Can permission="suspension.manage">
+                            <button className="um-btn um-btn-danger" onClick={onSuspendUser}>
+                                <span className="material-symbols-outlined">pause_circle</span>
+                                Tạm ngưng
                             </button>
                         </Can>
                     )}
