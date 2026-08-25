@@ -637,6 +637,22 @@
     flex-wrap: wrap;
 }
 
+/* Giải thích tại chỗ khi nút cảnh cáo/tạm ngưng bị ẩn vì tài khoản đã offline. */
+.um-foot-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--um-text-muted, #6b7280);
+    max-width: 340px;
+}
+
+.um-foot-note .material-symbols-outlined {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
 /* ============================== NÚT ============================== */
 
 .um-btn {
@@ -1577,4 +1593,51 @@
     .um-modal {
         animation: none;
     }
+}
+
+/* Câu xác nhận xóa vĩnh viễn — hiển thị để admin gõ lại, cho chọn/copy được. */
+.um-purge-phrase {
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border: 1px dashed var(--um-danger, #dc2626);
+    border-radius: 8px;
+    background: var(--um-surface-alt, #f9fafb);
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 600;
+    color: var(--um-danger, #dc2626);
+    user-select: all;
+    word-break: break-word;
+}
+
+/* Ô nhập số ngày tùy chỉnh, nằm cùng hàng với các chip thời hạn. */
+.um-chip-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+    height: 34px;
+    border: 1px solid var(--um-line, #e5e7eb);
+    border-radius: 999px;
+    background: var(--um-surface, #fff);
+    font-size: 13px;
+    color: var(--um-text-muted, #6b7280);
+}
+
+.um-chip-input input {
+    width: 42px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    color: var(--um-text, #111827);
+    text-align: right;
+}
+
+.um-chip-input input.um-input-error {
+    color: var(--um-danger, #dc2626);
+}
+
+.um-chip-input:focus-within {
+    border-color: var(--um-primary, #2563eb);
 }

@@ -588,6 +588,48 @@ export const issueWarning = async (request: IssueWarningRequest): Promise<ApiRes
 };
 
 /**
+ * What suspending or blocking a tutor does to the courses they are still teaching.
+ * Mirrors BE `SuspensionRefundImpactResponse`.
+ */
+export interface SuspensionRefundImpact {
+  bookingsAffected: number;
+  bookingsClosed: number;
+  sessionsCancelled: number;
+  totalRefunded: number;
+  totalEscrowReversed: number;
+  totalEscrowReleasedToTutor: number;
+  /** Courses with no resolvable payer wallet — left untouched, need a manual decision. */
+  bookingsNeedingManualReview: number[];
+  bookings: {
+    bookingId: number;
+    refundRecipientId: string | null;
+    sessionsCancelled: number;
+    refundAmount: number;
+    escrowReversed: number;
+    bookingStatus: string | null;
+    closed: boolean;
+  }[];
+}
+
+/**
+ * Preview the financial fallout before suspending a tutor: which upcoming sessions get
+ * cancelled and how much goes back to the parents. Read-only.
+ * Backend: GET /api/admin/warnings/users/{userId}/suspension-impact?durationDays=N
+ *
+ * Pass 0 (or omit) for an indefinite suspension/block, which reaches every undelivered
+ * session; a positive duration only reaches sessions inside the suspension window.
+ */
+export const getSuspensionImpact = async (
+  userId: string,
+  durationDays = 0,
+): Promise<SuspensionRefundImpact> => {
+  const { data } = await api.get(`/admin/warnings/users/${userId}/suspension-impact`, {
+    params: { durationDays },
+  });
+  return data.content;
+};
+
+/**
  * Apply a suspension to a user.
  * Backend: POST /api/admin/warnings/users/{userId}/suspend
  * BE DTO (SuspensionRequest):
@@ -598,7 +640,9 @@ export const issueWarning = async (request: IssueWarningRequest): Promise<ApiRes
  * Kept the name `suspendTutor` for backward compatibility with the
  * AdminDisputes page; the underlying BE endpoint is generic across roles.
  */
-export const suspendTutor = async (request: SuspendUserRequest): Promise<ApiResponse<any>> => {
+export const suspendTutor = async (
+  request: SuspendUserRequest,
+): Promise<{ content?: { refundImpact?: SuspensionRefundImpact | null } }> => {
   try {
     const { userid, suspensiontype, reason, durationDays } = request;
     const body = {
@@ -782,10 +826,14 @@ export const updateUser = async (
 /**
  * Deactivate user (set status = 0)
  * Backend: PUT /api/admin/users/{id}/deactivate
+ *
+ * Blocking a tutor also cancels every session they had not delivered yet and refunds the
+ * payers, so the response reports what moved — surface it rather than dropping it.
  */
-export const deactivateUser = async (userId: string): Promise<void> => {
+export const deactivateUser = async (userId: string): Promise<SuspensionRefundImpact | null> => {
   try {
-    await api.put(`/admin/users/${userId}/deactivate`);
+    const { data } = await api.put(`/admin/users/${userId}/deactivate`);
+    return data?.content ?? null;
   } catch (error) {
     console.error('deactivateUser error:', error);
     throw error;
@@ -831,9 +879,65 @@ export const createUser = async (request: {
  * Permanently delete a user (Admin only).
  * Backend: DELETE /api/admin/users/{id}
  */
-export const deleteUser = async (userId: string): Promise<void> => {
+/** Rows tied to an account, counted before it is erased. Mirrors BE `UserPurgeFootprint`. */
+export interface UserPurgeFootprint {
+  bookings: number;
+  classSessions: number;
+  walletTransactions: number;
+  feedbacks: number;
+  disputes: number;
+  chatMessages: number;
+  warnings: number;
+}
+
+/** Mirrors BE `UserPurgePreflightResponse`. */
+export interface UserPurgePreflight {
+  userId: string;
+  fullName: string | null;
+  role: string | null;
+  canPurge: boolean;
+  /** Why the erase is refused right now, in words the operator can act on. */
+  blockers: string[];
+  /** The sentence the operator must type back, generated and re-checked server-side. */
+  confirmationPhrase: string;
+  footprint: UserPurgeFootprint;
+}
+
+/** Mirrors BE `UserPurgeResultResponse`. */
+export interface UserPurgeResult {
+  userId: string;
+  fullName: string | null;
+  deleted: UserPurgeFootprint;
+  purgedAt: string;
+  purgedByName: string | null;
+}
+
+/**
+ * What a permanent erase would destroy and whether it is allowed right now.
+ * Backend: GET /api/admin/users/{id}/purge-preflight — read-only, moves nothing.
+ */
+export const getPurgePreflight = async (userId: string): Promise<UserPurgePreflight> => {
+  const { data } = await api.get(`/admin/users/${userId}/purge-preflight`);
+  return data.content;
+};
+
+/**
+ * Permanently erase a user and every row keyed to them. Irreversible — there is no restore.
+ * Backend: DELETE /api/admin/users/{id}
+ *
+ * The confirmation phrase comes from `getPurgePreflight` and is verified again server-side, so
+ * this cannot be called without the operator having typed it.
+ */
+export const deleteUser = async (
+  userId: string,
+  confirmationPhrase: string,
+): Promise<UserPurgeResult | null> => {
   try {
-    await api.delete(`/admin/users/${userId}`);
+    // DELETE with a body: axios needs `data`, and the BE binds it with [FromBody].
+    const { data } = await api.delete(`/admin/users/${userId}`, {
+      data: { confirmationPhrase },
+    });
+    return data?.content ?? null;
   } catch (error) {
     console.error('deleteUser error:', error);
     throw error;
