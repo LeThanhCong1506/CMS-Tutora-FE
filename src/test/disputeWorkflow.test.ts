@@ -3,7 +3,6 @@ import {
     getDisputeStatusLabel,
     getDisputeStatusVariant,
     getPriorityVariant,
-    getSuspensionTypeForDuration,
     getVerdictSuggestion,
     getWarningLevelFromSeverity,
     isBeforeTutorResponseDeadline,
@@ -225,21 +224,6 @@ describe('tutor reminder severity', () => {
         // Không im lặng bỏ qua, cũng không tự động khóa tài khoản vì một giá trị lạ.
         expect(getWarningLevelFromSeverity('urgent')).toBe(2);
         expect(getWarningLevelFromSeverity('')).toBe(2);
-    });
-});
-
-// ── Luồng: tạm ngưng gia sư ─────────────────────────────────────────────────
-
-describe('tutor suspension type', () => {
-    it('hides the profile for short suspensions', () => {
-        expect(getSuspensionTypeForDuration(1)).toBe('hidden_1_week');
-        expect(getSuspensionTypeForDuration(7)).toBe('hidden_1_week');
-        expect(getSuspensionTypeForDuration(30)).toBe('hidden_1_week');
-    });
-
-    it('locks the account once the suspension runs longer than a month', () => {
-        expect(getSuspensionTypeForDuration(31)).toBe('account_locked');
-        expect(getSuspensionTypeForDuration(365)).toBe('account_locked');
     });
 });
 

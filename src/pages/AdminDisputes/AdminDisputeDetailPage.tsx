@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
 import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
-import TutorAccessModal from '../AdminUserManagement/components/BlockUserModal';
 import CloseDisputeModal from './components/CloseDisputeModal';
 import type { FlatUserDetail } from '../AdminUserManagement/userTypes';
 import {
@@ -17,7 +16,6 @@ import {
     resolveRecordingStreamUrl,
     issueWarning,
     suspendTutor,
-    deactivateUser,
     getDisputeThread,
     sendDisputeThreadMessage,
     getRefundPreview,
@@ -48,7 +46,6 @@ import {
     getDisputeStatusLabel,
     getDisputeStatusVariant,
     getPriorityMeta,
-    getSuspensionTypeForDuration,
     getVerdictSuggestion,
     getWarningLevelFromSeverity,
     isBeforeTutorResponseDeadline,
@@ -192,7 +189,6 @@ const AdminDisputeDetailPage = () => {
     // Modal states
     const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
-    const [isLockModalOpen, setIsLockModalOpen] = useState(false);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
 
     // Submitting state
@@ -487,19 +483,10 @@ const AdminDisputeDetailPage = () => {
         await suspendTutor({
             userid: tutorId,
             reason,
-            suspensiontype: getSuspensionTypeForDuration(durationDays),
+            // 0 = vô thời hạn; chỉ 'permanent' mới khiến BE để trống ngày kết thúc.
+            suspensiontype: durationDays === 0 ? 'permanent' : 'temporary',
             durationDays,
         });
-        await fetchDisputeDetail(disputeId);
-    };
-
-    const handleDeactivateTutor = async (userId: string, reason: string) => {
-        if (!disputeId) return;
-
-        // The tutor-management page uses this same endpoint. It does not persist a reason yet,
-        // but the shared modal still collects one consistently for the admin's confirmation flow.
-        void reason;
-        await deactivateUser(userId);
         await fetchDisputeDetail(disputeId);
     };
 
@@ -741,24 +728,16 @@ const AdminDisputeDetailPage = () => {
                                                 Gửi nhắc nhở
                                             </button>
                                             </Can>
+                                            {/* Một hành động: thời hạn chọn trong modal, "Vô thời hạn"
+                                                thay cho nút ngừng truy cập cũ — giống trang quản lý người dùng. */}
                                             <Can permission={TUTOR_ACTION_PERMISSIONS.suspension}>
                                             <button
                                                 type="button"
-                                                className="admin-ui-button admin-ui-button-secondary"
+                                                className="admin-ui-button admin-ui-button-danger"
                                                 onClick={() => setIsSuspendModalOpen(true)}
                                             >
                                                 <span className="material-symbols-outlined">block</span>
-                                                Tạm ngưng hoạt động
-                                            </button>
-                                            </Can>
-                                            <Can permission={TUTOR_ACTION_PERMISSIONS.accessRemoval}>
-                                            <button
-                                                type="button"
-                                                className="admin-ui-button admin-ui-button-danger"
-                                                onClick={() => setIsLockModalOpen(true)}
-                                            >
-                                                <span className="material-symbols-outlined">lock</span>
-                                                Ngừng quyền truy cập
+                                                Tạm ngưng
                                             </button>
                                             </Can>
                                         </div>
@@ -1593,12 +1572,6 @@ const AdminDisputeDetailPage = () => {
                 onSuspend={handleSuspendTutor}
             />
 
-            <TutorAccessModal
-                isOpen={isLockModalOpen}
-                onClose={() => setIsLockModalOpen(false)}
-                user={managementTutor}
-                onBlock={handleDeactivateTutor}
-            />
         </>
     );
 };
