@@ -54,7 +54,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
     const isIndefinite = !customDays && durationDays === INDEFINITE;
     const durationInvalid = !isIndefinite && (durationDays < MIN_DAYS || durationDays > MAX_DAYS);
 
-    // Suspending cancels the tutor's upcoming sessions and refunds the payers, so price that before
+    // Suspending cancels the account's upcoming sessions and refunds the payers, so price that before
     // the operator commits — and re-price on every duration change, since a longer suspension
     // reaches further into the calendar.
     const userId = user?.userid;
@@ -233,7 +233,7 @@ const SuspendUserModal = ({ isOpen, onClose, user, onSuspend }: SuspendUserModal
                             <div>
                                 <p className="um-callout-text">
                                     Sẽ hủy <strong>{impact.sessionsCancelled} buổi</strong> và hoàn{' '}
-                                    <strong>{formatVnd(impact.totalRefunded)}</strong> cho người học.
+                                    <strong>{formatVnd(impact.totalRefunded)}</strong> cho người đã thanh toán.
                                 </p>
                             </div>
                         </div>
