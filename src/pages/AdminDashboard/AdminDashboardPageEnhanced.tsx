@@ -33,7 +33,7 @@ import {
     CHART,
 } from './components';
 import { formatNumber, formatDisputeType } from '../../utils/formatters';
-import { formatDashboardCurrency, summarizePendingActions } from './dashboardDisplay';
+import { formatDashboardCurrency } from './dashboardDisplay';
 import { useDashboardRange } from './useDashboardRange';
 
 import '../../styles/pages/admin-dashboard.css';
@@ -208,8 +208,6 @@ const AdminDashboardPageEnhanced = () => {
     const newInPeriod = summary?.bookings.newInPeriod;
     const completedInPeriod = summary?.bookings.completedInPeriod;
 
-    const pendingBreakdown = summary ? summarizePendingActions(summary.pendingActions) : null;
-    const pendingTotal = pendingBreakdown?.total;
     const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals;
     const pendingCertificates = summary?.pendingActions.pendingCertificates ?? pending?.pendingCertificates;
     const withdrawalReviews = summary?.pendingActions.withdrawalReviews ?? pending?.pendingWithdrawals;
@@ -218,12 +216,6 @@ const AdminDashboardPageEnhanced = () => {
     const overdueCount = summary?.pendingActions.overdueCount;
     const withdrawalActionCount =
         withdrawalReviews == null && overdueCount == null ? undefined : (withdrawalReviews ?? 0) + (overdueCount ?? 0);
-
-    const pendingSubLabel = loading
-        ? 'Đang cập nhật chi tiết…'
-        : pendingBreakdown
-          ? `${formatNumber(pendingBreakdown.verification)} kiểm duyệt · ${formatNumber(pendingBreakdown.withdrawals)} rút tiền · ${formatNumber(pendingBreakdown.disputes)} khiếu nại · ${formatNumber(pendingBreakdown.alerts)} cảnh báo`
-          : 'Chưa tải được chi tiết công việc';
 
     const activeBookingSubLabel = loading
         ? 'Đang cập nhật chi tiết…'
@@ -335,19 +327,6 @@ const AdminDashboardPageEnhanced = () => {
                     labelClassName="admin-kpi-friendly-label"
                     subLabel={activeBookingSubLabel}
                     infoTooltip="Số lượt đặt lịch hiện đang ở trạng thái hoạt động. Dòng phụ cho biết số lượt mới và số lượt hoàn tất trong khoảng thời gian đã chọn."
-                />
-                <StatCard
-                    className="admin-kpi-alert"
-                    icon={<span className="material-symbols-outlined">pending_actions</span>}
-                    value={loading ? '…' : pendingTotal == null ? '—' : formatNumber(pendingTotal)}
-                    label="Công việc đang chờ xử lý"
-                    labelClassName="admin-kpi-friendly-label"
-                    subLabel={pendingSubLabel}
-                    badge={
-                        overdueCount != null && overdueCount > 0 ? `${formatNumber(overdueCount)} quá hạn` : undefined
-                    }
-                    badgeVariant="red"
-                    infoTooltip="Tổng số hồ sơ và chứng chỉ cần kiểm duyệt, yêu cầu rút tiền chờ duyệt hoặc quá hạn, khiếu nại đang mở và cảnh báo hệ thống chưa xử lý."
                 />
             </div>
 
