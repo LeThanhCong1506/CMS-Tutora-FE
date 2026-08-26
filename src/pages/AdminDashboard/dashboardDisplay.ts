@@ -247,10 +247,6 @@ export const describeDashboardRange = (selection: DashboardRangeSelection): stri
     }
 };
 
-/** Khoảng ngày đã quy đổi, vd. "19/07/2026 – 17/08/2026". */
-export const formatRangeSpan = (range: { from: Date; to: Date }): string =>
-    `${formatFullDate(range.from)} – ${formatFullDate(range.to)}`;
-
 // ─── Money ───
 
 /** Số tiền chính xác cho dashboard, không rút gọn thành K/M/B. */

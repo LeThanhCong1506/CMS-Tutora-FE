@@ -1033,31 +1033,6 @@
 }
 
 /* Nhắc lại khoảng đã quy đổi để không ai đọc số liệu sai kỳ. */
-.admin-dash-range-caption {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--color-navy-60);
-}
-
-.admin-dash-range-caption strong {
-    color: var(--color-navy);
-}
-
-.admin-dash-range-caption .material-symbols-outlined {
-    font-size: 18px;
-}
-
-.admin-dash-range-caption-span {
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--color-navy-05);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-}
-
 @media (max-width: 560px) {
     .admin-dash-range-panel {
         right: auto;
