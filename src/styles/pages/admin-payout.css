@@ -252,35 +252,6 @@
   outline: 0;
 }
 
-.payout-review-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid rgba(30, 64, 175, 0.16);
-  border-radius: 16px;
-  background: rgba(219, 234, 254, 0.55);
-  color: var(--color-navy);
-  margin-bottom: 20px;
-}
-
-.payout-review-callout > .material-symbols-outlined {
-  color: #1e40af;
-  margin-top: 2px;
-}
-
-.payout-review-callout h3 {
-  margin: 0 0 4px;
-  font-family: var(--font-serif);
-  font-size: 18px;
-}
-
-.payout-review-callout p {
-  margin: 0;
-  color: var(--color-navy-60);
-  line-height: 1.6;
-}
-
 /* Nút quay lại đặt ở slot eyebrow của PageContainer nên phải huỷ uppercase/letter-spacing
    mà eyebrow áp xuống, đồng thời khớp kiểu back-link của các trang chi tiết khác. */
 .payout-back-button {
@@ -1337,10 +1308,6 @@
 
   .payout-request-table table {
     min-width: 760px !important;
-  }
-
-  .payout-review-callout {
-    padding: 14px;
   }
 
   .payout-summary-panel {

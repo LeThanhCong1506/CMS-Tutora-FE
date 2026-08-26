@@ -54,7 +54,6 @@ const PendingReviewPage: React.FC = () => {
         <PageContainer
             eyebrow="Thanh toán"
             title="Yêu cầu chờ xét duyệt"
-            subtitle="Danh sách các yêu cầu rút tiền đang chờ admin/staff kiểm tra và chuyển khoản thủ công."
             maxWidth="wide"
             headerAction={
                 <button
@@ -67,20 +66,8 @@ const PendingReviewPage: React.FC = () => {
                 </button>
             }
         >
-            <div className="payout-review-callout">
-                <span className="material-symbols-outlined">info</span>
-                <div>
-                    <h3>Về quy trình xét duyệt</h3>
-                    <p>
-                        Mọi yêu cầu rút tiền đều chờ xử lý thủ công: kiểm tra thông tin tài khoản và lịch sử
-                        giao dịch, chuyển khoản cho người dùng, rồi bấm xác nhận đã chuyển trong trang chi tiết.
-                    </p>
-                </div>
-            </div>
-
             <SectionCard
                 title="Hàng đợi xử lý"
-                subtitle="Mỗi dòng mở sang trang chi tiết để admin/staff đối chiếu ví, lịch sử và xác nhận chuyển khoản."
                 footer={`Hiển thị ${mappedData.length} / ${total.toLocaleString('vi-VN')} yêu cầu`}
             >
                 <WithdrawalRequestTable
