@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingCertificates, adminVerifyCertificate } from '../../services/admin.service';
 import VettingSortSelect from './components/VettingSortSelect';
-import { VETTING_SORT_DEFAULT, getVettingSortLabel } from './utils/vettingSort';
+import { VETTING_SORT_DEFAULT } from './utils/vettingSort';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can } from '../../contexts/AccessContext';
@@ -324,11 +324,11 @@ const AdminCertificateVettingPage = () => {
         maxWidth="wide"
       >
         <SectionCard
-          footer={`${
+          footer={
             searchQuery
               ? `Tìm thấy ${total} chứng chỉ khớp với "${searchQuery}"`
               : `Hiển thị ${visibleCerts.length} / ${total} chứng chỉ chờ duyệt`
-          } · Đang xếp theo "${getVettingSortLabel(orderBy)}"`}
+          }
         >
           <div className="certificate-vetting-toolbar">
             <div className="certificate-search-group">

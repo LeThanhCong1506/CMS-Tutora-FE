@@ -13,10 +13,9 @@ interface VettingSortSelectProps {
 /**
  * Ô sắp xếp dùng chung cho 2 hàng đợi kiểm duyệt (hồ sơ gia sư & chứng chỉ).
  *
- * Không có nhãn hiển thị phía trên: bản thân lựa chọn đang chọn ("Chờ lâu nhất trước") đã tự
- * mô tả, và dòng tóm tắt cuối bảng đã nhắc lại "Đang xếp theo ..." — nên nhãn chỉ để cho trình
- * đọc màn hình qua aria-label. Nhãn các lựa chọn nằm ở utils/vettingSort.ts để dòng tóm tắt
- * cuối bảng dùng lại được.
+ * Không có nhãn hiển thị phía trên: ô select luôn hiện sẵn lựa chọn đang áp dụng ("Chờ lâu
+ * nhất trước") nên đã tự mô tả — nhãn chỉ cần cho trình đọc màn hình qua aria-label. Dòng tóm
+ * tắt cuối bảng trước đây nhắc lại "Đang xếp theo ..." nhưng đã bỏ vì trùng với chính ô này.
  */
 const VettingSortSelect = ({ value, onChange, itemNoun, id }: VettingSortSelectProps) => {
   const autoId = useId();
