@@ -14,7 +14,3 @@ export const VETTING_SORT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: VETTING_SORT_DEFAULT, label: 'Chờ lâu nhất trước' },
   { value: 'createdat_desc', label: 'Mới gửi nhất trước' },
 ];
-
-/** Nhãn thân thiện của lựa chọn đang áp dụng — dùng lại ở dòng tóm tắt cuối bảng. */
-export const getVettingSortLabel = (value: string): string =>
-  VETTING_SORT_OPTIONS.find((option) => option.value === value)?.label ?? '';

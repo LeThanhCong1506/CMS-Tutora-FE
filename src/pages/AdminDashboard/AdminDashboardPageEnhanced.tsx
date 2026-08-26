@@ -33,12 +33,7 @@ import {
     CHART,
 } from './components';
 import { formatNumber, formatDisputeType } from '../../utils/formatters';
-import {
-    describeDashboardRange,
-    formatDashboardCurrency,
-    formatRangeSpan,
-    summarizePendingActions,
-} from './dashboardDisplay';
+import { formatDashboardCurrency, summarizePendingActions } from './dashboardDisplay';
 import { useDashboardRange } from './useDashboardRange';
 
 import '../../styles/pages/admin-dashboard.css';
@@ -310,14 +305,6 @@ const AdminDashboardPageEnhanced = () => {
                     {error}
                 </div>
             )}
-
-            <div className="admin-dash-range-caption">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                    event_note
-                </span>
-                Đang xem <strong>{describeDashboardRange(selection)}</strong>
-                <span className="admin-dash-range-caption-span">{formatRangeSpan(range)}</span>
-            </div>
 
             {/* ── KPI ROW ── */}
             <div className="admin-dash-kpis">
