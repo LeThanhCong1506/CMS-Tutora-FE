@@ -677,10 +677,10 @@
     font-weight: 500;
 }
 
-/* KPI row — 4 cols desktop, 2 tablet, 1 mobile */
+/* KPI row — 3 cols desktop, 2 tablet, 1 mobile */
 .admin-dash-kpis {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 0;
 }
@@ -1044,7 +1044,7 @@
     }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 860px) {
     .admin-dash-kpis {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1054,11 +1054,6 @@
     .admin-dash-kpis {
         grid-template-columns: 1fr;
     }
-}
-
-/* Left accent for the "việc cần xử lý" KPI */
-.admin-kpi-alert {
-    border-left: 3px solid var(--color-burgundy) !important;
 }
 
 /* Layout grids */
