@@ -9,7 +9,7 @@ import {
 } from '../../services/admin.service';
 import TutorDetailModal from './components/TutorDetailModal';
 import VettingSortSelect from './components/VettingSortSelect';
-import { VETTING_SORT_DEFAULT, getVettingSortLabel } from './utils/vettingSort';
+import { VETTING_SORT_DEFAULT } from './utils/vettingSort';
 import { DataTable, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn } from '../../components/shared';
 import { Can, useAccess } from '../../contexts/AccessContext';
@@ -748,11 +748,11 @@ const AdminVettingPage = () => {
 
           {activeTab === 'new' && canViewNew && (
             <SectionCard
-              footer={`${
+              footer={
                 searchQuery
                   ? `Tìm thấy ${total} hồ sơ khớp với "${searchQuery}"`
                   : `Hiển thị ${visibleTutors.length} / ${total} hồ sơ chờ duyệt`
-              } · Đang xếp theo "${getVettingSortLabel(orderBy)}"`}
+              }
             >
               <div className="certificate-vetting-toolbar">
                 <div className="certificate-search-group">
@@ -849,11 +849,11 @@ const AdminVettingPage = () => {
 
           {activeTab === 'updates' && canViewUpdates && (
             <SectionCard
-              footer={`${
+              footer={
                 updateSearchQuery
                   ? `Tìm thấy ${updateTotal} yêu cầu khớp với "${updateSearchQuery}"`
                   : `Hiển thị ${visibleUpdateRequests.length} / ${updateTotal} yêu cầu chờ duyệt`
-              } · Đang xếp theo "${getVettingSortLabel(updateOrderBy)}"`}
+              }
             >
               <div className="certificate-vetting-toolbar">
                 <div className="certificate-search-group">
