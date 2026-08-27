@@ -662,10 +662,17 @@
     align-items: stretch;
 }
 
+/* Trần chiều cao cho hai khung chat, và mỗi khung tự cuộn bên trong.
+   Trước đây panel cao theo nội dung: buổi học có vài chục tin nhắn là khối chat cao vài nghìn px,
+   mà ô soạn tin của "chat riêng" luôn nằm cuối panel (margin-top: auto) nên bị đẩy xuống tận đáy
+   trang — admin phải cuộn mấy màn hình mới thấy chỗ nhập tin, hoặc tưởng là không có.
+   Có trần thì danh sách tin nhắn (flex:1 + overflow-y:auto) cuộn trong khung, còn ô soạn tin
+   luôn nằm ngay dưới khung chat trong tầm mắt. */
 .dispute-chat-panel {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    max-height: clamp(360px, calc(100vh - 240px), 760px);
 }
 
 .dispute-chat-panel + .dispute-chat-panel {
@@ -834,6 +841,146 @@
     color: var(--color-navy-50);
     font-size: 11px;
     line-height: 16px;
+}
+
+/* ── Thẻ phương án xử lý ──
+   Thay cho nhóm radio một-lựa-chọn cũ: tiêu đề + một dòng tóm tắt + bảng số tiền,
+   phần diễn giải dài gập trong <details> để lần đọc đầu chỉ còn 3 con số cần nhìn. */
+.dispute-plan {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: 10px;
+    background: var(--color-cream-light);
+}
+
+.dispute-plan__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.dispute-plan__head .material-symbols-outlined {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: #9b7841;
+    font-size: 20px;
+}
+
+.dispute-plan__title {
+    margin: 0;
+    color: var(--color-navy);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.dispute-plan__summary {
+    margin: 2px 0 0;
+    color: var(--color-navy-50);
+    font-size: 12px;
+    line-height: 17px;
+}
+
+.dispute-plan__loading {
+    margin: 0;
+    color: var(--color-navy-50);
+    font-size: 12.5px;
+}
+
+/* Số tiền là thứ admin cần nhìn nhanh nhất → nhãn ngắn bên trái, số căn phải,
+   dùng tabular-nums để các hàng số thẳng cột nhau. */
+.dispute-plan__figures {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0;
+    padding: 12px 0 0;
+    border-top: 1px solid rgba(26, 34, 56, 0.08);
+}
+
+.dispute-plan__figures > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dispute-plan__figures dt {
+    color: var(--color-navy-60);
+    font-size: 12.5px;
+}
+
+.dispute-plan__figures dd {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.dispute-plan__figures dd.is-in {
+    color: #065f46;
+}
+
+.dispute-plan__figures dd.is-out {
+    color: #b91c1c;
+}
+
+/* Cảnh báo từ BE (vd vì sao khoản hoàn bị giới hạn còn 0đ) — giữ nguyên nội dung
+   vì đây chính là câu trả lời cho con số bất ngờ ở trên, chỉ nén lại cho gọn. */
+.dispute-plan__warning {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    color: #b45309;
+    font-size: 12px;
+    line-height: 17px;
+}
+
+.dispute-plan__warning .material-symbols-outlined {
+    flex: 0 0 auto;
+    font-size: 15px;
+    line-height: 17px;
+}
+
+.dispute-plan__more > summary {
+    width: fit-content;
+    color: var(--color-navy-60);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dispute-plan__more > summary:hover {
+    color: var(--color-navy);
+}
+
+.dispute-plan__more > p {
+    margin: 8px 0 0;
+    color: var(--color-navy-50);
+    font-size: 12px;
+    line-height: 17px;
+}
+
+.dispute-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.dispute-note-counter {
+    color: var(--color-navy-50);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.dispute-note-counter.is-ok {
+    color: #065f46;
 }
 
 .dispute-reasoning-group {
