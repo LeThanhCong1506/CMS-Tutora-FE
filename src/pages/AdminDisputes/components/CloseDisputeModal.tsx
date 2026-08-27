@@ -19,12 +19,12 @@ const OUTCOMES: { value: CloseDisputeOutcome; title: string; desc: string }[] = 
     {
         value: 'completed',
         title: 'Tính là đã học xong',
-        desc: 'Buổi học vẫn được tính, gia sư nhận đủ tiền buổi đó như bình thường.',
+        desc: 'Gia sư nhận đủ tiền buổi đó.',
     },
     {
         value: 'reschedule',
         title: 'Học lại buổi này',
-        desc: 'Buổi gốc chuyển "Đã hủy" (giữ nguyên dữ liệu, không xoá) — tạo 1 buổi học lại MỚI ở phòng học riêng, vào giờ bạn chọn dưới đây.',
+        desc: 'Buổi gốc chuyển "Đã hủy" (dữ liệu vẫn giữ), tạo buổi học lại mới vào giờ bạn chọn.',
     },
 ];
 
@@ -124,29 +124,38 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm, relearnAvail
                 </div>
 
                 <div className="um-modal-body">
-                    <p className="um-hint">
-                        Dùng khi hai bên đã tự dàn xếp với nhau và muốn học tiếp. Không phân xử ai đúng ai
-                        sai và không hoàn tiền cho phụ huynh. Nếu cần quyết định hoàn tiền, hãy dùng phần
-                        &ldquo;Ra quyết định&rdquo; bên dưới thay vì đóng ở đây.
-                    </p>
+                    <div className="um-callout um-callout-warn">
+                        <span className="material-symbols-outlined" aria-hidden="true">payments</span>
+                        <div>
+                            <p className="um-callout-title">Không hoàn tiền, không phân xử đúng sai</p>
+                            <p className="um-callout-text">
+                                Cần hoàn tiền thì dùng &ldquo;Phương án xử lý&rdquo;.
+                            </p>
+                        </div>
+                    </div>
 
                     <div className="um-field">
-                        <span className="um-label">
-                            Buổi học bị phản ánh xử lý thế nào <span className="um-req">*</span>
+                        <span className="um-label" id="close-dispute-outcome-label">
+                            Xử lý buổi học này <span className="um-req">*</span>
                         </span>
-                        <div className="um-options">
+                        <div className="um-options" role="radiogroup" aria-labelledby="close-dispute-outcome-label">
                             {OUTCOMES.map((item) => {
                                 const locked = item.value === 'reschedule' && !relearnAvailable;
                                 return (
                                     <button
                                         key={item.value}
                                         type="button"
+                                        role="radio"
+                                        aria-checked={outcome === item.value}
                                         className={`um-option ${outcome === item.value ? 'um-option-active' : ''}`}
                                         onClick={() => !locked && setOutcome(item.value)}
                                         disabled={locked}
-                                        title={locked ? 'Chuỗi buổi này đã học lại tối đa số lần cho phép — chỉ còn xử lý bằng hoàn tiền qua "Ra quyết định".' : undefined}
+                                        title={locked ? 'Buổi này đã học lại tối đa số lần cho phép.' : undefined}
                                         style={locked ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                                     >
+                                        <span className="material-symbols-outlined um-option-mark" aria-hidden="true">
+                                            {outcome === item.value ? 'radio_button_checked' : 'radio_button_unchecked'}
+                                        </span>
                                         <div>
                                             <div className="um-option-title">{item.title}</div>
                                             <div className="um-option-desc">{item.desc}</div>
@@ -157,9 +166,7 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm, relearnAvail
                         </div>
                         {!relearnAvailable && (
                             <p className="um-hint" style={{ color: '#b45309' }}>
-                                Chuỗi buổi học này đã học lại tối đa số lần cho phép — không thể chọn &ldquo;Học lại buổi
-                                này&rdquo; nữa. Nếu cần xử lý tiếp, hãy dùng phần &ldquo;Ra quyết định&rdquo; (hoàn tiền)
-                                thay vì đóng ở đây.
+                                Buổi này đã học lại tối đa số lần cho phép.
                             </p>
                         )}
                         {needsRelearnTime && (
@@ -176,14 +183,17 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm, relearnAvail
                                     onChange={(event) => setRelearnAt(event.target.value)}
                                     disabled={isSubmitting}
                                 />
-                                <span className="um-hint">Phải ở tương lai. Đây là giờ cho buổi học lại mới, không sửa giờ buổi gốc.</span>
+                                <span className="um-hint">Giờ của buổi học lại mới, phải ở tương lai.</span>
                             </div>
                         )}
                     </div>
 
                     <div className="um-field">
                         <label className="um-label" htmlFor="close-dispute-note">
-                            Nội dung hai bên đã thống nhất <span className="um-req">*</span>
+                            Nội dung thống nhất <span className="um-req">*</span>
+                            <span className="um-counter">
+                                {note.trim().length}/{MIN_NOTE}
+                            </span>
                         </label>
                         <textarea
                             id="close-dispute-note"
@@ -191,10 +201,10 @@ const CloseDisputeModal = ({ isOpen, onClose, disputeId, onConfirm, relearnAvail
                             rows={4}
                             value={note}
                             onChange={(event) => setNote(event.target.value)}
-                            placeholder="Ví dụ: Gia sư và phụ huynh đã trao đổi lại, thống nhất tiếp tục học và rút phản ánh."
+                            placeholder="Ví dụ: hai bên đã trao đổi lại, thống nhất tiếp tục học."
                             disabled={isSubmitting}
                         />
-                        <span className="um-hint">Tối thiểu {MIN_NOTE} ký tự. Nội dung này được gửi cho người tạo phản ánh.</span>
+                        <span className="um-hint">Sẽ gửi cho người tạo phản ánh.</span>
                     </div>
 
                     {error && <p className="um-error">{error}</p>}

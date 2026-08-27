@@ -70,6 +70,21 @@ const formatDate = (value?: string | null) => {
   }).format(date);
 };
 
+/**
+ * Ngày sinh trong khối định danh KHÔNG phải ISO: BE trả nguyên văn chuỗi OCR đọc từ CCCD,
+ * định dạng "dd/MM/yyyy" (kể cả nhánh fallback lấy từ birthdate của tài khoản — xem
+ * TutorVerificationService.BuildIdentityCardSection). Đưa chuỗi đó qua `new Date()` hỏng theo
+ * hai kiểu, kiểu thứ hai nguy hiểm hơn vì im lặng:
+ *   • "15/06/2004" → Invalid Date → hiện "Chưa cập nhật" dù dữ liệu vẫn có;
+ *   • "05/06/2004" → V8 hiểu là tháng 5 ngày 6 → hiện SAI ngày, admin đối chiếu với thẻ sẽ lệch.
+ * Chuỗi đã đúng định dạng cần hiển thị nên chỉ in ra; dạng khác (ISO) mới qua formatDate.
+ */
+const formatIdentityDate = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return 'Chưa cập nhật';
+  return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed) ? trimmed : formatDate(trimmed);
+};
+
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Chưa cập nhật';
   const date = new Date(value);
@@ -401,7 +416,7 @@ const TutorDetailModal: React.FC<TutorDetailModalProps> = ({
                   <dl className="profile-detail-info-grid">
                     <InfoItem label="Họ tên trên giấy tờ" value={identityCard?.fullName} />
                     <InfoItem label="Số giấy tờ" value={identityCard?.identityNumberMasked} />
-                    <InfoItem label="Ngày sinh" value={formatDate(identityCard?.dateOfBirth)} />
+                    <InfoItem label="Ngày sinh" value={formatIdentityDate(identityCard?.dateOfBirth)} />
                     <InfoItem label="Giới tính" value={formatGender(identityCard?.gender)} />
                     <InfoItem
                       label="Địa chỉ thường trú"

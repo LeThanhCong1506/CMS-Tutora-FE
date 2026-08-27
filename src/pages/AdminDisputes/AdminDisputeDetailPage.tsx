@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
@@ -130,6 +130,9 @@ const AttendanceValue = ({ present }: { present: boolean | null | undefined }) =
     </span>
 );
 
+/** Phương án duy nhất admin có thể chọn hiện nay. BE vẫn hỗ trợ đủ 5 mức. */
+const ACTIVE_RESOLUTION = 'cancel_course' as ResolutionType;
+
 const AdminDisputeDetailPage = () => {
     const navigate = useNavigate();
     // Route là `disputes/:id` (App.tsx) → param tên `id`, KHÔNG phải `disputeId`.
@@ -146,7 +149,12 @@ const AdminDisputeDetailPage = () => {
     const [communicationTab, setCommunicationTab] = useTabParam<CommunicationTab>(COMMUNICATION_TABS, 'tutor', {
         paramKey: 'chat',
     });
-    const [verdict, setVerdict] = useState<ResolutionType>('cancel_course');
+    // UI chỉ còn MỘT phương án nên đây là hằng số, không phải state: nhóm radio 4 mức
+    // (100% / 50% / chuyển gia sư / tùy chỉnh) đã bị gỡ khỏi màn hình từ 19/08/2026, và
+    // nút "Chọn mức gợi ý" — chỗ duy nhất còn đổi được phương án — cũng đã bỏ vì nó đưa
+    // form về một mức không còn ô nào hiển thị (nhìn như chưa chọn gì mà vẫn gửi được).
+    // Các nhánh xử lý mức khác bên dưới giữ nguyên để bật lại được khi cần.
+    const verdict = ACTIVE_RESOLUTION;
     const [adminNotes, setAdminNotes] = useState('');
     const [customPercentage, setCustomPercentage] = useState(50);
     const [refundPreview, setRefundPreview] = useState<RefundPreviewDto | null>(null);
@@ -181,6 +189,12 @@ const AdminDisputeDetailPage = () => {
     const [parentThreadLoading, setParentThreadLoading] = useState(false);
     const [parentThreadInput, setParentThreadInput] = useState('');
     const [parentThreadSending, setParentThreadSending] = useState(false);
+
+    // Khung chat riêng có trần chiều cao và tự cuộn bên trong (xem .dispute-chat-panel), nên tin
+    // nhắn mới nhất nằm dưới đáy vùng cuộn — phải tự đưa xuống cuối khi mở tab hoặc vừa gửi xong,
+    // nếu không admin mở ra chỉ thấy tin cũ nhất và tưởng cuộc trao đổi dừng từ lâu.
+    const tutorThreadListRef = useRef<HTMLDivElement>(null);
+    const parentThreadListRef = useRef<HTMLDivElement>(null);
 
     // Warning state for resolve
     const [createWarning, setCreateWarning] = useState(false);
@@ -342,6 +356,14 @@ const AdminDisputeDetailPage = () => {
         if (communicationTab === 'parent') void fetchParentThread();
     }, [activeTab, communicationTab, fetchTutorThread, fetchParentThread]);
     /* eslint-enable react-hooks/set-state-in-effect */
+
+    // Luôn nhảy tới tin nhắn mới nhất của luồng đang mở: khi đổi kênh, khi tải xong, khi
+    // vừa gửi, và khi SignalR đẩy tin mới về. Cuộn ở layout effect để không thấy nháy ở tin cũ.
+    useLayoutEffect(() => {
+        const list = communicationTab === 'tutor' ? tutorThreadListRef.current : parentThreadListRef.current;
+        if (!list) return;
+        list.scrollTop = list.scrollHeight;
+    }, [activeTab, communicationTab, tutorThread, parentThread]);
 
     // Real-time: chèn tin nhắn mới trực tiếp vào đúng thread thay vì phải refetch.
     useEffect(() => {
@@ -1051,7 +1073,7 @@ const AdminDisputeDetailPage = () => {
                                                     ) : tutorThread.length === 0 ? (
                                                         <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
                                                     ) : (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
+                                                        <div ref={tutorThreadListRef} style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
                                                             {tutorThread.map((msg) => (
                                                                 <div
                                                                     key={msg.disputeMessageId}
@@ -1101,7 +1123,7 @@ const AdminDisputeDetailPage = () => {
                                                     ) : parentThread.length === 0 ? (
                                                         <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Chưa có tin nhắn nào</p>
                                                     ) : (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
+                                                        <div ref={parentThreadListRef} style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '16px' }}>
                                                             {parentThread.map((msg) => (
                                                                 <div
                                                                     key={msg.disputeMessageId}
@@ -1314,77 +1336,63 @@ const AdminDisputeDetailPage = () => {
                                                         Nhật ký buổi học gợi ý: {suggestion.label}
                                                     </p>
                                                     <p className="dispute-suggestion__detail">{suggestion.detail}</p>
-                                                    <button
-                                                        type="button"
-                                                        className="dispute-suggestion__apply"
-                                                        onClick={() => setVerdict(suggestion.resolution)}
-                                                        disabled={verdict === suggestion.resolution}
-                                                    >
-                                                        {verdict === suggestion.resolution
-                                                            ? 'Đã chọn mức gợi ý'
-                                                            : 'Chọn mức gợi ý'}
-                                                    </button>
                                                 </div>
                                             )}
 
-                                            <div className="dispute-options-group">
-                                                <label className="dispute-radio-label">
-                                                    <input
-                                                        type="radio"
-                                                        name="verdict"
-                                                        className="dispute-radio-input"
-                                                        checked={verdict === 'cancel_course'}
-                                                        onChange={() => setVerdict('cancel_course')}
-                                                    />
-                                                    <div className="dispute-radio-content">
-                                                        <span className="dispute-radio-title">Hủy khóa học &amp; hoàn tiền</span>
-                                                        <span className="dispute-radio-desc">
-                                                            Buổi đang khiếu nại giữ nguyên (gia sư không mất tiền buổi đó nếu đã dạy đủ). Hủy tất cả
-                                                            các buổi CHƯA diễn ra còn lại và hoàn cho phụ huynh theo giá gốc mỗi buổi (không gồm 5%
-                                                            phí dịch vụ).
-                                                        </span>
+                                            {/* Chỉ còn MỘT phương án nên hiển thị như thẻ tóm tắt, không phải radio:
+                                                radio một lựa chọn thì không bấm được gì, chỉ tốn một dòng để đọc.
+                                                Cách tính dài dòng gập vào <details> — admin xử lý quen tay không cần
+                                                đọc lại mỗi lần, người mới vẫn mở ra xem được. */}
+                                            <section className="dispute-plan">
+                                                <div className="dispute-plan__head">
+                                                    <span className="material-symbols-outlined" aria-hidden="true">event_busy</span>
+                                                    <div>
+                                                        <h3 className="dispute-plan__title">Hủy khóa học &amp; hoàn tiền</h3>
+                                                        <p className="dispute-plan__summary">
+                                                            {courseCancelPreview
+                                                                ? `Hủy ${courseCancelPreview.remainingSessionsCount} buổi chưa dạy, hoàn phụ huynh theo giá gốc`
+                                                                : 'Hủy các buổi chưa dạy, hoàn phụ huynh theo giá gốc'}
+                                                        </p>
                                                     </div>
-                                                </label>
-                                            </div>
-
-                                            {verdict === 'cancel_course' && (
-                                                <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                                                    {courseCancelPreviewLoading && (
-                                                        <p style={{ fontSize: '13px', color: '#6b7280' }}>Đang tính toán số buổi/số tiền hủy...</p>
-                                                    )}
-
-                                                    {!courseCancelPreviewLoading && courseCancelPreview && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                                                <span style={{ color: '#374151' }}>Số buổi sẽ bị hủy:</span>
-                                                                <span style={{ fontWeight: 700, color: '#374151' }}>{courseCancelPreview.remainingSessionsCount}</span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                                                <span style={{ color: '#374151' }}>Hoàn cho phụ huynh (giá gốc, không phí dịch vụ):</span>
-                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.parentRefundAmount)}</span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                                                <span style={{ color: '#374151' }}>Giải ngân cho gia sư ({courseCancelPreview.deliveredSessionsCount} buổi đã dạy):</span>
-                                                                <span style={{ fontWeight: 700, color: '#065f46' }}>{formatCurrency(courseCancelPreview.tutorEscrowReleased)}</span>
-                                                            </div>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                                                <span style={{ color: '#374151' }}>Escrow gia sư bị rút lại (buổi chưa dạy):</span>
-                                                                <span style={{ fontWeight: 700, color: '#b91c1c' }}>{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</span>
-                                                            </div>
-                                                            {courseCancelPreview.warnings.length > 0 && (
-                                                                <div style={{ marginTop: '6px' }}>
-                                                                    {courseCancelPreview.warnings.map((w, i) => (
-                                                                        <p key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontSize: '12px', margin: '2px 0' }}>
-                                                                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
-                                                                            {w}
-                                                                        </p>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
                                                 </div>
-                                            )}
+
+                                                {courseCancelPreviewLoading && (
+                                                    <p className="dispute-plan__loading">Đang tính số buổi và số tiền...</p>
+                                                )}
+
+                                                {!courseCancelPreviewLoading && courseCancelPreview && (
+                                                    <dl className="dispute-plan__figures">
+                                                        <div>
+                                                            <dt>Hoàn phụ huynh</dt>
+                                                            <dd className="is-in">{formatCurrency(courseCancelPreview.parentRefundAmount)}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>Trả gia sư · {courseCancelPreview.deliveredSessionsCount} buổi đã dạy</dt>
+                                                            <dd className="is-in">{formatCurrency(courseCancelPreview.tutorEscrowReleased)}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>Thu hồi từ gia sư · buổi chưa dạy</dt>
+                                                            <dd className="is-out">{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</dd>
+                                                        </div>
+                                                    </dl>
+                                                )}
+
+                                                {!courseCancelPreviewLoading && courseCancelPreview?.warnings.map((w, i) => (
+                                                    <p key={i} className="dispute-plan__warning">
+                                                        <span className="material-symbols-outlined" aria-hidden="true">warning</span>
+                                                        {w}
+                                                    </p>
+                                                ))}
+
+                                                <details className="dispute-plan__more">
+                                                    <summary>Cách tính chi tiết</summary>
+                                                    <p>
+                                                        Buổi đang khiếu nại giữ nguyên — gia sư không mất tiền buổi đó nếu đã dạy đủ.
+                                                        Các buổi chưa diễn ra bị hủy và hoàn cho phụ huynh theo giá gốc mỗi buổi,
+                                                        không gồm 5% phí dịch vụ.
+                                                    </p>
+                                                </details>
+                                            </section>
 
                                             {verdict === 'custom' && (
                                                 <div style={{ marginTop: '4px', padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
@@ -1452,14 +1460,21 @@ const AdminDisputeDetailPage = () => {
                                                 </div>
                                             )}
 
+                                            {/* Yêu cầu "tối thiểu 10 ký tự" chuyển thành bộ đếm: nói cùng một điều
+                                                nhưng cho biết còn thiếu bao nhiêu, thay vì bắt đọc rồi tự nhẩm. */}
                                             <div className="dispute-reasoning-group">
-                                                <span className="dispute-label">Ghi chú của Admin (tối thiểu 10 ký tự)</span>
+                                                <div className="dispute-label-row">
+                                                    <span className="dispute-label">Ghi chú xử lý</span>
+                                                    <span className={`dispute-note-counter ${adminNotes.trim().length >= 10 ? 'is-ok' : ''}`}>
+                                                        {adminNotes.trim().length}/10
+                                                    </span>
+                                                </div>
                                                 <textarea
                                                     className="dispute-textarea"
-                                                    placeholder="Ghi lại thông tin đã đối chiếu và lý do chọn phương án..."
+                                                    placeholder="Thông tin đã đối chiếu và lý do chọn phương án..."
                                                     value={adminNotes}
                                                     onChange={(e) => setAdminNotes(e.target.value)}
-                                                    rows={5}
+                                                    rows={3}
                                                 ></textarea>
                                             </div>
 
