@@ -32,8 +32,6 @@ const AdminCertificateVettingPage = lazy(() => import('./pages/AdminVetting/Admi
 const AdminBookingsPage = lazy(() => import('./pages/AdminBookings/AdminBookingsPage'));
 const AdminBookingDetailPage = lazy(() => import('./pages/AdminBookings/AdminBookingDetailPage'));
 const AdminFinancialsPage = lazy(() => import('./pages/AdminFinancials/AdminFinancialsPage'));
-// TEMP: proposal page, running on mock data — see src/mocks/financeManagementMockData.ts
-const AdminFinanceNewPage = lazy(() => import('./pages/AdminFinanceNew/AdminFinanceNewPage'));
 const AdminRevenueReportsPage = lazy(() => import('./pages/AdminRevenueReports/AdminRevenueReportsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/AdminSettings/AdminSettingsPage'));
 const AdminWarningsPage = lazy(() => import('./pages/AdminWarnings/AdminWarningsPage'));
@@ -177,7 +175,6 @@ function App() {
               <Route path="bookings" element={guard(<AdminBookingsPage />, 'booking.view')} />
               <Route path="bookings/:id" element={guard(<AdminBookingDetailPage />, 'booking.view')} />
               <Route path="financials" element={guard(<AdminFinancialsPage />, 'financial.view')} />
-              <Route path="finance-new" element={guard(<AdminFinanceNewPage />, 'financial.view')} />
               <Route
                 path="revenue-reports"
                 element={<Navigate to="/admin-portal/revenue-reports/overview" replace />}

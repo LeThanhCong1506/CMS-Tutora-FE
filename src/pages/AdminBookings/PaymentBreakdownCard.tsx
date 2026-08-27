@@ -31,6 +31,15 @@ export default function PaymentBreakdownCard({ payment }: Props) {
     const hasDiscount = (payment.discountApplied ?? 0) > 0;
     const hasRefund = (payment.refundAmount ?? 0) > 0 || refundDisplay !== null;
 
+    // Phí sàn cắt từ gia sư KHÔNG được BE lưu thành cột riêng: cột `Tutorfee` thực chất là
+    // TutorReceivable (số tiền gia sư NHẬN), không phải khoản phí. Suy ra từ 2 số đã có, đúng
+    // cách BookingService đang tính (tutorFeeCut = platformFee − parentFee) — chuẩn xác về lịch
+    // sử vì cả 2 đều được chốt lúc tạo booking, không đổi khi admin chỉnh % hoa hồng sau này.
+    const tutorCommission =
+        payment.platformFee != null && payment.parentFee != null
+            ? Math.max(payment.platformFee - payment.parentFee, 0)
+            : undefined;
+
     return (
         <section className={`${styles.card} ${styles.cardFull}`}>
             <h2 className={styles.cardTitle}>Thanh toán</h2>
@@ -128,17 +137,26 @@ export default function PaymentBreakdownCard({ payment }: Props) {
                 {/* ─── Cột 2: Fee split + Escrow + Refund ─── */}
                 <div className={styles.paymentCol}>
                     <h3 className={styles.subSection}>Phân chia phí</h3>
+                    {/* Doanh thu nền tảng = phí thu phụ huynh + phí sàn cắt gia sư. Hiện tổng
+                        trước rồi thụt 2 dòng cấu thành vào trong, để admin thấy ngay nguồn nào
+                        đóng góp bao nhiêu thay vì phải tự trừ nhẩm. */}
                     <div className={styles.row}>
-                        <span className={styles.rowLabel}>Phí nền tảng</span>
-                        <span className={styles.rowValue}>{formatVND(payment.platformFee)}</span>
+                        <span className={styles.rowLabel}>Phí nền tảng (tổng)</span>
+                        <span className={`${styles.rowValue} ${styles.rowValueStrong}`}>
+                            {formatVND(payment.platformFee)}
+                        </span>
+                    </div>
+                    <div className={`${styles.row} ${styles.rowSub}`}>
+                        <span className={styles.rowLabel}>↳ Phí phụ huynh trả</span>
+                        <span className={styles.rowValue}>{formatVND(payment.parentFee)}</span>
+                    </div>
+                    <div className={`${styles.row} ${styles.rowSub}`}>
+                        <span className={styles.rowLabel}>↳ Phí sàn gia sư</span>
+                        <span className={styles.rowValue}>{formatVND(tutorCommission)}</span>
                     </div>
                     <div className={styles.row}>
                         <span className={styles.rowLabel}>Phí gia sư nhận</span>
                         <span className={styles.rowValue}>{formatVND(payment.tutorFee)}</span>
-                    </div>
-                    <div className={styles.row}>
-                        <span className={styles.rowLabel}>Phí phụ huynh trả</span>
-                        <span className={styles.rowValue}>{formatVND(payment.parentFee)}</span>
                     </div>
 
                     <h3 className={styles.subSection} style={{ marginTop: 18 }}>

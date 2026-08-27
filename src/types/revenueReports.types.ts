@@ -78,7 +78,10 @@ export interface BookingProgressRow {
     subject: string;
     totalSessions: number;
     deliveredSessions: number;
+    /** Tổng doanh thu nền tảng của booking (phí phụ huynh + phí sàn gia sư). Xem tách 2 nguồn
+     *  ở trang chi tiết: /admin-portal/bookings/:id */
     contractedFee: number;
+    /** Phần doanh thu đã thực hiện: phí/buổi × số buổi đã quyết toán. */
     recognisedFee: number;
     createdAt: string | null;
     status: string;
