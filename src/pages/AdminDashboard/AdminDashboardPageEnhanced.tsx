@@ -200,13 +200,11 @@ const AdminDashboardPageEnhanced = () => {
     const booking = stats?.bookingSummary;
     const pending = stats?.pendingActions;
 
-    // Hai KPI tiền và các số "trong kỳ" chỉ lấy từ summary. Không dùng số
-    // "tháng này" để thay cho bộ lọc Hôm nay/7 ngày vì sẽ làm sai ngữ cảnh.
+    // Hai KPI tiền chỉ lấy từ summary. Không dùng số "tháng này" để thay cho
+    // bộ lọc Hôm nay/7 ngày vì sẽ làm sai ngữ cảnh.
     const gmvValue = summary?.gmv.value;
     const revValue = summary?.platformRevenue.value;
     const activeBookings = summary?.bookings.active ?? booking?.activeBookings;
-    const newInPeriod = summary?.bookings.newInPeriod;
-    const completedInPeriod = summary?.bookings.completedInPeriod;
 
     const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals;
     const pendingCertificates = summary?.pendingActions.pendingCertificates ?? pending?.pendingCertificates;
@@ -216,12 +214,6 @@ const AdminDashboardPageEnhanced = () => {
     const overdueCount = summary?.pendingActions.overdueCount;
     const withdrawalActionCount =
         withdrawalReviews == null && overdueCount == null ? undefined : (withdrawalReviews ?? 0) + (overdueCount ?? 0);
-
-    const activeBookingSubLabel = loading
-        ? 'Đang cập nhật chi tiết…'
-        : newInPeriod != null && completedInPeriod != null
-          ? `${formatNumber(newInPeriod)} lượt mới · ${formatNumber(completedInPeriod)} hoàn tất trong kỳ`
-          : 'Chưa tải được số liệu trong kỳ';
 
     // Hàng rút tiền là hàng duy nhất có số liệu thật ở dòng phụ, nên giữ lại.
     const withdrawalMeta = [
@@ -325,8 +317,7 @@ const AdminDashboardPageEnhanced = () => {
                     value={loading ? '…' : activeBookings == null ? '—' : formatNumber(activeBookings)}
                     label="Lượt đặt lịch đang hoạt động"
                     labelClassName="admin-kpi-friendly-label"
-                    subLabel={activeBookingSubLabel}
-                    infoTooltip="Số lượt đặt lịch hiện đang ở trạng thái hoạt động. Dòng phụ cho biết số lượt mới và số lượt hoàn tất trong khoảng thời gian đã chọn."
+                    infoTooltip="Số lượt đặt lịch hiện đang ở trạng thái hoạt động tại thời điểm xem."
                 />
             </div>
 
