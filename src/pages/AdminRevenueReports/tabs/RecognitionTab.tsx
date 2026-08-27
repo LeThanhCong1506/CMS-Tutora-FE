@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom';
+import { StatusBadge } from '@/components/shared';
+import { BOOKING_STATUS_MAP } from '@/pages/AdminBookings/bookingDisplay';
 import { getRevenueRecognition } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
@@ -188,11 +191,11 @@ const RecognitionTab = ({ range }: { range: RevenueRange }) => {
             )}
 
             <DataTableShell
-                title="Chi tiết booking chưa hoàn thành"
-                subtitle="30 lịch học chậm nhất — đối chiếu doanh thu thực hiện với ghi nhận sớm"
+                title="Doanh thu theo booking"
+                subtitle="Toàn bộ booking phát sinh doanh thu — bấm “Chi tiết” để xem tách phí phụ huynh và phí sàn gia sư"
             >
                 {data.bookingProgress.length === 0 ? (
-                    <ReportEmpty label="Không có booking nào đang dang dở" />
+                    <ReportEmpty label="Không có booking nào phát sinh doanh thu" />
                 ) : (
                     <table className="rev-table">
                         <thead>
@@ -201,10 +204,12 @@ const RecognitionTab = ({ range }: { range: RevenueRange }) => {
                                 <th>Khách hàng</th>
                                 <th>Gia sư</th>
                                 <th>Môn</th>
+                                <th>Trạng thái</th>
                                 <th className="rev-num">Buổi</th>
-                                <th className="rev-num">Ghi nhận sớm</th>
-                                <th className="rev-num">Thực hiện</th>
-                                <th className="rev-num">Chưa thực hiện</th>
+                                <th className="rev-num">Tổng doanh thu</th>
+                                <th className="rev-num">Đã ghi nhận</th>
+                                <th className="rev-num">Chưa ghi nhận</th>
+                                <th />
                             </tr>
                         </thead>
                         <tbody>
@@ -221,6 +226,14 @@ const RecognitionTab = ({ range }: { range: RevenueRange }) => {
                                         <td>{b.parentName}</td>
                                         <td>{b.tutorName}</td>
                                         <td>{b.subject}</td>
+                                        <td>
+                                            <StatusBadge
+                                                variant={BOOKING_STATUS_MAP[b.status]?.variant ?? 'neutral'}
+                                                shape="tag"
+                                            >
+                                                {BOOKING_STATUS_MAP[b.status]?.label ?? b.status}
+                                            </StatusBadge>
+                                        </td>
                                         <td className="rev-num">
                                             {b.deliveredSessions}/{b.totalSessions}
                                         </td>
@@ -231,13 +244,21 @@ const RecognitionTab = ({ range }: { range: RevenueRange }) => {
                                         <td className="rev-num rev-warn">
                                             {pending > 0 ? money(pending) : '—'}
                                         </td>
+                                        <td>
+                                            <Link
+                                                to={`/admin-portal/bookings/${b.bookingId}`}
+                                                className="rev-detail-link"
+                                            >
+                                                Chi tiết
+                                            </Link>
+                                        </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colSpan={5}>Tổng {data.bookingProgress.length} dòng trên</td>
+                                <td colSpan={6}>Tổng {data.bookingProgress.length} booking</td>
                                 <td className="rev-num">
                                     {moneyVnd(
                                         data.bookingProgress.reduce((x, b) => x + b.contractedFee, 0),
@@ -256,6 +277,7 @@ const RecognitionTab = ({ range }: { range: RevenueRange }) => {
                                         ),
                                     )}
                                 </td>
+                                <td />
                             </tr>
                         </tfoot>
                     </table>
