@@ -16,13 +16,23 @@ import '../../styles/pages/admin-financial.css';
 import { toast } from 'react-toastify';
 import { apiErrorMessage } from '../../utils/apiError';
 
-type FinancialTab = 'withdrawals' | 'ledger' | 'commission';
-const FINANCIAL_TAB_KEYS: readonly FinancialTab[] = ['withdrawals', 'ledger', 'commission'];
+/**
+ * "Chờ xử lý" = đã tạo yêu cầu nhưng TIỀN CHƯA CHI XONG. Phải khớp đúng
+ * `AdminFinancialService.PendingWithdrawalStatuses` ở backend — thẻ thống kê đếm theo danh
+ * sách đó, nên nếu bảng bên dưới lọc hẹp hơn thì thẻ báo "1 chờ xử lý" mà bảng lại trống
+ * (đúng lỗi đã gặp: yêu cầu ở trạng thái `approved` bị bảng lọc `pending` bỏ sót).
+ */
+const PENDING_WITHDRAWAL_STATUSES = ['pending', 'pending_review', 'delayed', 'approved'] as const;
+
+// Tab "Cài đặt hoa hồng" đã bỏ khỏi trang này: nó vốn chỉ là placeholder chưa cài đặt, và
+// cấu hình thật (2 mức % phụ huynh/gia sư + lưu) đã có đầy đủ ở trang Cài đặt
+// (/admin-portal/settings — xem AdminSettingsPage). Giữ 2 nơi sẽ dễ lệch nhau.
+type FinancialTab = 'withdrawals' | 'ledger';
+const FINANCIAL_TAB_KEYS: readonly FinancialTab[] = ['withdrawals', 'ledger'];
 
 const financialTabs = [
     { key: 'withdrawals', label: 'Yêu cầu rút tiền' },
     { key: 'ledger', label: 'Sổ cái giao dịch' },
-    { key: 'commission', label: 'Cài đặt hoa hồng' },
 ];
 
 const AdminFinancialsPage = () => {
@@ -57,7 +67,11 @@ const AdminFinancialsPage = () => {
     const fetchWithdrawals = useCallback(async () => {
         try {
             setWithdrawalLoading(true);
-            const res = await getWithdrawalRequests(withdrawalPage, withdrawalPageSize, 'pending');
+            const res = await getWithdrawalRequests(
+                withdrawalPage,
+                withdrawalPageSize,
+                PENDING_WITHDRAWAL_STATUSES.join(','),
+            );
             setWithdrawalRequests(res.items);
             setWithdrawalTotal(res.total);
         } catch (err) {
@@ -159,15 +173,6 @@ const AdminFinancialsPage = () => {
                 )}
 
                 {activeTab === 'ledger' && <TransactionLedger />}
-
-                {activeTab === 'commission' && (
-                    <div className="admin-ui-muted-state">
-                        <span className="material-symbols-outlined financial-muted-icon">
-                            settings
-                        </span>
-                        <p>Cài đặt hoa hồng sẽ được triển khai trong Phase 3.</p>
-                    </div>
-                )}
             </SectionCard>
         </PageContainer>
     );

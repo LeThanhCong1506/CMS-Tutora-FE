@@ -122,7 +122,6 @@ const AdminLayout: React.FC = () => {
         children: [
           { path: '/admin-portal/revenue-reports/overview', label: 'Báo cáo doanh thu', materialIcon: 'insights', permission: 'financial.view' },
           { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
-          { path: '/admin-portal/finance-new', label: 'Quản lý tài chính (mới)', materialIcon: 'account_balance_wallet', permission: 'financial.view' },
         ]
       },
       { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', badge: notificationBadges['/admin-portal/payout'], permission: 'payout.view' },
@@ -139,7 +138,6 @@ const AdminLayout: React.FC = () => {
       { path: '/admin-portal/assessments', label: 'Bộ đề đánh giá', materialIcon: 'fact_check', adminOnly: true },
       { path: '/admin-portal/question-bank', label: 'Ngân hàng câu hỏi', materialIcon: 'quiz', permission: 'question_bank.view' },
       { path: '/admin-portal/ai-credit/packages', label: 'Gói & Hạn Mức', materialIcon: 'package_2', sectionLabel: 'Tài nguyên AI', permission: 'financial.view',},
-      // TEMP: proposal page, running on mock data — see src/pages/AdminFinanceNew
       { path: '/admin-portal/staff', label: 'Quản lý nhân viên', materialIcon: 'badge', sectionLabel: 'Nhân sự & phân quyền', adminOnly: true },
       { path: '/admin-portal/permission-groups', label: 'Nhóm quyền', materialIcon: 'admin_panel_settings', adminOnly: true },
       { path: '/admin-portal/notifications', label: 'Thông báo', materialIcon: 'notifications', sectionLabel: 'Hệ thống', permission: 'notification.view' },

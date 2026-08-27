@@ -524,6 +524,22 @@
     font-size: 15px;
 }
 
+/* Dòng con cấu thành nên dòng tổng ngay phía trên (vd "Phí nền tảng (tổng)" = phí phụ
+   huynh + phí sàn gia sư). Thụt lề + chữ nhạt hơn để không bị đọc nhầm thành các khoản
+   phí độc lập cộng thêm. */
+.rowSub {
+    padding-left: 14px;
+}
+
+.rowSub .rowLabel {
+    color: #9ca3af;
+    font-size: 12.5px;
+}
+
+.rowSub .rowValue {
+    font-weight: 500;
+}
+
 .partyRow {
     display: flex;
     align-items: center;
