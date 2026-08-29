@@ -47,7 +47,7 @@ const CancelGhostBookingModal = ({
             setIsSubmitting(true);
             setError('');
             await onConfirm(reason.trim());
-            toast.success('Đã hủy booking và giải ngân toàn bộ số tiền còn lại cho gia sư.');
+            toast.success('Đã hủy booking, thanh toán các buổi đã dạy và hoàn tiền các buổi chưa dạy.');
             onClose();
         } catch (err) {
             console.error('Error cancelling ghost booking:', err);

@@ -164,7 +164,7 @@ export default function AdminBookingDetailPage() {
                         <Can permission="booking.cancel">
                             <button
                                 type="button"
-                                className="admin-ui-button admin-ui-button-secondary"
+                                className="admin-ui-button admin-ui-button-danger"
                                 style={{ marginLeft: 12 }}
                                 onClick={() => setIsCancelGhostModalOpen(true)}
                                 title="Hủy booking do phụ huynh nghỉ ngang (xác minh qua tổng đài)"
@@ -172,7 +172,7 @@ export default function AdminBookingDetailPage() {
                                 <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', fontSize: 18, marginRight: 4 }}>
                                     person_off
                                 </span>
-                                Hủy booking (PH nghỉ ngang)
+                                Hủy Booking
                             </button>
                         </Can>
                     )}
