@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
@@ -60,6 +60,7 @@ import '../../styles/pages/admin-dispute-detail.css';
 import { getLessonStatusDisplay } from '../AdminBookings/bookingDisplay';
 
 type DisputeChatMessage = {
+    messageId?: number;
     senderName?: string | null;
     senderId?: string | number | null;
     sentAt?: string | null;
@@ -67,6 +68,29 @@ type DisputeChatMessage = {
     createdAt?: string | null;
     content?: string | null;
     message?: string | null;
+    /** Cờ phạm vi do BE tính sẵn theo mốc booking/buổi học đang tranh chấp. */
+    isBeforeBooking?: boolean;
+    isWithinDisputedBooking?: boolean;
+    isWithinDisputedSession?: boolean;
+};
+
+/**
+ * Kênh chat là per cặp gia sư - phụ huynh/học sinh nên lịch sử luôn gồm cả booking khác của cùng
+ * cặp đó — phần thương lượng trước khi đặt lớp thường là bằng chứng quan trọng nhất nên không cắt.
+ * Thay vào đó nhóm theo phạm vi để admin thấy ngay đoạn nào thuộc tranh chấp đang xử lý.
+ */
+type ChatScope = 'before' | 'inBooking' | 'outside';
+
+const CHAT_SCOPE_LABEL: Record<ChatScope, string> = {
+    before: 'Trước khi đặt lớp đang tranh chấp',
+    inBooking: 'Trong thời gian lớp đang tranh chấp',
+    outside: 'Ngoài phạm vi lớp đang tranh chấp',
+};
+
+const chatScopeOf = (msg: DisputeChatMessage): ChatScope => {
+    if (msg.isWithinDisputedBooking) return 'inBooking';
+    if (msg.isBeforeBooking) return 'before';
+    return 'outside';
 };
 
 const EVIDENCE_TABS = ['evidence', 'sessionLog', 'recordings', 'communication', 'reliability'] as const;
@@ -196,8 +220,13 @@ const AdminDisputeDetailPage = () => {
     const tutorThreadListRef = useRef<HTMLDivElement>(null);
     const parentThreadListRef = useRef<HTMLDivElement>(null);
 
-    // Warning state for resolve
-    const [createWarning, setCreateWarning] = useState(false);
+    // Cảnh cáo gia sư: MẶC ĐỊNH BẬT khi phán quyết bất lợi cho gia sư (hoàn tiền cho phụ huynh,
+    // hoặc huỷ cả khoá vì tranh chấp). Trước đây mặc định tắt, nên chỉ cần admin quên tick là
+    // thang phạt (3 cảnh cáo/30 ngày → đình chỉ → tái phạm → khoá vĩnh viễn) không bao giờ khởi
+    // động — mà đó là rào cản duy nhất trước việc dàn dựng no-show để rút tiền nền tảng.
+    // Admin vẫn bỏ tick được khi lỗi thuộc về kỹ thuật chứ không phải gia sư.
+    const verdictAgainstTutor = ACTIVE_RESOLUTION !== 'release';
+    const [createWarning, setCreateWarning] = useState(verdictAgainstTutor);
     const [warningLevel, setWarningLevel] = useState<1 | 2>(1);
 
     // Modal states
@@ -270,7 +299,7 @@ const AdminDisputeDetailPage = () => {
         try {
             setChatLoading(true);
             const data = await getDisputeChatHistory(disputeId);
-            setChatMessages(data as DisputeChatMessage[]);
+            setChatMessages(data.messages as DisputeChatMessage[]);
         } catch (err) {
             console.error('Error fetching chat history:', err);
             setChatMessages([]);
@@ -1008,30 +1037,43 @@ const AdminDisputeDetailPage = () => {
                                                     Không có tin nhắn chat nào
                                                 </p>
                                             ) : (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                                                    {chatMessages.map((msg, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            style={{
-                                                                padding: '12px 16px',
-                                                                background: '#f8fafc',
-                                                                borderRadius: '8px',
-                                                                border: '1px solid #e2e8f0',
-                                                            }}
-                                                        >
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                                                <span style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
-                                                                    {msg.senderName || msg.senderId || 'Unknown'}
-                                                                </span>
-                                                                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                                                    {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
-                                                                </span>
-                                                            </div>
-                                                            <p style={{ margin: 0, fontSize: '14px', color: '#1e293b' }}>
-                                                                {msg.content || msg.message || ''}
-                                                            </p>
-                                                        </div>
-                                                    ))}
+                                                <div className="dispute-chat-log">
+                                                    {chatMessages.map((msg, idx) => {
+                                                        const scope = chatScopeOf(msg);
+                                                        // Chỉ chèn vạch ngăn khi đổi phạm vi, để dòng thời gian đọc liền mạch.
+                                                        const showDivider = idx === 0 || chatScopeOf(chatMessages[idx - 1]) !== scope;
+                                                        return (
+                                                            <Fragment key={msg.messageId ?? idx}>
+                                                                {showDivider && (
+                                                                    <div className={`dispute-chat-divider dispute-chat-divider--${scope}`}>
+                                                                        <span>{CHAT_SCOPE_LABEL[scope]}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div
+                                                                    className={[
+                                                                        'dispute-chat-message',
+                                                                        `dispute-chat-message--${scope}`,
+                                                                        msg.isWithinDisputedSession ? 'dispute-chat-message--session' : '',
+                                                                    ]
+                                                                        .filter(Boolean)
+                                                                        .join(' ')}
+                                                                >
+                                                                    <div className="dispute-chat-message__head">
+                                                                        <span className="dispute-chat-message__sender">
+                                                                            {msg.senderName || msg.senderId || 'Unknown'}
+                                                                        </span>
+                                                                        <span className="dispute-chat-message__time">
+                                                                            {msg.sentAt || msg.createdAt ? formatDateTime((msg.sentAt || msg.createdAt)!) : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                    {msg.isWithinDisputedSession && (
+                                                                        <span className="dispute-chat-message__badge">Buổi học bị tranh chấp</span>
+                                                                    )}
+                                                                    <p className="dispute-chat-message__body">{msg.content || msg.message || ''}</p>
+                                                                </div>
+                                                            </Fragment>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </section>
@@ -1489,6 +1531,12 @@ const AdminDisputeDetailPage = () => {
                                                     />
                                                     Gửi nhắc nhở cho gia sư
                                                 </label>
+                                                {!createWarning && verdictAgainstTutor && (
+                                                    <p style={{ margin: '8px 0 0 28px', fontSize: '12px', color: '#854d0e' }}>
+                                                        Quyết định này bất lợi cho gia sư — bỏ nhắc nhở đồng nghĩa lần vi phạm
+                                                        này không được tính vào thang xử lý tái phạm.
+                                                    </p>
+                                                )}
                                                 {createWarning && (
                                                     <div style={{ marginTop: '12px', display: 'flex', gap: '12px', paddingLeft: '28px' }}>
                                                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: '#78716c' }}>

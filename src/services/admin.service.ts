@@ -1113,16 +1113,47 @@ export const exportToCSV = async (endpoint: string, filename: string): Promise<v
 /**
  * Get chat history for dispute
  * Backend: GET /api/admin/disputes/{disputeId}/chat
- * Returns APIResponse<List<ChatMessageResponseDTO>>
+ * Returns APIResponse<DisputeChatHistoryResponse>
+ *
+ * Kênh chat là per cặp gia sư - phụ huynh/học sinh nên lịch sử gồm cả booking khác của cùng cặp.
+ * BE trả kèm mốc thời gian booking/buổi học đang tranh chấp để FE đánh dấu đoạn liên quan.
  */
-export const getDisputeChatHistory = async (disputeId: string | number): Promise<any[]> => {
+export const getDisputeChatHistory = async (
+  disputeId: string | number,
+): Promise<DisputeChatHistory> => {
   try {
     const { data } = await api.get(`/admin/disputes/${disputeId}/chat`);
-    return data.content || [];
+    const content = data.content ?? {};
+    return { ...content, messages: content.messages ?? [] };
   } catch (error) {
     console.error('getDisputeChatHistory error:', error);
     throw error;
   }
+};
+
+export type DisputeChatMessage = {
+  messageId?: number;
+  senderId?: string | null;
+  senderName?: string | null;
+  senderAvatarUrl?: string | null;
+  content?: string | null;
+  messageType?: string | null;
+  createdAt?: string | null;
+  isBeforeBooking?: boolean;
+  isWithinDisputedBooking?: boolean;
+  isWithinDisputedSession?: boolean;
+};
+
+export type DisputeChatHistory = {
+  channelId?: number;
+  disputedBookingId?: number | null;
+  bookingWindowStart?: string | null;
+  /** Null = booking vẫn đang chạy, cửa sổ để mở tới hiện tại. */
+  bookingWindowEnd?: string | null;
+  disputedClassSessionId?: number | null;
+  sessionWindowStart?: string | null;
+  sessionWindowEnd?: string | null;
+  messages: DisputeChatMessage[];
 };
 
 /**
