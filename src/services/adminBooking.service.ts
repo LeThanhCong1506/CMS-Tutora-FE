@@ -57,7 +57,8 @@ export const getAdminBookingDetail = async (
 
 /**
  * POST /api/admin/bookings/{id}/cancel-ghost — Staff hủy booking sau khi xác minh NGOÀI hệ thống
- * (qua tổng đài) rằng phụ huynh đã "nghỉ ngang". Giải ngân toàn bộ escrow còn lại cho gia sư.
+ * (qua tổng đài) rằng phụ huynh đã "nghỉ ngang". Gia sư nhận tiền các buổi đã dạy; phụ huynh
+ * được hoàn tiền các buổi chưa dạy theo giá gốc, không gồm phí dịch vụ.
  * Yêu cầu quyền booking.cancel.
  */
 export const cancelGhostBooking = async (

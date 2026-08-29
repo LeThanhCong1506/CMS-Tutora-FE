@@ -1181,3 +1181,101 @@
         padding: 12px 14px 0;
     }
 }
+
+/* ── Chat buổi học: đánh dấu phạm vi tranh chấp ─────────────────────────────
+   Kênh chat là per cặp gia sư - phụ huynh/học sinh nên lịch sử gồm cả booking
+   khác. Không cắt bớt (chat thương lượng trước khi đặt lớp thường là bằng
+   chứng quan trọng), chỉ làm nổi đoạn thuộc lớp/buổi đang tranh chấp. */
+.dispute-chat-log {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.dispute-chat-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 2px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-navy-60);
+}
+
+.dispute-chat-divider::before,
+.dispute-chat-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-navy-05);
+}
+
+/* Trong pham vi tranh chap: dung burgundy cua thuong hieu lam mau nhan manh. */
+.dispute-chat-divider--inBooking {
+    color: var(--color-burgundy);
+}
+
+.dispute-chat-message {
+    padding: 12px 16px;
+    background: var(--color-cream);
+    border: 1px solid var(--color-navy-05);
+    border-left: 3px solid var(--color-navy-40);
+    border-radius: 8px;
+}
+
+/* Trong phạm vi lớp đang tranh chấp — phần admin cần đọc kỹ nhất. */
+.dispute-chat-message--inBooking {
+    background: var(--color-cream-light);
+    border-color: var(--color-gold);
+    border-left-color: var(--color-burgundy);
+}
+
+/* Buổi học cụ thể bị tranh chấp: nhấn thêm một bậc so với cả booking. */
+.dispute-chat-message--session {
+    background: var(--color-cream-light);
+    border-left-color: var(--color-burgundy);
+    box-shadow: inset 0 0 0 1px var(--color-burgundy-60);
+}
+
+.dispute-chat-message__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.dispute-chat-message__sender {
+    font-weight: 600;
+    color: var(--color-navy);
+    font-size: 13px;
+}
+
+.dispute-chat-message__time {
+    font-size: 12px;
+    color: var(--color-navy-60);
+    white-space: nowrap;
+}
+
+.dispute-chat-message__badge {
+    display: inline-block;
+    margin-bottom: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--color-burgundy);
+    color: var(--color-white);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dispute-chat-message__body {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-navy);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
