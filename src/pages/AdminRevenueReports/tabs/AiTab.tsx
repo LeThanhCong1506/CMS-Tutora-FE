@@ -3,6 +3,7 @@ import MetricCard from '../components/MetricCard';
 import { getAiRevenue } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
     ChartBlock,
     DataTableShell,
@@ -20,6 +21,7 @@ import { PALETTE } from '@/components/shared/RevenueCharts/revenueChartTheme';
 
 const AiTab = ({ range }: { range: RevenueRange }) => {
     const { data, loading, error, reload } = useRevenueReport((r) => getAiRevenue(r, 20), range);
+    const packagePage = useClientPagination(data?.packages ?? []);
 
     if (loading) return <ReportSkeleton charts={3} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
@@ -51,7 +53,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     icon="smart_toy"
                     value={moneyVnd(a.revenue)}
                     label="Doanh thu AI kỳ này"
-                    subLabel="Bán gói lượt AI hỗ trợ giải bài tập"
                     badge={growthBadge(a.revenue, a.revenuePrevious)}
                     badgeVariant="green"
                     hint="Tổng tiền thu được từ bán gói AI. Chưa trừ chi phí từ API."
@@ -60,7 +61,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     icon="shopping_bag"
                     value={count(a.packagesSold)}
                     label="Gói đã bán"
-                    subLabel="Giao dịch thanh toán thành công"
                     badge={growthBadge(a.packagesSold, a.packagesSoldPrevious)}
                     badgeVariant="blue"
                     hint="Số lượt mua gói AI thanh toán thành công. Không tính gói dùng thử miễn phí được cấp tự động."
@@ -71,7 +71,7 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     label="Tỷ lệ kích hoạt"
                     subLabel={`${count(a.activatedUsers)} / ${count(a.totalUsers)} tài khoản`}
                     badgeVariant={activationRate > 20 ? 'green' : 'orange'}
-                    hint="Phần trăm tài khoản được cấp lượt AI đã thực sự hỏi ít nhất một câu. Đo độ phủ của sản phẩm. Mọi tài khoản đều được tặng lượt khi đăng ký nên tỷ lệ này cho biết bao nhiêu người đã dùng thử."
+                    hint="Phần trăm tài khoản được cấp lượt AI đã thực sự hỏi ít nhất một câu. Mọi tài khoản đều được tặng lượt khi đăng ký, nên đây là tỷ lệ người chịu dùng thử."
                 />
                 <MetricCard
                     icon="bolt"
@@ -87,18 +87,16 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                 <div className="rev-callout">
                     <span className="material-symbols-outlined">info</span>
                     <p>
-                        Toàn hệ thống đã cấp <strong>{count(a.creditsSold)}</strong> lượt AI (tặng
-                        khi đăng ký, tặng khi có lịch học, và mua gói), mới dùng{' '}
-                        <strong>{count(a.creditsConsumed)}</strong>, còn lại{' '}
-                        <strong>{count(a.creditsOutstanding)}</strong> lượt sẽ phải phục vụ trong
-                        tương lai — mỗi lượt đều phát sinh chi phí gọi API.
+                        Đã cấp <strong>{count(a.creditsSold)}</strong> lượt AI, mới dùng{' '}
+                        <strong>{count(a.creditsConsumed)}</strong>. Còn{' '}
+                        <strong>{count(a.creditsOutstanding)}</strong> lượt phải phục vụ trong tương
+                        lai, mỗi lượt đều tốn chi phí gọi API.
                     </p>
                 </div>
             )}
 
             <ChartBlock
-                title="Doanh thu AI theo tháng"
-                subtitle="Tiền bán gói credit theo tháng"
+                title="Doanh thu AI theo thời gian"
                 hint="Doanh thu từ AI giải bài tập. Tỷ trọng này tăng thì biên lợi nhuận chung của nền tảng cải thiện."
             >
                 <LineTrendChart
@@ -114,7 +112,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
             <div className="rev-grid-2">
                 <ChartBlock
                     title="Top 5 người mua gói AI"
-                    subtitle="Xếp theo số tiền đã trả"
                     hint="Nhóm chi nhiều nhất cho sản phẩm AI."
                 >
                     {topBuyers.length === 0 ? (
@@ -149,7 +146,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
 
             <ChartBlock
                 title="Lượt đã cấp so với lượt đã dùng"
-                subtitle="Chỉ tính các tài khoản đã từng hỏi bài"
                 hint="Cả hai cột chỉ tính nhóm đã kích hoạt, không tính hàng trăm tài khoản được tặng lượt nhưng chưa bao giờ mở tính năng."
             >
                 <BarGroupChart
@@ -166,7 +162,12 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
 
             <DataTableShell
                 title="Chi tiết gói AI"
-                subtitle="Giá, số lượt cấp và doanh số từng gói"
+                pagination={{
+                    current: packagePage.page,
+                    pageSize: packagePage.pageSize,
+                    total: packagePage.total,
+                    onChange: packagePage.setPage,
+                }}
             >
                 <table className="rev-table">
                     <thead>
@@ -176,11 +177,11 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                             <th className="rev-num">Số lượt cấp</th>
                             <th className="rev-num">Đã bán</th>
                             <th className="rev-num">Doanh thu</th>
-                            <th className="rev-num">Đơn giá/lượt</th>
+                            <th className="rev-num">Giá mỗi lượt</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {data.packages.map((p) => (
+                        {packagePage.pageItems.map((p) => (
                             <tr key={p.packageId}>
                                 <td>
                                     <strong>{p.name}</strong>
