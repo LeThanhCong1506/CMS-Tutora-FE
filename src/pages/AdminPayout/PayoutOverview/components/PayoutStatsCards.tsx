@@ -33,26 +33,26 @@ const PayoutStatsCards: React.FC<Props> = ({ overview, loading, onSelectStatus }
         icon={icon('pending_actions')}
         value={value((processingStats?.pendingCount ?? 0).toLocaleString('vi-VN'))}
         label="Yêu cầu cần xử lý"
-        subLabel="Chờ xét duyệt, đang tạm giữ hoặc đã có người nhận"
+        infoTooltip="Số yêu cầu rút tiền còn trong hàng đợi: đang chờ xét duyệt, đang tạm giữ hoặc đã có nhân viên nhận xử lý. Bấm vào thẻ để lọc danh sách bên dưới."
         onClick={onSelectStatus ? () => onSelectStatus('pending_review') : undefined}
       />
       <StatCard
         icon={icon('payments')}
         value={value(formatCurrency(financialStats?.totalPayoutToday ?? 0))}
         label="Đã chi hôm nay"
-        subLabel="Tổng tiền các yêu cầu đã chuyển khoản xong"
+        infoTooltip="Tổng số tiền của các yêu cầu đã chuyển khoản xong trong ngày hôm nay."
       />
       <StatCard
         icon={icon('calendar_month')}
         value={value(formatCurrency(financialStats?.totalPayoutThisMonth ?? 0))}
         label="Đã chi tháng này"
-        subLabel="Tính từ đầu tháng đến hiện tại"
+        infoTooltip="Tổng số tiền đã chuyển khoản xong, tính từ đầu tháng đến hiện tại."
       />
       <StatCard
         icon={icon('cancel')}
         value={value((decisionBreakdown?.rejected ?? 0).toLocaleString('vi-VN'))}
         label="Đã từ chối tháng này"
-        subLabel="Tiền đã được hoàn lại vào ví người dùng"
+        infoTooltip="Số yêu cầu bị từ chối trong tháng này; tiền đã được hoàn lại vào ví người dùng. Bấm vào thẻ để lọc danh sách bên dưới."
         onClick={onSelectStatus ? () => onSelectStatus('rejected') : undefined}
       />
     </div>
