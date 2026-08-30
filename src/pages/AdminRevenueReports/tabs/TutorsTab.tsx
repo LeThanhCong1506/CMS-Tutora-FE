@@ -4,6 +4,7 @@ import MetricCard from '../components/MetricCard';
 import { getTutorRevenue } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
     ChartBlock,
     DataTableShell,
@@ -21,18 +22,18 @@ const metricMeta: Record<
     { label: string; name: string; money: boolean; color: string; hint: string }
 > = {
     platformRevenue: {
-        label: 'Doanh thu mang lại',
-        name: 'Doanh thu nền tảng',
+        label: 'Hoa hồng mang lại',
+        name: 'Hoa hồng Tutora',
         money: true,
         color: PALETTE.navy,
         hint: 'Phần Tutora thực sự giữ lại — 10% giá gốc. Con số phản ánh giá trị kinh tế thật mà gia sư mang lại.',
     },
     gmv: {
-        label: 'GMV',
-        name: 'GMV',
+        label: 'Tiền khách trả',
+        name: 'Tiền khách trả',
         money: true,
         color: PALETTE.blue,
-        hint: 'Tổng tiền phụ huynh trả cho gia sư này. Lớn hơn doanh thu nền tảng khoảng 10 lần vì phần lớn chảy về gia sư.',
+        hint: 'Tổng tiền phụ huynh trả cho gia sư này. Lớn hơn hoa hồng khoảng 10 lần vì phần lớn chảy về gia sư.',
     },
     sessionsDelivered: {
         label: 'Số buổi đã dạy',
@@ -42,11 +43,11 @@ const metricMeta: Record<
         hint: 'Số buổi đã dạy xong và được xác nhận. Đo năng suất chứ không đo giá trị — gia sư dạy nhiều buổi giá thấp vẫn xếp trên.',
     },
     escrowHeld: {
-        label: 'Escrow đang giữ',
-        name: 'Escrow',
+        label: 'Tiền đang giữ hộ',
+        name: 'Giữ hộ',
         money: true,
         color: PALETTE.amber,
-        hint: 'Tiền đang giữ hộ cho gia sư này, giải ngân khi buổi học hoàn tất. Đây là nợ phải trả của Tutora, không phải tiền của nền tảng.',
+        hint: 'Tiền đang giữ hộ cho gia sư này, sẽ chuyển khi buổi học hoàn tất. Đây là nợ phải trả, không phải tiền của nền tảng.',
     },
 };
 
@@ -56,6 +57,7 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
         (r) => getTutorRevenue(r, 50),
         range,
     );
+    const tutorPage = useClientPagination(data?.tutors ?? []);
 
     if (loading) return <ReportSkeleton charts={3} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
@@ -76,6 +78,31 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
         ? (data.concentration[0].value / concentrationTotal) * 100
         : 0;
 
+    // Khi số gia sư có doanh thu chưa quá 10 thì "top 10 chiếm bao nhiêu" luôn bằng 100% —
+    // con số đó không đo được mức tập trung, mà badge "Rủi ro tập trung" lại kêu như báo động
+    // thật. Đổi sang đo gia sư dẫn đầu, câu hỏi vẫn đúng nghĩa ở mọi quy mô.
+    const isSmallPool = data.tutorsWithRevenue <= 10;
+    const topTutorShare = data.totalPlatformRevenue > 0
+        ? (Math.max(...data.tutors.map((t) => t.platformRevenue), 0)
+            / data.totalPlatformRevenue) * 100
+        : 0;
+    const concentration = isSmallPool
+        ? {
+            value: topTutorShare,
+            label: 'Gia sư dẫn đầu chiếm',
+            hint: 'Phần trăm hoa hồng đến từ gia sư đứng đầu. Hệ thống mới có '
+                + `${data.tutorsWithRevenue} gia sư phát sinh doanh thu nên chưa đo được mức tập `
+                + 'trung theo nhóm 10 người — chỉ số này sẽ tự đổi khi mạng lưới lớn hơn.',
+            risky: topTutorShare > 50,
+        }
+        : {
+            value: top10Share,
+            label: 'Top 10 chiếm doanh thu',
+            hint: 'Phần trăm hoa hồng đến từ 10 gia sư hàng đầu. Trên 50% nghĩa là nền tảng phụ '
+                + 'thuộc vào một nhóm nhỏ, mất vài người là mất doanh thu.',
+            risky: top10Share > 50,
+        };
+
     const totalSessions = data.tutors.reduce((s, t) => s + t.sessionsDelivered, 0);
     const avgPerSession = totalSessions > 0 ? data.totalPlatformRevenue / totalSessions : 0;
 
@@ -88,41 +115,38 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
                     label="Gia sư có doanh thu"
                     subLabel={
                         data.activeTutors > data.tutorsWithRevenue
-                            ? `${count(data.activeTutors)} gia sư có lịch, ${count(data.activeTutors - data.tutorsWithRevenue)} chưa dạy được buổi nào`
-                            : 'Đã dạy xong ít nhất 1 buổi trong kỳ'
+                            ? `${count(data.activeTutors - data.tutorsWithRevenue)} gia sư có lịch nhưng chưa dạy được buổi nào`
+                            : undefined
                     }
                     badgeVariant="blue"
-                    hint="Số gia sư đã dạy xong và được xác nhận ít nhất một buổi trong kỳ. Gia sư có lịch nhưng buổi bị huỷ hết không tính vào đây — phần chênh lệch hiện ở dòng phụ."
+                    hint="Số gia sư đã dạy xong và được xác nhận ít nhất một buổi trong kỳ. Gia sư có lịch nhưng buổi bị huỷ hết không tính vào đây."
                 />
                 <MetricCard
                     icon="payments"
                     value={moneyVnd(data.totalPlatformRevenue)}
-                    label="Doanh thu từ gia sư"
-                    subLabel="Tổng hoa hồng nền tảng"
+                    label="Hoa hồng Tutora"
                     badgeVariant="green"
-                    hint="Tổng hoa hồng Tutora thu được từ các buổi gia sư đã dạy xong. Bằng 10% giá gốc, không tính phần chảy về gia sư."
+                    hint="Tổng hoa hồng Tutora thu được từ các buổi gia sư đã dạy xong, bằng 10% giá gốc. Không tính phần chảy về gia sư."
                 />
                 <MetricCard
                     icon="lock_clock"
                     value={moneyVnd(data.totalEscrowHeld)}
-                    label="Escrow đang giữ"
-                    subLabel="Nợ phải trả gia sư — toàn sàn"
+                    label="Tiền đang giữ hộ"
                     badgeVariant="orange"
-                    hint="Tiền Tutora đang giữ hộ, sẽ giải ngân cho gia sư khi buổi học được xác nhận hoàn tất. Đây là nợ phải trả, không phải tiền của nền tảng. Số dư tính tại thời điểm hiện tại trên toàn bộ gia sư nên KHÔNG đổi khi bạn đổi khoảng thời gian."
+                    hint="Tiền giữ hộ, sẽ chuyển cho gia sư khi buổi học được xác nhận hoàn tất — là nợ phải trả, không phải tiền của nền tảng. Số dư tính tại hiện tại nên không đổi theo khoảng thời gian."
                 />
                 <MetricCard
                     icon="warning"
-                    value={`${top10Share.toFixed(1)}%`}
-                    label="Top 10 chiếm doanh thu"
-                    subLabel={top10Share > 50 ? 'Tập trung cao — rủi ro' : 'Phân bổ chấp nhận được'}
-                    badgeVariant={top10Share > 50 ? 'red' : 'green'}
-                    hint="Phần trăm doanh thu đến từ 10 gia sư hàng đầu. Trên 50% nghĩa là nền tảng phụ thuộc vào một nhóm nhỏ — mất vài người là sập doanh thu."
+                    value={`${concentration.value.toFixed(1)}%`}
+                    label={concentration.label}
+                    badge={concentration.risky ? 'Rủi ro tập trung' : 'Phân bổ tốt'}
+                    badgeVariant={concentration.risky ? 'red' : 'green'}
+                    hint={concentration.hint}
                 />
             </div>
 
             <ChartBlock
                 title="Xếp hạng gia sư"
-                subtitle="Đổi chỉ tiêu để nhìn cùng nhóm gia sư dưới các góc khác nhau"
                 hint={meta.hint}
                 action={
                     <div className="rev-segmented" role="tablist" aria-label="Chỉ tiêu xếp hạng">
@@ -155,8 +179,7 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
             <div className="rev-grid-2">
                 <ChartBlock
                     title="Mức độ tập trung doanh thu"
-                    subtitle="Doanh thu phụ thuộc bao nhiêu vào nhóm gia sư đầu bảng"
-                    hint="Nếu Top 10 chiếm trên 50% doanh thu, nền tảng đang phụ thuộc vào một nhóm nhỏ. Mất vài người là sập doanh thu — câu hỏi nhà đầu tư luôn đặt ra."
+                    hint="Doanh thu phụ thuộc bao nhiêu vào nhóm gia sư đầu bảng. Trên 50% là nền tảng đang dựa vào một nhóm nhỏ."
                 >
                     <DonutChart
                         data={data.concentration}
@@ -186,8 +209,7 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
 
             <ChartBlock
                 title="Tỷ lệ hủy buổi theo gia sư"
-                subtitle="Sắp xếp giảm dần — nhóm đầu là rủi ro vận hành"
-                hint="Tỷ lệ buổi bị hủy hoặc no-show trên tổng số buổi. Gia sư tỷ lệ cao vừa làm mất doanh thu vừa gây trải nghiệm xấu, dễ dẫn tới khiếu nại và hoàn tiền."
+                hint="Tỷ lệ buổi bị hủy hoặc vắng mặt trên tổng số buổi, sắp xếp giảm dần. Gia sư ở nhóm đầu vừa làm mất doanh thu vừa dễ dẫn tới khiếu nại."
             >
                 <RankBarChart
                     data={[...data.tutors]
@@ -206,26 +228,31 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
 
             <DataTableShell
                 title="Bảng xếp hạng chi tiết"
-                subtitle="Toàn bộ chỉ tiêu tài chính và vận hành theo gia sư"
+                pagination={{
+                    current: tutorPage.page,
+                    pageSize: tutorPage.pageSize,
+                    total: tutorPage.total,
+                    onChange: tutorPage.setPage,
+                }}
             >
                 <table className="rev-table">
                     <thead>
                         <tr>
                             <th>Gia sư</th>
                             <th>Môn</th>
-                            <th className="rev-num">GMV</th>
-                            <th className="rev-num">Doanh thu NT</th>
-                            <th className="rev-num">Tỷ lệ ăn chia</th>
+                            <th className="rev-num">Khách trả</th>
+                            <th className="rev-num">Hoa hồng</th>
+                            <th className="rev-num">Tỷ lệ hoa hồng</th>
                             <th className="rev-num">Gia sư nhận</th>
-                            <th className="rev-num">Escrow</th>
+                            <th className="rev-num">Giữ hộ</th>
                             <th className="rev-num">Buổi</th>
-                            <th className="rev-num">DT/buổi</th>
-                            <th className="rev-num">Hủy</th>
+                            <th className="rev-num">Hoa hồng/buổi</th>
+                            <th className="rev-num">Tỷ lệ hủy</th>
                             <th className="rev-num">Khiếu nại</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {data.tutors.map((t) => (
+                        {tutorPage.pageItems.map((t) => (
                             <tr key={t.tutorId}>
                                 <td>
                                     <strong>{t.tutorName}</strong>

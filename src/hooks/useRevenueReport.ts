@@ -1,91 +1,56 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import {
+    parseDashboardRange,
+    resolveDashboardRange,
+    serializeDashboardRange,
+    type DashboardRangeSelection,
+} from '@/pages/AdminDashboard/dashboardDisplay';
 import type { RevenueRange } from '../services/revenueReports.service';
 
 /**
- * Khoảng thời gian dựng sẵn.
+ * Mặc định của báo cáo doanh thu: 12 tháng.
+ *
+ * Khác dashboard (30 ngày) một cách có chủ đích — doanh thu phát sinh thưa hơn nhiều so với
+ * lượt truy cập, nên 30 ngày thường cho biểu đồ theo tháng chỉ có một cột.
  */
-export type RangePreset = '3m' | '6m' | '12m' | 'ytd' | 'q-this' | 'q-last' | 'y-last';
+const REVENUE_DEFAULT_SELECTION: DashboardRangeSelection = { kind: 'preset', preset: '12m' };
 
-export const RANGE_PRESETS: { key: RangePreset; label: string }[] = [
-    { key: '3m', label: '3 tháng' },
-    { key: '6m', label: '6 tháng' },
-    { key: '12m', label: '12 tháng' },
-    { key: 'q-this', label: 'Quý này' },
-    { key: 'q-last', label: 'Quý trước' },
-    { key: 'ytd', label: 'Từ đầu năm' },
-    { key: 'y-last', label: 'Năm trước' },
-];
-
-const PRESET_KEYS = RANGE_PRESETS.map((p) => p.key);
-
-const isPreset = (v: string | null): v is RangePreset =>
-    v !== null && (PRESET_KEYS as string[]).includes(v);
-
-/** Đầu quý chứa tháng `m` (0-11). */
-const quarterStartMonth = (m: number) => Math.floor(m / 3) * 3;
-
-const buildRange = (preset: RangePreset): RevenueRange => {
-    const now = new Date();
-    const to = new Date(now);
-    const from = new Date(now);
-
-    switch (preset) {
-        case '3m':
-            from.setMonth(from.getMonth() - 3);
-            break;
-        case '6m':
-            from.setMonth(from.getMonth() - 6);
-            break;
-        case 'ytd':
-            from.setMonth(0, 1);
-            from.setHours(0, 0, 0, 0);
-            break;
-
-        case 'q-this':
-            return {
-                from: new Date(now.getFullYear(), quarterStartMonth(now.getMonth()), 1, 0, 0, 0, 0),
-                to,
-            };
-        case 'q-last': {
-            const qStart = new Date(
-                now.getFullYear(),
-                quarterStartMonth(now.getMonth()) - 3,
-                1,
-                0, 0, 0, 0,
-            );
-            const qEnd = new Date(qStart.getFullYear(), qStart.getMonth() + 3, 1, 0, 0, 0, 0);
-            return { from: qStart, to: qEnd };
-        }
-        case 'y-last':
-            return {
-                from: new Date(now.getFullYear() - 1, 0, 1, 0, 0, 0, 0),
-                to: new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0),
-            };
-
-        default:
-            from.setMonth(from.getMonth() - 12);
-    }
-    return { from, to };
-};
-
+/**
+ * Khoảng thời gian của cụm báo cáo doanh thu, đồng bộ với `?range=` trên URL.
+ *
+ * Dùng chung đúng model và đúng bộ chọn với dashboard, nên cách mã hoá trên URL cũng giống
+ * hệt: `12m`, `2026-07`, `w2026-07-13`, `2026-01-01..2026-03-31`. Nhờ vậy link chia sẻ giữa
+ * hai trang đọc được lẫn nhau, và người dùng chỉ phải học một bộ điều khiển.
+ *
+ * `selection` và `range` đều memo theo chuỗi trên URL: `range` là dependency của effect gọi
+ * API, identity không ổn định sẽ gây fetch lặp vô hạn.
+ */
 export const useRevenueRange = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const raw = searchParams.get('range');
-    const preset: RangePreset = isPreset(raw) ? raw : '12m';
 
-    const setPreset = useCallback(
-        (next: RangePreset) => {
-            const params = new URLSearchParams(searchParams);
-            params.set('range', next);
-            setSearchParams(params, { replace: true });
+    const selection = useMemo(
+        () => parseDashboardRange(raw, REVENUE_DEFAULT_SELECTION),
+        [raw],
+    );
+    const range: RevenueRange = useMemo(() => resolveDashboardRange(selection), [selection]);
+
+    const setSelection = useCallback(
+        (next: DashboardRangeSelection) => {
+            setSearchParams(
+                (prev) => {
+                    const params = new URLSearchParams(prev);
+                    params.set('range', serializeDashboardRange(next));
+                    return params;
+                },
+                { replace: true },
+            );
         },
-        [searchParams, setSearchParams],
+        [setSearchParams],
     );
 
-    const range = useMemo(() => buildRange(preset), [preset]);
-
-    return { preset, setPreset, range };
+    return { selection, setSelection, range };
 };
 
 interface ReportState<T> {
