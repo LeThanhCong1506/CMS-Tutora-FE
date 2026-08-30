@@ -124,7 +124,7 @@ const AdminLayout: React.FC = () => {
           { path: '/admin-portal/financials', label: 'Tài chính', materialIcon: 'account_balance', permission: 'financial.view' },
         ]
       },
-      { path: '/admin-portal/payouts', label: 'Payout', materialIcon: 'monitoring', badge: notificationBadges['/admin-portal/payout'], permission: 'payout.view' },
+      { path: '/admin-portal/payouts', label: 'Yêu cầu rút tiền', materialIcon: 'monitoring', badge: notificationBadges['/admin-portal/payout'], permission: 'payout.view' },
       {
         path: '/admin-portal/resources',
         label: 'Cấu hình chương trình',
