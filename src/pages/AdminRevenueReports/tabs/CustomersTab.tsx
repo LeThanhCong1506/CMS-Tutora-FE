@@ -3,6 +3,7 @@ import MetricCard from '../components/MetricCard';
 import { getCustomerRevenue } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
     ChartBlock,
     DataTableShell,
@@ -24,6 +25,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
         (r) => getCustomerRevenue(r, 50),
         range,
     );
+    const parentPage = useClientPagination(data?.parents ?? []);
 
     if (loading) return <ReportSkeleton charts={4} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
@@ -60,7 +62,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                     icon="family_restroom"
                     value={count(c.activeParents)}
                     label="Khách hàng hoạt động"
-                    subLabel="Có booking trong kỳ"
                     badgeVariant="blue"
                     hint="Số khách hàng phát sinh ít nhất một booking trong kỳ — gồm cả phụ huynh và học sinh tự đặt lịch. Người có tài khoản nhưng không đặt lịch không tính vào đây."
                 />
@@ -68,7 +69,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                     icon="savings"
                     value={moneyVnd(c.avgBookingValue)}
                     label="Giá trị booking trung bình"
-                    subLabel="Tiền khách trả mỗi lần đặt"
                     badge={growthBadge(c.avgBookingValue, c.avgBookingValuePrevious)}
                     badgeVariant="green"
                     hint="Số tiền trung bình khách trả cho mỗi lần đặt lịch. Tăng nghĩa là bán được gói nhiều buổi hơn hoặc giá gia sư cao hơn."
@@ -77,7 +77,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                     icon="repeat"
                     value={`${c.repeatRate}%`}
                     label="Tỷ lệ tái mua"
-                    subLabel="Khách đặt từ 2 booking trở lên"
                     badge={`${c.repeatRate >= c.repeatRatePrevious ? '▲' : '▼'} ${Math.abs(c.repeatRate - c.repeatRatePrevious).toFixed(1)}pp`}
                     badgeVariant="green"
                     hint="Phần trăm khách có từ 2 booking trở lên, tính trên toàn bộ lịch sử và KHÔNG phân biệt thời điểm — khách đặt nhiều lần trong cùng một tháng vẫn được tính. Vì vậy chỉ số này thường cao hơn cột 'Quay lại tháng sau' ở biểu đồ bên dưới, vốn chỉ đếm khách nối tiếp sang tháng mới."
@@ -85,10 +84,9 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                 <MetricCard
                     icon="diversity_3"
                     value={moneyVnd(c.ltv)}
-                    label="Giá trị vòng đời (LTV)"
-                    subLabel="Chi tiêu bình quân mỗi khách hàng"
+                    label="Giá trị vòng đời khách hàng"
                     badgeVariant="dark"
-                    hint="Tổng tiền một khách hàng chi trung bình từ lúc bắt đầu tới nay. Dùng để so với chi phí thu hút khách — LTV phải lớn hơn nhiều lần thì mới có lãi."
+                    hint="Tổng tiền một khách hàng chi trung bình từ lúc bắt đầu tới nay. So với chi phí thu hút khách, con số này phải lớn hơn nhiều lần thì mới có lãi."
                 />
             </div>
 
@@ -96,7 +94,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                 <div className="rev-grid-2">
                     <ChartBlock
                         title="Doanh thu theo phân khúc khách hàng"
-                        subtitle="Phụ huynh đặt cho con so với học sinh tự đặt"
                         hint="Người trả tiền quyết định kênh và thông điệp marketing. Phụ huynh nhạy giá và quan tâm kết quả thi cử; học sinh tự đặt thường tự chọn theo môn và phong cách gia sư. Nhóm nào đóng góp lớn hơn thì ngân sách nên dồn về đó."
                     >
                         <DonutChart
@@ -112,7 +109,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
                     <DataTableShell
                         title="So sánh hai phân khúc"
-                        subtitle="Giá trị và mức độ gắn bó của từng nhóm"
                     >
                         <table className="rev-table">
                             <thead>
@@ -120,8 +116,8 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                                     <th>Phân khúc</th>
                                     <th className="rev-num">Khách</th>
                                     <th className="rev-num">Chi tiêu</th>
-                                    <th className="rev-num">% DT</th>
-                                    <th className="rev-num">LTV</th>
+                                    <th className="rev-num">% doanh thu</th>
+                                    <th className="rev-num">Giá trị vòng đời</th>
                                     <th className="rev-num">Tái mua</th>
                                 </tr>
                             </thead>
@@ -149,8 +145,12 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
             )}
 
             <ChartBlock
-                title="Top 15 khách hàng theo chi tiêu"
-                subtitle="Tổng tiền đã trả cho nền tảng"
+                title={
+                    // Đừng hứa 15 dòng khi dữ liệu chỉ có 3: tiêu đề bám đúng số thật.
+                    topSpenders.length >= 15
+                        ? 'Top 15 khách hàng theo chi tiêu'
+                        : `${topSpenders.length} khách hàng theo chi tiêu`
+                }
                 hint="Khách ở nhóm đầu đáng được chăm sóc riêng. Nếu vài người chiếm tỷ trọng quá lớn thì doanh thu đang phụ thuộc rủi ro vào một nhóm nhỏ."
             >
                 <RankBarChart
@@ -165,21 +165,19 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
             <div className="rev-grid-2">
                 <ChartBlock
-                    title="ARPU theo tháng"
-                    subtitle="Doanh thu bình quân mỗi khách hàng hoạt động"
-                    hint="ARPU tăng nghĩa là bán được gói lớn hơn hoặc khách học nhiều hơn. Nếu số khách tăng mà ARPU giảm, nền tảng đang tăng trưởng bằng khách giá trị thấp."
+                    title="Doanh thu bình quân mỗi khách"
+                    hint="Số này tăng nghĩa là bán được gói lớn hơn hoặc khách học nhiều hơn. Nếu số khách tăng mà nó giảm, nền tảng đang tăng trưởng bằng khách giá trị thấp."
                 >
                     <LineTrendChart
                         data={data.arpuTrend}
                         xKey="month"
                         height={270}
-                        series={[{ key: 'arpu', name: 'ARPU', color: PALETTE.navy, area: true }]}
+                        series={[{ key: 'arpu', name: 'Bình quân mỗi khách', color: PALETTE.navy, area: true }]}
                     />
                 </ChartBlock>
 
                 <ChartBlock
-                    title="Khách lần đầu so với khách quay lại tháng sau"
-                    subtitle="Đếm số khách, không phải số booking"
+                    title="Khách lần đầu so với khách quay lại"
                     hint="Mỗi khách chỉ được đếm một lần trong tháng. 'Quay lại' nghĩa là tháng đầu tiên của họ nằm ở tháng TRƯỚC — khách đặt nhiều lần trong cùng tháng đầu vẫn tính là khách lần đầu, nên chỉ số này khác với card 'Tỷ lệ tái mua' (vốn chỉ cần từ 2 booking trở lên, bất kể thời điểm). Nền tảng khỏe mạnh là khi cột quay lại tăng dần qua các tháng."
                 >
                     <BarGroupChart
@@ -198,8 +196,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
             {cohortRows.length > 0 && (
                 <ChartBlock
-                    title="Giữ chân khách hàng theo nhóm đăng ký"
-                    subtitle="Phần trăm còn hoạt động sau mỗi tháng kể từ booking đầu tiên"
+                    title="Giữ chân khách hàng"
                     hint="Mỗi hàng là nhóm khách hàng bắt đầu trong cùng một tháng. Ô càng đậm là giữ chân càng tốt. Nếu hàng dưới nhạt hơn hàng trên, chất lượng khách mới đang giảm."
                 >
                     <HeatmapChart
@@ -220,7 +217,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
             <ChartBlock
                 title="Phân bổ giá trị booking"
-                subtitle="Số lượng booking theo khoảng tiền"
                 hint="Cho biết nền tảng đang sống bằng gói nhỏ hay gói lớn. Nếu phần lớn nằm ở khoảng thấp, cần xem lại chiến lược đóng gói khóa học."
             >
                 <BarGroupChart
@@ -234,7 +230,12 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
             <DataTableShell
                 title="Khách hàng giá trị cao"
-                subtitle="Chi tiêu, nợ dịch vụ và tiến độ học của từng khách hàng"
+                pagination={{
+                    current: parentPage.page,
+                    pageSize: parentPage.pageSize,
+                    total: parentPage.total,
+                    onChange: parentPage.setPage,
+                }}
             >
                 <table className="rev-table">
                     <thead>
@@ -243,7 +244,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                             <th>Loại</th>
                             <th>Học sinh</th>
                             <th className="rev-num">Tổng chi tiêu</th>
-                            <th className="rev-num">Nợ dịch vụ</th>
+                            <th className="rev-num">Chờ ghi nhận</th>
                             <th className="rev-num">Booking</th>
                             <th className="rev-num">Buổi đã mua</th>
                             <th className="rev-num">Buổi đã học</th>
@@ -252,7 +253,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {data.parents.map((p) => {
+                        {parentPage.pageItems.map((p) => {
                             const progress = p.sessionsPurchased > 0
                                 ? Math.round((p.sessionsCompleted / p.sessionsPurchased) * 100)
                                 : 0;

@@ -101,8 +101,17 @@ const CUSTOM_PATTERN = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
  *
  * Giá trị rác (gõ tay, link cũ) rơi về mặc định 30 ngày thay vì render rỗng.
  */
-export const parseDashboardRange = (raw: string | null | undefined): DashboardRangeSelection => {
-    if (!raw) return DEFAULT_DASHBOARD_SELECTION;
+export const parseDashboardRange = (
+    raw: string | null | undefined,
+    /**
+     * Khoảng dùng khi URL không có `range` hoặc giá trị không đọc được.
+     *
+     * Có tham số này vì báo cáo doanh thu dùng chung bộ chọn nhưng cần mặc định khác:
+     * dữ liệu doanh thu thưa hơn dashboard nhiều nên 30 ngày thường ra biểu đồ trống.
+     */
+    fallback: DashboardRangeSelection = DEFAULT_DASHBOARD_SELECTION,
+): DashboardRangeSelection => {
+    if (!raw) return fallback;
 
     if ((DASHBOARD_RANGE_KEYS as readonly string[]).includes(raw)) {
         return { kind: 'preset', preset: raw as DashboardRangeKey };
@@ -113,7 +122,7 @@ export const parseDashboardRange = (raw: string | null | undefined): DashboardRa
         const year = Number(month[1]);
         const monthNumber = Number(month[2]);
         if (monthNumber >= 1 && monthNumber <= 12) return { kind: 'month', year, month: monthNumber };
-        return DEFAULT_DASHBOARD_SELECTION;
+        return fallback;
     }
 
     const week = WEEK_PATTERN.exec(raw);
@@ -121,7 +130,7 @@ export const parseDashboardRange = (raw: string | null | undefined): DashboardRa
         const day = parseDateOnly(week[1]);
         // Chuẩn hoá về thứ Hai để mọi link trỏ tới cùng một tuần đều cho cùng kết quả.
         if (day) return { kind: 'week', start: toDateOnly(startOfWeek(day)) };
-        return DEFAULT_DASHBOARD_SELECTION;
+        return fallback;
     }
 
     const custom = CUSTOM_PATTERN.exec(raw);
@@ -129,10 +138,10 @@ export const parseDashboardRange = (raw: string | null | undefined): DashboardRa
         const from = parseDateOnly(custom[1]);
         const to = parseDateOnly(custom[2]);
         if (from && to && from <= to) return { kind: 'custom', from: custom[1], to: custom[2] };
-        return DEFAULT_DASHBOARD_SELECTION;
+        return fallback;
     }
 
-    return DEFAULT_DASHBOARD_SELECTION;
+    return fallback;
 };
 
 /** Nghịch đảo của `parseDashboardRange` — dùng để ghi lại lên URL. */

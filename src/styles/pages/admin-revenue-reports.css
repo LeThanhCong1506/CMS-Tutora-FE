@@ -48,39 +48,6 @@
 }
 
 /* Chọn khoảng thời gian */
-.rev-range {
-    display: inline-flex;
-    gap: 2px;
-    padding: 3px;
-    border: 1px solid var(--color-stone-100);
-    border-radius: 10px;
-    background: #fff;
-}
-
-.rev-range button {
-    padding: 7px 13px;
-    border: none;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--color-navy-60);
-    font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-.rev-range button:hover {
-    background: rgba(26, 34, 56, 0.05);
-    color: var(--color-navy);
-}
-
-.rev-range button.is-active {
-    background: var(--color-navy);
-    color: var(--color-cream-light);
-    font-weight: 600;
-}
 
 /* Bố cục */
 .rev-stack {
@@ -323,6 +290,13 @@
     border-collapse: collapse;
     font-size: 12.5px;
     white-space: nowrap;
+}
+
+/* `.rev-table th` (0-1-1) đè `.rev-num` (0-1-0) nên tiêu đề cột số vẫn bị căn trái
+   trong khi giá trị bên dưới căn phải — hai bên lệch nhau cả trăm pixel. Selector này
+   đủ mạnh để kéo tiêu đề về đúng mép phải của cột. */
+.rev-table th.rev-num {
+    text-align: right;
 }
 
 .rev-table th {
@@ -614,5 +588,346 @@
     .rev-sk-bar,
     .rev-sk-col {
         animation: none;
+    }
+}
+
+/* Vùng phân trang dưới bảng chi tiết. Nằm NGOÀI .rev-table-wrap để không bị
+   cuốn theo khi bảng cuộn ngang. */
+.rev-table-pagination {
+    padding: 4px 16px 12px;
+    border-top: 1px solid var(--color-stone-100);
+}
+
+/* Ô tiến độ trong bảng "Doanh thu theo booking" */
+.rev-cell-progress {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 108px;
+}
+
+.rev-cell-progress__track {
+    flex: 1;
+    height: 6px;
+    min-width: 44px;
+    border-radius: var(--radius-full, 999px);
+    background: rgba(26, 34, 56, 0.09);
+    overflow: hidden;
+}
+
+.rev-cell-progress__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+}
+
+.rev-cell-progress__fill.is-none { background: transparent; }
+.rev-cell-progress__fill.is-running { background: #2563eb; }
+.rev-cell-progress__fill.is-done { background: #059669; }
+.rev-cell-progress__fill.is-over { background: #b45309; }
+
+.rev-cell-progress__count {
+    flex-shrink: 0;
+    color: var(--color-navy-70);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Chỉ tô màu con số ở hai trạng thái cần chú ý; dòng bình thường giữ mực xám để
+   cả cột không thành một dải màu loang lổ. */
+.rev-cell-progress__count.is-done { color: #047857; font-weight: 600; }
+.rev-cell-progress__count.is-over { color: #b45309; font-weight: 700; }
+
+
+/* ─── Khối chia tiền (tab Doanh thu) ───────────────────────────────── */
+.rev-flow {
+    padding: 20px 24px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: var(--radius-lg);
+    background: #fff;
+}
+
+.rev-flow-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+    align-items: end;
+    gap: 18px 28px;
+}
+
+.rev-flow-total-block {
+    display: grid;
+    gap: 5px;
+}
+
+.rev-flow-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-navy-70);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.rev-flow-total {
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: clamp(27px, 2.1vw, 34px);
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.rev-flow-amount {
+    font-variant-numeric: tabular-nums;
+}
+
+.rev-flow-currency {
+    color: var(--color-navy-70);
+    font-family: var(--font-sans, inherit);
+    font-size: 0.52em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-left: 0.32em;
+    vertical-align: 0.16em;
+}
+
+/* Học phí gốc vẫn hiện cạnh tổng tiền: đây là mẫu số của mức phí 10%. */
+.rev-flow-source {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.rev-flow-source div {
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.rev-flow-source dt {
+    margin-bottom: 4px;
+    color: var(--color-navy-60);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.rev-flow-source dd {
+    margin: 0;
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.rev-flow-source .rev-flow-currency {
+    font-size: 0.58em;
+}
+
+.rev-flow-allocation {
+    margin-top: 18px;
+}
+
+.rev-flow-allocation-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--color-navy-70);
+    font-size: 12px;
+}
+
+.rev-flow-allocation-head span:first-child {
+    color: var(--color-navy);
+    font-weight: 700;
+}
+
+.rev-flow-allocation-head span:last-child {
+    color: var(--color-navy-60);
+}
+
+.rev-flow-bar {
+    display: flex;
+    gap: 4px;
+    height: 14px;
+    margin: 9px 0 10px;
+}
+
+.rev-flow-seg {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    border-radius: 4px;
+}
+
+.rev-flow-seg.is-tutor { background: #7a8aa0; }
+.rev-flow-seg.is-platform { background: #1a2238; }
+
+.rev-flow-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rev-flow-share {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 11px 13px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.rev-flow-share.is-platform {
+    border-color: rgba(26, 34, 56, 0.16);
+    background: rgba(26, 34, 56, 0.035);
+}
+
+.rev-flow-share-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--color-navy-70);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rev-flow-dot {
+    align-self: center;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+}
+
+.rev-flow-dot.is-tutor { background: #7a8aa0; }
+.rev-flow-dot.is-platform { background: #1a2238; }
+
+.rev-flow-share strong {
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.rev-flow-share .rev-flow-currency {
+    font-size: 0.5em;
+}
+
+.rev-flow-share-note {
+    color: var(--color-navy-60);
+    font-size: 11.5px;
+}
+
+.rev-flow-detail {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    margin-top: 14px;
+    padding-top: 13px;
+    border-top: 1px dashed var(--color-stone-100);
+    color: var(--color-navy-60);
+}
+
+.rev-flow-detail-head {
+    display: grid;
+    gap: 2px;
+    min-width: 184px;
+    color: var(--color-navy-60);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.rev-flow-detail-head strong {
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.rev-flow-detail-head .rev-flow-currency,
+.rev-flow-detail-stats .rev-flow-currency {
+    font-size: 0.58em;
+}
+
+.rev-flow-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(125px, 1fr));
+    flex: 1 1 330px;
+    gap: 10px 22px;
+    margin: 0;
+}
+
+.rev-flow-detail-stats div {
+    display: grid;
+    gap: 2px;
+}
+
+.rev-flow-detail-stats dt {
+    color: var(--color-navy-60);
+    font-size: 11.5px;
+}
+
+.rev-flow-detail-stats dd {
+    margin: 0;
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+    .rev-flow-head {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+}
+
+@media (max-width: 640px) {
+    .rev-flow {
+        padding: 17px 16px;
+    }
+
+    .rev-flow-total {
+        font-size: clamp(24px, 8vw, 31px);
+    }
+
+    .rev-flow-source,
+    .rev-flow-legend,
+    .rev-flow-detail-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .rev-flow-allocation-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .rev-flow-detail {
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .rev-flow-detail-head {
+        min-width: 0;
     }
 }

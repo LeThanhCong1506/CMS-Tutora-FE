@@ -12,6 +12,20 @@ export interface RevenueSummary {
     gmvPrevious: number;
     cashCollected: number;
     cashPrevious: number;
+
+    // Bộ số cho khối chia tiền — cùng phạm vi "booking tạo trong kỳ" nên cộng khớp:
+    //   gmv = tutorReceivable + commissionSold
+    //   commissionSold = commissionEarned + phần còn chờ
+    /** Học phí gốc — mẫu số của hoa hồng 10%. KHÔNG phải gmv (gmv đã cộng 5% phí phụ huynh). */
+    baseAmount: number;
+    /** Tiền gia sư nhận từ booking tạo trong kỳ. */
+    tutorReceivable: number;
+    /** Hoa hồng 10% của booking tạo trong kỳ, không gồm doanh thu gói AI. */
+    commissionSold: number;
+    /** Phần hoa hồng trên đã ứng với buổi dạy xong và đã giải ngân. */
+    commissionEarned: number;
+    /** Hoa hồng của buổi đã giải ngân thuộc booking về sau bị hủy — nằm ngoài hai số trên. */
+    commissionFromCancelled: number;
 }
 
 export interface RevenueTrendPoint {

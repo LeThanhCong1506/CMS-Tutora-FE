@@ -3,6 +3,7 @@ import MetricCard from '../components/MetricCard';
 import { getSubjectRevenue } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
+import { useClientPagination } from '@/hooks/useClientPagination';
 import {
     ChartBlock,
     DataTableShell,
@@ -20,6 +21,7 @@ import { PALETTE, SERIES_COLORS } from '@/components/shared/RevenueCharts/revenu
 
 const SubjectsTab = ({ range }: { range: RevenueRange }) => {
     const { data, loading, error, reload } = useRevenueReport(getSubjectRevenue, range);
+    const subjectPage = useClientPagination(data?.subjects ?? []);
 
     if (loading) return <ReportSkeleton charts={4} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
@@ -51,7 +53,7 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                 <MetricCard
                     icon="category"
                     value={moneyVnd(totalRevenue)}
-                    label="Doanh thu theo môn"
+                    label="Hoa hồng theo môn"
                     subLabel={`${data.subjects.length} môn đang có giao dịch`}
                     badgeVariant="green"
                     hint="Tổng hoa hồng nền tảng thu được từ các buổi đã dạy, cộng theo tất cả môn học trong kỳ."
@@ -77,17 +79,16 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                 <MetricCard
                     icon="account_balance"
                     value={moneyVnd(totalDeferred)}
-                    label="Nợ dịch vụ chưa thực hiện"
+                    label="Doanh thu chờ ghi nhận"
                     subLabel={`${totalDeferred + totalRevenue > 0 ? ((totalDeferred / (totalDeferred + totalRevenue)) * 100).toFixed(0) : 0}% hoa hồng đã bán chưa dạy`}
                     badgeVariant="orange"
-                    hint="Hoa hồng của những buổi đã bán nhưng chưa dạy — nghĩa vụ nền tảng còn phải thực hiện. Chỉ tính phần hoa hồng, không gồm tiền thuộc về gia sư, nên đây không phải GMV trừ doanh thu."
+                    hint="Hoa hồng của những buổi đã bán nhưng chưa dạy. Chỉ tính phần hoa hồng, không gồm tiền thuộc về gia sư."
                 />
             </div>
 
             <div className="rev-grid-2">
                 <ChartBlock
                     title="Cơ cấu doanh thu theo môn"
-                    subtitle="Tỷ trọng hoa hồng nền tảng"
                     hint="Tỷ trọng từng môn trong tổng doanh thu. Nếu một môn chiếm quá nửa, nền tảng đang phụ thuộc rủi ro vào một sản phẩm duy nhất."
                 >
                     <DonutChart
@@ -108,7 +109,7 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                         data={data.grades.map((g) => ({ ...g, label: g.gradeName }))}
                         labelKey="label"
                         valueKey="platformRevenue"
-                        name="Doanh thu nền tảng"
+                        name="Hoa hồng Tutora"
                         color={PALETTE.gold}
                         height={300}
                     />
@@ -118,7 +119,6 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
             {gradeNames.length > 0 && (
                 <ChartBlock
                     title="Ma trận môn học × khối lớp"
-                    subtitle="Ô càng đậm là ngách kiếm tiền càng tốt"
                     hint="Giao điểm giữa môn và khối lớp. Ô sáng nhất là ngách nên tập trung nguồn lực. Ô trống là khoảng trống thị trường — có thể do thiếu gia sư chứ không phải không có nhu cầu."
                 >
                     <HeatmapChart
@@ -133,7 +133,6 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
             {trendKeys.length > 0 && (
                 <ChartBlock
                     title="Xu hướng doanh thu theo môn"
-                    subtitle="Theo khoảng thời gian đang chọn"
                     hint="Môn nào đang lên, môn nào chững lại. Đường đi ngang trong khi tổng doanh thu tăng nghĩa là môn đó đang mất thị phần nội bộ."
                 >
                     <LineTrendChart
@@ -151,7 +150,6 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
 
             <ChartBlock
                 title="Tỷ lệ hoàn thành theo môn"
-                subtitle="Buổi đã dạy trên tổng buổi đã bán"
                 hint="Môn tỷ lệ thấp là môn khách hay bỏ dở. Vừa tạo nợ dịch vụ vừa là dấu hiệu chất lượng giảng dạy hoặc kỳ vọng bị lệch."
             >
                 <RankBarChart
@@ -169,23 +167,28 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
 
             <DataTableShell
                 title="Chi tiết theo môn học"
-                subtitle="Giá trung bình và tỷ lệ thực hiện"
+                pagination={{
+                    current: subjectPage.page,
+                    pageSize: subjectPage.pageSize,
+                    total: subjectPage.total,
+                    onChange: subjectPage.setPage,
+                }}
             >
                 <table className="rev-table">
                     <thead>
                         <tr>
                             <th>Môn học</th>
-                            <th className="rev-num">GMV</th>
-                            <th className="rev-num">Doanh thu NT</th>
-                            <th className="rev-num">Nợ dịch vụ</th>
+                            <th className="rev-num">Khách trả</th>
+                            <th className="rev-num">Hoa hồng</th>
+                            <th className="rev-num">Chờ ghi nhận</th>
                             <th className="rev-num">Booking</th>
                             <th className="rev-num">Buổi đã dạy</th>
-                            <th className="rev-num">Giá TB/buổi</th>
+                            <th className="rev-num">Giá trung bình</th>
                             <th className="rev-num">Hoàn thành</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {data.subjects.map((s) => (
+                        {subjectPage.pageItems.map((s) => (
                             <tr key={s.subjectId}>
                                 <td>
                                     <strong>{s.subjectName}</strong>
