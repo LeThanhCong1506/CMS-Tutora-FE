@@ -91,7 +91,7 @@ const PayoutOverviewPage: React.FC = () => {
       className="payout-overview-page"
       eyebrow="Tài chính"
       eyebrowInfo="Theo dõi yêu cầu rút tiền và lịch sử thanh toán cho gia sư."
-      title="Payout"
+      title="Yêu cầu rút tiền"
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">
