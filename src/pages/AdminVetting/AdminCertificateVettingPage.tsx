@@ -298,20 +298,21 @@ const AdminCertificateVettingPage = () => {
       title: 'Hành động',
       align: 'right',
       // Decisions (duyệt/từ chối) are made from the detail modal — the list only
-      // offers "Chi tiết" so the admin reviews the document before deciding.
+      // offers "Xem" so the admin reviews the document before deciding.
       render: (row) => (
-        <div className="certificate-row-actions">
+        <div className="admin-ui-row-actions">
           <button
             type="button"
-            className="admin-ui-button admin-ui-button-secondary"
+            className="admin-ui-row-btn"
             onClick={() => setSelectedCert(row)}
+            aria-label="Xem chi tiết chứng chỉ"
           >
             <span className="material-symbols-outlined">visibility</span>
-            Chi tiết
+            <span className="admin-ui-row-btn-label">Xem</span>
           </button>
         </div>
       ),
-      minWidth: 140,
+      width: 84,
     },
   ];
 
