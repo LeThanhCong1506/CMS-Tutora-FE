@@ -1,25 +1,5 @@
 /* ===== DISPUTE LIST ===== */
 
-.dispute-kpi-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.dispute-list-reason {
-    max-width: 320px;
-}
-
-.dispute-list-case-link {
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.dispute-list-case-link:focus-visible,
 .dispute-list-priority:focus-visible {
     outline: 2px solid rgba(212, 180, 131, 0.9);
     outline-offset: 3px;
@@ -30,86 +10,64 @@
     border-radius: var(--radius-sm);
 }
 
-.dispute-list-toolbar {
-    align-items: flex-end;
-    justify-content: flex-start;
-    gap: 12px 16px;
-}
+/* Thanh công cụ / thanh kết quả của thẻ danh sách dùng chung với trang Quản lý người dùng:
+   xem bộ `admin-ui-list-*` trong admin-shared.css. Wrapper mang thêm `admin-ui-list-scope`
+   để nhận các biến `--list-*`. */
 
-.dispute-list-tabs-toolbar {
-    justify-content: flex-start;
-    padding: 14px 18px;
-}
-
-.dispute-list-search-form {
-    display: flex;
-    flex: 1 1 520px;
-    align-items: center;
-    gap: 8px;
-    min-width: min(100%, 360px);
-}
-
-.dispute-list-search-form .admin-ui-search {
-    max-width: none;
-}
-
-/* Bộ lọc id buổi học + chọn thứ tự, đặt cùng hàng với ô tìm kiếm trên toolbar. */
-.dispute-list-filter {
+/* ── Nội dung phản ánh: ô icon vuông + hai dòng chữ ─────────────────────── */
+.dispute-issue {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.dispute-list-filter__label {
-    color: var(--color-navy-40);
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.dispute-list-filter__input,
-.dispute-list-filter__select {
-    height: 38px;
-    padding: 8px 12px;
-    border: 1px solid var(--color-stone-100);
-    border-radius: var(--radius-sm);
-    background: var(--color-white);
-    color: var(--color-navy);
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.dispute-list-filter__input {
-    width: 128px;
-}
-
-.dispute-list-filter__select {
-    min-width: 148px;
-}
-
-.dispute-list-filter__input::placeholder {
-    color: var(--color-navy-40);
-}
-
-.dispute-list-filter__input:focus-visible,
-.dispute-list-filter__select:focus-visible {
-    outline: 2px solid rgba(212, 180, 131, 0.9);
-    outline-offset: 2px;
-}
-
-.dispute-list-parties {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
-    align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
 }
 
-.dispute-list-arrow {
+.dispute-issue-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+}
+
+.dispute-issue-icon .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.dispute-issue-icon.is-danger { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.dispute-issue-icon.is-warn { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+.dispute-issue-icon.is-info { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
+.dispute-issue-icon.is-neutral { background: rgba(26, 34, 56, 0.06); color: var(--color-navy-70); }
+
+/* ── Các bên liên quan: một dòng "người gửi → gia sư" ───────────────────── */
+.dispute-parties {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dispute-party {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-navy-70);
+    font-size: 12.5px;
+}
+
+/* Gia sư là bên bị phản ánh — đậm hơn để mắt bắt đúng người cần xem. */
+.dispute-party.is-tutor {
+    color: var(--color-navy);
+    font-weight: 600;
+}
+
+.dispute-parties-arrow {
+    flex-shrink: 0;
     color: var(--color-navy-40);
-    font-size: 16px;
+    font-size: 17px;
 }
 
 .dispute-list-load-error {
@@ -131,51 +89,11 @@
     font-size: 19px;
 }
 
-@media (max-width: 900px) {
-    .dispute-kpi-grid {
-        grid-template-columns: repeat(3, minmax(180px, 1fr));
-        overflow-x: auto;
-        padding-bottom: 3px;
-        scrollbar-width: thin;
-    }
-
-    .dispute-list-search-form {
-        flex-basis: 100%;
-    }
-}
-
 @media (max-width: 680px) {
-    .dispute-kpi-grid {
-        grid-template-columns: minmax(220px, 1fr);
-        overflow: visible;
-    }
-
-    .dispute-list-parties {
-        display: flex;
-        align-items: center;
-    }
-
-    .dispute-list-parties .admin-ui-entity:last-child,
-    .dispute-list-arrow {
+    /* Màn hẹp: chỉ giữ tên gia sư — bên bị phản ánh mới là thứ phải đọc trước. */
+    .dispute-parties .dispute-party:first-child,
+    .dispute-parties-arrow {
         display: none;
-    }
-
-    .dispute-list-toolbar,
-    .dispute-list-search-form,
-    .dispute-list-filter {
-        width: 100%;
-    }
-
-    .dispute-list-search-form {
-        flex-wrap: wrap;
-    }
-
-    .dispute-list-search-form .admin-ui-search {
-        flex-basis: 100%;
-    }
-
-    .dispute-list-filter__select {
-        flex: 1;
     }
 
     .dispute-list-load-error {
@@ -186,5 +104,34 @@
 
     .dispute-list-load-error .admin-ui-button {
         margin-left: 29px;
+    }
+}
+
+/* ── Cụm bộ lọc: tab trạng thái + select loại phản ánh ──────────────────── */
+/*
+ * Hai thứ này cùng làm một việc — thu hẹp danh sách — nên đứng cạnh nhau. Bọc chung
+ * một cụm để `justify-content: space-between` của `.admin-ui-list-tabsbar` chỉ thấy
+ * hai con: cụm lọc bên trái, ô sắp xếp bên phải. Ô tìm kiếm ở hàng dưới, đứng riêng.
+ */
+.dispute-filter-cluster {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    min-width: 0;
+}
+
+@media (max-width: 1024px) {
+    /*
+     * Luật dùng chung cho `.admin-ui-list-filters` là `width: 100%` — hợp lý khi nó nằm
+     * một mình trên hàng toolbar, nhưng trong cụm này nó sẽ đẩy select xuống dưới tab.
+     * Giữ select cỡ theo nội dung để nó vẫn nằm ngang hàng với tab.
+     */
+    .dispute-filter-cluster .admin-ui-list-filters {
+        width: auto;
+    }
+
+    .dispute-filter-cluster .admin-ui-list-field {
+        flex: 0 0 auto;
     }
 }

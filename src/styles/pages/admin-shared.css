@@ -222,3 +222,456 @@
         min-width: 100%;
     }
 }
+
+/* ===== THANH CÔNG CỤ DANH SÁCH =========================================
+ *
+ * Khung "một thẻ trắng: thanh công cụ → thanh kết quả → bảng" của trang Quản lý người dùng.
+ * Trang Khiếu nại dùng lại nguyên bộ này để hai trang danh sách trông như một.
+ *
+ * Trang Quản lý người dùng hiện vẫn giữ bản `um-*` riêng trong `admin-user-management.css`
+ * với đúng các giá trị dưới đây. Hai bộ nên gộp làm một khi có trang thứ ba cần tới —
+ * chuyển sớm hơn thì phải sửa markup của trang Người dùng mà không được lợi gì thêm.
+ * ===================================================================== */
+
+.admin-ui-list-scope {
+    --list-ink: var(--color-navy, #1a2238);
+    --list-muted: #475569;
+    --list-faint: #6b7280;
+    --list-line: rgba(26, 34, 56, 0.1);
+    --list-line-strong: rgba(26, 34, 56, 0.18);
+    --list-surface: #ffffff;
+    --list-surface-alt: #f8fafc;
+    --list-control-h: 36px;
+}
+
+.admin-ui-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Hàng tab trạng thái: tab bên trái, chọn thứ tự bên phải. */
+.admin-ui-list-tabsbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--list-line);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.admin-ui-list-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--list-line);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.admin-ui-list-search-form {
+    display: flex;
+    align-items: center;
+    flex: 1 1 420px;
+    min-width: 300px;
+    max-width: 560px;
+    gap: 8px;
+}
+
+.admin-ui-list-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-ui-list-search-icon {
+    position: absolute;
+    left: 11px;
+    font-size: 18px;
+    color: var(--list-faint);
+    pointer-events: none;
+}
+
+.admin-ui-list-search-input {
+    width: 100%;
+    height: var(--list-control-h);
+    padding: 0 36px;
+    border: 1px solid var(--list-line);
+    border-radius: var(--radius-control);
+    background: var(--list-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: var(--list-ink);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+/* Nút X mặc định của input[type=search] nằm chồng lên nút xoá tự vẽ bên dưới. */
+.admin-ui-list-search-input::-webkit-search-cancel-button {
+    appearance: none;
+}
+
+.admin-ui-list-search-input::placeholder {
+    color: var(--list-faint);
+}
+
+.admin-ui-list-search-input:focus {
+    border-color: var(--list-line-strong);
+    box-shadow: 0 0 0 3px rgba(26, 34, 56, 0.12);
+}
+
+.admin-ui-list-search-clear {
+    position: absolute;
+    right: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--list-faint);
+    cursor: pointer;
+}
+
+.admin-ui-list-search-clear:hover {
+    background: rgba(26, 34, 56, 0.06);
+    color: var(--list-ink);
+}
+
+.admin-ui-list-search-clear .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.admin-ui-list-filters {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-ui-list-field {
+    position: relative;
+    display: block;
+    min-width: 154px;
+}
+
+/*
+ * `min-width` một mình không đủ: ô là flex item cỡ theo nội dung, mà input[type=number]
+ * mặc định rộng hơn cả select bên cạnh — ô "hẹp" hoá ra lại là ô rộng nhất hàng.
+ */
+.admin-ui-list-field--narrow {
+    min-width: 132px;
+    max-width: 150px;
+}
+
+.admin-ui-list-field--sort {
+    min-width: 168px;
+}
+
+.admin-ui-list-field-icon {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    z-index: 1;
+    transform: translateY(-50%);
+    font-size: 17px;
+    color: var(--list-muted);
+    pointer-events: none;
+}
+
+.admin-ui-list-select,
+.admin-ui-list-input {
+    width: 100%;
+    height: var(--list-control-h);
+    border: 1px solid var(--list-line);
+    border-radius: var(--radius-control);
+    background-color: var(--list-surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--list-ink);
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.admin-ui-list-select {
+    min-width: 154px;
+    padding: 0 30px 0 34px;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%2364748b' stroke-width='1.6'%3E%3Cpath d='M3.5 5.5L7 9l3.5-3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    cursor: pointer;
+    appearance: none;
+}
+
+.admin-ui-list-input {
+    padding: 0 10px 0 34px;
+}
+
+/* Nút tăng/giảm của input[type=number] chiếm chỗ mà không dùng tới — id buổi học gõ tay. */
+.admin-ui-list-input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.admin-ui-list-input::-webkit-outer-spin-button,
+.admin-ui-list-input::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+}
+
+.admin-ui-list-input::placeholder {
+    color: var(--list-faint);
+    font-weight: 400;
+}
+
+.admin-ui-list-select:hover,
+.admin-ui-list-input:hover {
+    border-color: var(--list-line-strong);
+}
+
+.admin-ui-list-select:focus-visible,
+.admin-ui-list-input:focus-visible,
+.admin-ui-list-input:focus {
+    border-color: var(--list-line-strong);
+    box-shadow: 0 0 0 3px rgba(26, 34, 56, 0.12);
+}
+
+.admin-ui-list-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--list-control-h);
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.admin-ui-list-btn .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.admin-ui-list-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.admin-ui-list-btn-primary {
+    background: var(--list-ink);
+    color: #fff;
+}
+
+.admin-ui-list-btn-primary:hover:not(:disabled) {
+    background: #24304f;
+}
+
+.admin-ui-list-btn-secondary {
+    border-color: var(--list-line);
+    background: var(--list-surface);
+    color: var(--list-ink);
+}
+
+.admin-ui-list-btn-secondary:hover:not(:disabled) {
+    border-color: var(--list-line-strong);
+}
+
+.admin-ui-list-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: var(--list-control-h);
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    background: transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--list-muted);
+    cursor: pointer;
+}
+
+.admin-ui-list-reset:hover {
+    border-color: var(--list-line);
+    background: var(--list-surface);
+    color: var(--list-ink);
+}
+
+.admin-ui-list-reset .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.admin-ui-list-resultbar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 18px;
+    border-bottom: 1px solid var(--list-line);
+    background: var(--list-surface-alt);
+    font-size: 12px;
+    color: var(--list-muted);
+}
+
+.admin-ui-list-resultbar > .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--list-faint);
+}
+
+.admin-ui-list-resultbar strong {
+    color: #475569;
+    font-weight: 600;
+}
+
+.admin-ui-list-resulthint {
+    margin-left: auto;
+    color: var(--list-faint);
+}
+
+.admin-ui-list-spin {
+    animation: admin-ui-list-spin 0.8s linear infinite;
+}
+
+@keyframes admin-ui-list-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-ui-list-spin {
+        animation: none;
+    }
+}
+
+@media (max-width: 1024px) {
+    .admin-ui-list-toolbar {
+        align-items: stretch;
+        flex-wrap: wrap;
+    }
+
+    .admin-ui-list-search-form {
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .admin-ui-list-filters {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .admin-ui-list-field {
+        flex: 1 1 170px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-ui-list-tabsbar,
+    .admin-ui-list-toolbar {
+        gap: 10px;
+        padding: 14px;
+    }
+
+    .admin-ui-list-search-form {
+        min-width: 0;
+    }
+
+    /* Dưới 16px, Safari iOS tự phóng to trang khi con trỏ vào ô nhập. */
+    .admin-ui-list-search-input {
+        font-size: 16px;
+    }
+
+    .admin-ui-list-field,
+    .admin-ui-list-select {
+        min-width: 0;
+    }
+
+    .admin-ui-list-resultbar {
+        padding-inline: 14px;
+    }
+
+    .admin-ui-list-resulthint {
+        display: none;
+    }
+}
+
+/* ===== NÚT MỞ CHI TIẾT TRONG DÒNG BẢNG =================================
+ *
+ * Một kiểu nút duy nhất cho mọi bảng ở admin-portal: icon con mắt + chữ "Xem".
+ * Trước đây mỗi trang tự dựng một nút riêng ("Chi tiết" viền dày ở Vetting, link chữ ở
+ * Báo cáo doanh thu, nút có nhãn riêng ở Payout) nên cùng một hành động lại có bốn hình.
+ *
+ * Nhãn ẩn ở màn hẹp, chỉ còn icon — cột hành động không đáng chiếm chỗ của dữ liệu.
+ * ===================================================================== */
+
+.admin-ui-row-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid rgba(26, 34, 56, 0.1);
+    border-radius: var(--radius-button);
+    background: #ffffff;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-navy, #1a2238);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.admin-ui-row-btn:hover {
+    border-color: rgba(26, 34, 56, 0.18);
+    background: #f8fafc;
+}
+
+.admin-ui-row-btn:focus-visible {
+    outline: 2px solid rgba(212, 180, 131, 0.9);
+    outline-offset: 2px;
+}
+
+.admin-ui-row-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.admin-ui-row-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .admin-ui-row-btn-label {
+        display: none;
+    }
+
+    .admin-ui-row-btn {
+        width: 32px;
+        padding: 0;
+    }
+}

@@ -2007,18 +2007,6 @@
   white-space: nowrap;
 }
 
-.certificate-row-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.certificate-row-actions .admin-ui-button {
-  padding-inline: 12px;
-}
-
 /* Scope hook: generates no layout box, just lets us target this page's buttons
    without touching the shared pill style used by other admin pages. */
 .certificate-vetting-page {

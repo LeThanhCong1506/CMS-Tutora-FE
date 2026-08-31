@@ -104,22 +104,22 @@ const WithdrawalRequestTable: React.FC<Props> = ({
       title: 'Thao tác',
       align: 'right',
       render: (record) => (
-        <button
-          type="button"
-          className="payout-row-action"
-          aria-label={`Mở chi tiết yêu cầu #${record.withdrawalId}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            openRequest(record);
-          }}
-        >
-          <span className="payout-row-action__label">Chi tiết</span>
-          <span className="material-symbols-outlined" aria-hidden="true">
-            arrow_forward
-          </span>
-        </button>
+        <div className="admin-ui-row-actions">
+          <button
+            type="button"
+            className="admin-ui-row-btn"
+            aria-label={`Mở chi tiết yêu cầu #${record.withdrawalId}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              openRequest(record);
+            }}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
+            <span className="admin-ui-row-btn-label">Xem</span>
+          </button>
+        </div>
       ),
-      minWidth: 110,
+      width: 84,
     },
   ];
 
