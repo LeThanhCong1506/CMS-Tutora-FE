@@ -625,10 +625,10 @@ const AdminVettingPage = () => {
       title: 'Hành động',
       align: 'right',
       render: (tutor) => (
-        <div className="certificate-row-actions">
+        <div className="admin-ui-row-actions">
           <button
             type="button"
-            className="admin-ui-button admin-ui-button-secondary"
+            className="admin-ui-row-btn"
             onClick={(event) => {
               event.stopPropagation();
               setSelectedTutor(tutor);
@@ -636,11 +636,11 @@ const AdminVettingPage = () => {
             aria-label={`Xem chi tiết hồ sơ của ${tutor.fullname}`}
           >
             <span className="material-symbols-outlined">visibility</span>
-            Chi tiết
+            <span className="admin-ui-row-btn-label">Xem</span>
           </button>
         </div>
       ),
-      minWidth: 140,
+      width: 84,
     },
   ];
 
@@ -697,10 +697,10 @@ const AdminVettingPage = () => {
       // vẽ lại nội dung mới, mà cảnh báo đó vô nghĩa nếu Admin bấm Duyệt từ ngoài danh sách,
       // chưa từng mở diff ra xem.
       render: (req) => (
-        <div className="certificate-row-actions">
+        <div className="admin-ui-row-actions">
           <button
             type="button"
-            className="admin-ui-button admin-ui-button-secondary"
+            className="admin-ui-row-btn"
             onClick={(event) => {
               event.stopPropagation();
               openUpdateRequestModal(req);
@@ -708,11 +708,11 @@ const AdminVettingPage = () => {
             aria-label={`Xem chi tiết yêu cầu cập nhật của ${req.tutorFullName || 'gia sư'}`}
           >
             <span className="material-symbols-outlined">visibility</span>
-            Chi tiết
+            <span className="admin-ui-row-btn-label">Xem</span>
           </button>
         </div>
       ),
-      minWidth: 140,
+      width: 84,
     },
   ];
 

@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { DataTable, FilterTabs, PageContainer, SectionCard, StatCard, StatusBadge } from '../../components/shared';
+import { DataTable, FilterTabs, PageContainer, SectionCard, StatusBadge } from '../../components/shared';
 import type { DataTableColumn, StatusVariant } from '../../components/shared';
 import { getDisputes, getDisputeStats } from '../../services/admin.service';
-import { getPriorityMeta } from './disputeWorkflow';
+import { getDisputeTypeMeta, getPriorityMeta } from './disputeWorkflow';
 import type { DisputeForAdmin, DisputeStatsDto, DisputeStatus, DisputeType, ListSortDirection } from '../../types/admin.types';
-import { formatCurrency, formatRelativeTime, formatDisputeType } from '../../utils/formatters';
-import { parseIdFilter } from '../../utils/idFilter';
+import { formatRelativeTime } from '../../utils/formatters';
 import { ADMIN_PAGE_SIZE } from '@/constants/pagination';
 import { toast } from 'react-toastify';
 import { apiErrorMessage } from '../../utils/apiError';
@@ -63,10 +62,6 @@ const AdminDisputesPage = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [stats, setStats] = useState<DisputeStatsDto | null>(null);
 
-    // Ô nhập id buổi học và giá trị đã áp dụng tách riêng: lọc ở server nên chỉ
-    // gọi lại API khi admin bấm áp dụng, không phải mỗi lần gõ một chữ số.
-    const [classSessionInput, setClassSessionInput] = useState('');
-    const [classSessionFilter, setClassSessionFilter] = useState<number | undefined>(undefined);
     const [disputeTypeFilter, setDisputeTypeFilter] = useState<DisputeType | ''>('');
     const [sortDirection, setSortDirection] = useState<ListSortDirection>('desc');
     const latestRequest = useRef(0);
@@ -102,7 +97,6 @@ const AdminDisputesPage = () => {
                 status: statusFilter,
                 disputeType: disputeTypeFilter || undefined,
                 search: searchQuery || undefined,
-                classSessionId: classSessionFilter,
                 sortDirection,
                 page,
                 pageSize: PAGE_SIZE,
@@ -127,7 +121,7 @@ const AdminDisputesPage = () => {
         } finally {
             if (requestId === latestRequest.current) setLoading(false);
         }
-    }, [activeTab, classSessionFilter, disputeTypeFilter, page, searchQuery, sortDirection, updateQuery]);
+    }, [activeTab, disputeTypeFilter, page, searchQuery, sortDirection, updateQuery]);
 
     const applySearch = () => {
         setSearchQuery(searchInput.trim());
@@ -140,15 +134,13 @@ const AdminDisputesPage = () => {
         updateQuery({ page: 1 });
     };
 
-    const applyClassSessionFilter = () => {
-        setClassSessionFilter(parseIdFilter(classSessionInput));
-        updateQuery({ page: 1 });
-    };
-
-    const clearClassSessionFilter = () => {
-        setClassSessionInput('');
-        setClassSessionFilter(undefined);
-        updateQuery({ page: 1 });
+    /** Một nút gom hết: từ khoá, loại phản ánh, thứ tự và cả tab trạng thái. */
+    const resetAllFilters = () => {
+        setSearchInput('');
+        setSearchQuery('');
+        setDisputeTypeFilter('');
+        setSortDirection('desc');
+        updateQuery({ status: 'all', page: 1 });
     };
 
     const handleStatusChange = (key: string) => {
@@ -196,7 +188,16 @@ const AdminDisputesPage = () => {
         };
     }, [fetchDisputes]);
 
-    const totalActive = stats ? stats.totalPending + stats.totalInvestigating : 0;
+    const hasActiveFilters =
+        Boolean(searchInput || searchQuery || disputeTypeFilter)
+        || activeTab !== 'all'
+        || sortDirection !== 'desc';
+
+    const resultSummary = loading
+        ? 'Đang tải hồ sơ…'
+        : totalCount === 0
+          ? 'Không có hồ sơ nào phù hợp'
+          : `${totalCount} hồ sơ phù hợp`;
 
     const disputeTabs = useMemo(
         () => [
@@ -215,71 +216,64 @@ const AdminDisputesPage = () => {
             key: 'case',
             title: 'Hồ sơ',
             render: (dispute) => (
-                <button
-                    type="button"
-                    className="admin-ui-entity dispute-list-case-link"
-                    aria-label={`Mở hồ sơ phản ánh ${dispute.disputeId}`}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(`/admin-portal/disputes/${dispute.disputeId}`);
-                    }}
-                >
+                <div className="admin-ui-entity">
                     <span className="admin-ui-code-chip">#{dispute.disputeId}</span>
                     <span className="admin-ui-entity-secondary">
                         {dispute.createdAt ? formatRelativeTime(dispute.createdAt) : 'Chưa có thời gian'}
                     </span>
-                </button>
+                </div>
             ),
             width: 118,
         },
         {
             key: 'issue',
             title: 'Nội dung phản ánh',
-            render: (dispute) => (
-                <div className="admin-ui-entity">
-                    <span className="admin-ui-entity-primary">
-                        {dispute.disputeTypeDisplay || formatDisputeType(dispute.disputeType || '')}
-                    </span>
-                    <span className="admin-ui-entity-secondary dispute-list-reason">{dispute.reason || 'Không có mô tả bổ sung'}</span>
-                </div>
-            ),
-            minWidth: 250,
+            render: (dispute) => {
+                const type = getDisputeTypeMeta(dispute.disputeType, dispute.disputeTypeDisplay);
+                return (
+                    <div className="dispute-issue" title={dispute.reason || undefined}>
+                        <span className={`dispute-issue-icon is-${type.tone}`} aria-hidden="true">
+                            <span className="material-symbols-outlined">{type.icon}</span>
+                        </span>
+                        <span className="admin-ui-entity-primary">{type.label}</span>
+                    </div>
+                );
+            },
+            width: 172,
         },
         {
+            /* Một dòng "người gửi → gia sư". Hai nhãn vai trò cũ ("Người gửi phản ánh" /
+               "Gia sư") lặp lại y hệt ở mọi dòng nên không phân biệt được dòng nào với dòng
+               nào — mũi tên đã nói đủ chiều, phần còn lại đẩy vào tooltip. */
             key: 'parties',
             title: 'Các bên liên quan',
-            render: (dispute) => (
-                <div className="dispute-list-parties">
-                    <div className="admin-ui-entity">
-                        <span className="admin-ui-entity-primary">{dispute.createdByName || 'Chưa xác định'}</span>
-                        <span className="admin-ui-entity-secondary">Người gửi phản ánh</span>
-                    </div>
-                    <span className="material-symbols-outlined dispute-list-arrow" aria-hidden="true">
-                        arrow_forward
+            render: (dispute) => {
+                const from = dispute.createdByName || 'Chưa xác định';
+                const to = dispute.tutorName || 'Chưa xác định';
+                return (
+                    <span className="dispute-parties" title={`Người gửi phản ánh: ${from} → Gia sư: ${to}`}>
+                        <span className="dispute-party">{from}</span>
+                        <span className="material-symbols-outlined dispute-parties-arrow" aria-hidden="true">
+                            arrow_right_alt
+                        </span>
+                        <span className="dispute-party is-tutor">{to}</span>
                     </span>
-                    <div className="admin-ui-entity">
-                        <span className="admin-ui-entity-primary">{dispute.tutorName || 'Chưa xác định'}</span>
-                        <span className="admin-ui-entity-secondary">Gia sư</span>
-                    </div>
-                </div>
-            ),
-            minWidth: 260,
+                );
+            },
+            minWidth: 240,
         },
         {
-            key: 'amount',
+            /* Chỉ còn mã buổi học. Học phí đã bỏ: nó không giúp phân loại hay sắp xếp gì ở
+               màn danh sách, mà số tiền chính xác thì trang chi tiết mới là nơi để đọc. */
+            key: 'session',
             title: 'Buổi học',
             render: (dispute) => (
-                <div className="admin-ui-entity">
-                    <span className="admin-ui-amount">{formatCurrency(dispute.classSessionPrice || 0)}</span>
-                    <span className="admin-ui-entity-secondary">#{dispute.classSessionId || 'N/A'}</span>
-                </div>
+                <span className="admin-ui-code-chip">
+                    {dispute.classSessionId ? `#${dispute.classSessionId}` : '—'}
+                </span>
             ),
+            width: 92,
             hideOnTablet: true,
-        },
-        {
-            key: 'status',
-            title: 'Trạng thái',
-            render: (dispute) => <StatusBadge variant={getStatusVariant(dispute.status)}>{getStatusLabel(dispute)}</StatusBadge>,
         },
         {
             key: 'priority',
@@ -297,14 +291,41 @@ const AdminDisputesPage = () => {
                                 : undefined
                         }
                     >
+                        {/* Không kèm icon: mức "Trung bình" dùng `horizontal_rule`, hiện ra
+                            thành một gạch ngang đứng trước chữ và bị đọc nhầm là dấu trừ. */}
                         <StatusBadge variant={priority.variant} shape="tag">
-                            <span className="material-symbols-outlined" aria-hidden="true">{priority.icon}</span>
                             {priority.label}
                         </StatusBadge>
                     </span>
                 );
             },
             hideOnTablet: true,
+        },
+        {
+            key: 'status',
+            title: 'Trạng thái',
+            render: (dispute) => <StatusBadge variant={getStatusVariant(dispute.status)}>{getStatusLabel(dispute)}</StatusBadge>,
+        },
+        {
+            key: 'actions',
+            title: '',
+            render: (dispute) => (
+                <div className="admin-ui-row-actions">
+                    <button
+                        type="button"
+                        className="admin-ui-row-btn"
+                        aria-label={`Xem chi tiết hồ sơ phản ánh #${dispute.disputeId}`}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/admin-portal/disputes/${dispute.disputeId}`);
+                        }}
+                    >
+                        <span className="material-symbols-outlined">visibility</span>
+                        <span className="admin-ui-row-btn-label">Xem</span>
+                    </button>
+                </div>
+            ),
+            width: 84,
         },
     ];
 
@@ -329,136 +350,136 @@ const AdminDisputesPage = () => {
                 </button>
             }
         >
-            <div className="admin-ui-kpi-grid dispute-kpi-grid">
-                <StatCard
-                    icon={<span className="material-symbols-outlined">folder_open</span>}
-                    value={stats?.totalPending ?? '...'}
-                    label="Chờ tiếp nhận"
-                    badge={totalActive > 0 ? `${totalActive} đang mở` : undefined}
-                    badgeVariant="orange"
-                    onClick={() => handleStatusChange('pending')}
-                />
-                <StatCard
-                    icon={<span className="material-symbols-outlined">search</span>}
-                    value={stats?.totalInvestigating ?? '...'}
-                    label="Đang xem xét"
-                    badgeVariant="blue"
-                    onClick={() => handleStatusChange('investigating')}
-                />
-                <StatCard
-                    icon={<span className="material-symbols-outlined">check_circle</span>}
-                    value={stats?.resolvedThisMonth ?? '...'}
-                    label="Đã hoàn tất tháng này"
-                    badge={stats ? `Hoàn ${formatCurrency(stats.totalRefundedThisMonth)}` : undefined}
-                    badgeVariant="green"
-                    onClick={() => handleStatusChange('resolved')}
-                />
-            </div>
-
-            <SectionCard
-                footer={
-                    classSessionFilter !== undefined
-                        ? `Hiển thị ${disputes.length} / ${totalCount} hồ sơ về buổi học #${classSessionFilter}`
-                        : `Hiển thị ${disputes.length} / ${totalCount} hồ sơ`
-                }
-            >
-                <div className="admin-ui-toolbar dispute-list-tabs-toolbar">
-                    <FilterTabs
-                        tabs={disputeTabs}
-                        activeKey={activeTab}
-                        onChange={handleStatusChange}
-                        ariaLabel="Lọc hồ sơ theo trạng thái"
-                    />
-                </div>
-                <div className="admin-ui-toolbar dispute-list-toolbar">
-                    <form
-                        className="dispute-list-search-form"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            applySearch();
-                        }}
-                    >
-                        <div className="admin-ui-search">
-                            <span className="material-symbols-outlined admin-ui-search-icon">search</span>
-                            <input
-                                className="admin-ui-search-input"
-                                aria-label="Tìm kiếm phản ánh"
-                                placeholder="Tìm mã hồ sơ, người dùng hoặc nội dung..."
-                                type="search"
-                                value={searchInput}
-                                onChange={(event) => setSearchInput(event.target.value)}
+            <SectionCard className="dispute-list-card">
+                <div className="dispute-scope admin-ui-list-scope">
+                    <div className="admin-ui-list-tabsbar">
+                        {/* Trạng thái và loại phản ánh đều là bộ lọc thu hẹp danh sách, nên đứng
+                            chung một cụm; ô tìm kiếm tách xuống hàng riêng bên dưới. */}
+                        <div className="dispute-filter-cluster">
+                            <FilterTabs
+                                tabs={disputeTabs}
+                                activeKey={activeTab}
+                                onChange={handleStatusChange}
+                                ariaLabel="Lọc hồ sơ theo trạng thái"
                             />
+
+                            <div
+                                className="admin-ui-list-filters"
+                                role="group"
+                                aria-label="Bộ lọc hồ sơ"
+                            >
+                                <label className="admin-ui-list-field">
+                                    <span className="admin-ui-visually-hidden">Loại phản ánh</span>
+                                    <span className="material-symbols-outlined admin-ui-list-field-icon">
+                                        filter_alt
+                                    </span>
+                                    <select
+                                        className="admin-ui-list-select"
+                                        value={disputeTypeFilter}
+                                        aria-label="Lọc theo loại phản ánh"
+                                        onChange={(event) =>
+                                            handleDisputeTypeChange(
+                                                event.target.value as DisputeType | '',
+                                            )
+                                        }
+                                    >
+                                        <option value="">Mọi loại phản ánh</option>
+                                        <option value="no_show">Vắng mặt</option>
+                                        <option value="quality">Chất lượng</option>
+                                        <option value="payment">Thanh toán</option>
+                                        <option value="other">Khác</option>
+                                    </select>
+                                </label>
+
+                                {hasActiveFilters && (
+                                    <button
+                                        type="button"
+                                        className="admin-ui-list-reset"
+                                        onClick={resetAllFilters}
+                                    >
+                                        <span className="material-symbols-outlined">restart_alt</span>
+                                        Đặt lại
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                        <button type="submit" className="admin-ui-button admin-ui-button-secondary">
-                            Tìm kiếm
-                        </button>
-                        {(searchInput || searchQuery) && (
-                            <button type="button" className="admin-ui-button admin-ui-button-secondary" onClick={clearSearch}>
-                                Xóa
-                            </button>
-                        )}
-                    </form>
 
-                    <div className="dispute-list-filter dispute-list-filter--select">
-                        <label className="dispute-list-filter__label" htmlFor="dispute-type-filter">
-                            Loại phản ánh
+                        <label className="admin-ui-list-field admin-ui-list-field--sort">
+                            <span className="admin-ui-visually-hidden">Sắp xếp</span>
+                            <span className="material-symbols-outlined admin-ui-list-field-icon">
+                                swap_vert
+                            </span>
+                            <select
+                                className="admin-ui-list-select"
+                                value={sortDirection}
+                                aria-label="Sắp xếp danh sách"
+                                onChange={(event) =>
+                                    handleSortDirectionChange(event.target.value as ListSortDirection)
+                                }
+                            >
+                                <option value="desc">Mới nhất trước</option>
+                                <option value="asc">Cũ nhất trước</option>
+                            </select>
                         </label>
-                        <select
-                            id="dispute-type-filter"
-                            className="dispute-list-filter__select"
-                            value={disputeTypeFilter}
-                            onChange={(event) => handleDisputeTypeChange(event.target.value as DisputeType | '')}
-                        >
-                            <option value="">Tất cả loại</option>
-                            <option value="no_show">Vắng mặt</option>
-                            <option value="quality">Chất lượng</option>
-                            <option value="payment">Thanh toán</option>
-                            <option value="other">Khác</option>
-                        </select>
                     </div>
 
-                    <div className="dispute-list-filter">
-                        <label className="dispute-list-filter__label" htmlFor="dispute-class-session-filter">
-                            ID buổi học
-                        </label>
-                        <input
-                            id="dispute-class-session-filter"
-                            className="dispute-list-filter__input"
-                            type="number"
-                            min={1}
-                            inputMode="numeric"
-                            placeholder="VD: 12345"
-                            value={classSessionInput}
-                            onChange={(event) => setClassSessionInput(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') applyClassSessionFilter();
+                    <div className="admin-ui-list-toolbar">
+                        <form
+                            className="admin-ui-list-search-form"
+                            role="search"
+                            aria-label="Tìm hồ sơ phản ánh"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                applySearch();
                             }}
-                        />
-                        <button type="button" className="admin-ui-button admin-ui-button-secondary" onClick={applyClassSessionFilter}>
-                            Áp dụng
-                        </button>
-                        {classSessionFilter !== undefined && (
-                            <button type="button" className="admin-ui-button admin-ui-button-secondary" onClick={clearClassSessionFilter}>
-                                Bỏ lọc
+                        >
+                            <div className="admin-ui-list-search">
+                                <label className="admin-ui-visually-hidden" htmlFor="dispute-search">
+                                    Mã hồ sơ, người dùng hoặc nội dung
+                                </label>
+                                <span className="material-symbols-outlined admin-ui-list-search-icon">
+                                    search
+                                </span>
+                                <input
+                                    id="dispute-search"
+                                    className="admin-ui-list-search-input"
+                                    placeholder="Tìm mã hồ sơ, mã buổi học, tên người dùng hoặc nội dung…"
+                                    type="search"
+                                    autoComplete="off"
+                                    value={searchInput}
+                                    onChange={(event) => setSearchInput(event.target.value)}
+                                />
+                                {searchInput && (
+                                    <button
+                                        type="button"
+                                        className="admin-ui-list-search-clear"
+                                        onClick={clearSearch}
+                                        aria-label="Xoá từ khoá"
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                type="submit"
+                                className="admin-ui-list-btn admin-ui-list-btn-primary"
+                                disabled={searchInput.trim() === searchQuery}
+                            >
+                                <span className="material-symbols-outlined">search</span>
+                                Tìm
                             </button>
-                        )}
+                        </form>
                     </div>
 
-                    <div className="dispute-list-filter">
-                        <label className="dispute-list-filter__label" htmlFor="dispute-sort-direction">
-                            Sắp xếp
-                        </label>
-                        <select
-                            id="dispute-sort-direction"
-                            className="dispute-list-filter__select"
-                            value={sortDirection}
-                            onChange={(event) => handleSortDirectionChange(event.target.value as ListSortDirection)}
+                    <div className="admin-ui-list-resultbar" role="status" aria-live="polite">
+                        <span
+                            className={`material-symbols-outlined ${loading ? 'admin-ui-list-spin' : ''}`}
+                            aria-hidden="true"
                         >
-                            <option value="desc">Mới nhất trước</option>
-                            <option value="asc">Cũ nhất trước</option>
-                        </select>
+                            {loading ? 'progress_activity' : 'gavel'}
+                        </span>
+                        <strong>{resultSummary}</strong>
                     </div>
-                </div>
 
                 {loadError && (
                     <div className="dispute-list-load-error" role="alert">
@@ -490,11 +511,9 @@ const AdminDisputesPage = () => {
                     emptyText={
                         loadError
                             ? 'Danh sách chưa tải được'
-                            : classSessionFilter !== undefined
-                              ? `Không có phản ánh nào về buổi học #${classSessionFilter}`
-                              : searchQuery || disputeTypeFilter || activeTab !== 'all'
-                                ? 'Không tìm thấy phản ánh phù hợp'
-                                : 'Chưa có phản ánh nào'
+                            : searchQuery || disputeTypeFilter || activeTab !== 'all'
+                              ? 'Không tìm thấy phản ánh phù hợp'
+                              : 'Chưa có phản ánh nào'
                     }
                     emptyIcon={
                         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#94a3b8' }}>
@@ -506,6 +525,7 @@ const AdminDisputesPage = () => {
                     density="compact"
                     adaptive
                 />
+                </div>
             </SectionCard>
         </PageContainer>
     );
