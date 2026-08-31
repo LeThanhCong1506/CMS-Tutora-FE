@@ -6,6 +6,7 @@ import { getRevenueOverview, getRevenueRecognition } from '@/services/revenueRep
 import type { RevenueRange } from '@/services/revenueReports.service';
 import type { RevenueRecognitionResponse } from '@/types/revenueReports.types';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
+import { useCommissionPercents } from '@/hooks/useCommissionPercents';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { count, money, moneyVnd } from '@/utils/formatMoney';
 import MetricCard from '../components/MetricCard';
@@ -70,6 +71,8 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
     const overview = useRevenueReport(getRevenueOverview, range);
     const recognition = useRevenueReport(getRevenueRecognition, range);
     const [sort, setSort] = useState<SortKey>('newest');
+    // Mức phí sàn admin đang đặt, không phải hằng số 5%/5% viết cứng trong giao diện.
+    const percents = useCommissionPercents();
     const bookingPage = useClientPagination(sortBookings(recognition.data?.bookingProgress, sort));
 
     // Trang lấy dữ liệu từ hai endpoint. Chỉ vẽ khi cả hai đã về, nếu không các con số ở đầu
@@ -81,7 +84,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         recognition.reload();
     };
 
-    if (loading) return <ReportSkeleton charts={3} />;
+    if (loading) return <ReportSkeleton strip metrics={3} charts={3} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!overview.data || !recognition.data) return null;
 
@@ -101,23 +104,34 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         .filter(Boolean)
         .join(' · ');
 
+    // Phí phụ huynh 5% = tổng đã thu trừ học phí gốc. Chặn dưới ở 0 phòng khi backend cũ
+    // chưa trả `baseAmount` và phép trừ ra số âm.
+    const parentFee = Math.max(s.gmv - s.baseAmount, 0);
+
     return (
         <div className="rev-stack">
-            <MoneySplit
-                gmv={s.gmv}
-                baseAmount={s.baseAmount}
-                tutorReceivable={s.tutorReceivable}
-                commissionSold={s.commissionSold}
-                commissionEarned={s.commissionEarned}
-                commissionFromCancelled={s.commissionFromCancelled}
-            />
-
-            {/* Hai thẻ này cố ý KHÔNG lặp lại con số nào có trong khối chia tiền phía trên. Cả
-                trang bám một mốc duy nhất — booking tạo trong kỳ — nên không còn cảnh hai con số
-                cùng mang chữ "doanh thu" đứng cạnh nhau mà tính theo hai mốc khác nhau. */}
-            <div className="rev-metric-grid">
+            {/* Dải chỉ số đầu trang và thẻ phân bổ bên dưới cố ý KHÔNG lặp con số của nhau:
+                ở đây là các con số tổng, bên dưới là cách chúng được chia. Cả trang bám một
+                mốc duy nhất — booking tạo trong kỳ — nên không còn cảnh hai con số cùng mang
+                chữ "doanh thu" đứng cạnh nhau mà tính theo hai mốc khác nhau. */}
+            <div className="rev-strip">
+                <MetricCard
+                    icon="account_balance_wallet"
+                    tone="blue"
+                    value={moneyVnd(s.gmv)}
+                    label="Tiền phụ huynh trả"
+                    subLabel={
+                        `Học phí gốc ${money(s.baseAmount)} · Phí phụ huynh ${money(parentFee)}`
+                    }
+                    hint={
+                        'Tổng tiền phụ huynh phải trả cho các lịch đặt trong kỳ'
+                        + (percents ? `, đã gồm ${percents.parent}% phí phụ huynh` : '')
+                        + '. Trừ hoa hồng Tutora ra đúng số tiền gia sư nhận.'
+                    }
+                />
                 <MetricCard
                     icon="undo"
+                    tone="red"
                     value={moneyVnd(rf.amount)}
                     label="Đã hoàn tiền"
                     subLabel={`${count(rf.count)} lượt hoàn`}
@@ -135,6 +149,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                 />
                 <MetricCard
                     icon="running_with_errors"
+                    tone="orange"
                     value={count(st.count)}
                     label="Booking dừng sau đợt 1"
                     subLabel={stalledDetail}
@@ -149,6 +164,15 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                 />
             </div>
 
+            <MoneySplit
+                gmv={s.gmv}
+                tutorReceivable={s.tutorReceivable}
+                commissionSold={s.commissionSold}
+                commissionEarned={s.commissionEarned}
+                commissionFromCancelled={s.commissionFromCancelled}
+                percents={percents}
+            />
+
             <ChartBlock
                 title="Doanh thu theo thời gian"
                 hint="Đường liền là doanh thu thật, chỉ tính buổi đã dạy xong. Đường đứt là số sẽ ra nếu tính ngay lúc khách đặt lịch. Hai đường càng xa nhau thì phần doanh thu chưa được phép ghi nhận càng lớn."
@@ -156,7 +180,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                 <LineTrendChart
                     data={overview.data.trend}
                     xKey="month"
-                    height={280}
+                    height={260}
                     series={[
                         {
                             key: 'recognised',
@@ -182,7 +206,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     <BarGroupChart
                         data={data.deferredAging}
                         xKey="bucket"
-                        height={280}
+                        height={240}
                         series={[{ key: 'amount', name: 'Giá trị', color: PALETTE.amber }]}
                     />
                 </ChartBlock>
@@ -194,7 +218,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     <BarGroupChart
                         data={data.refundTrend}
                         xKey="month"
-                        height={280}
+                        height={240}
                         series={[{ key: 'amount', name: 'Hoàn tiền', color: PALETTE.red }]}
                     />
                 </ChartBlock>
@@ -202,7 +226,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
 
             <DataTableShell
                 title="Doanh thu theo booking"
-                subtitle="Tiến độ dạy và doanh thu của từng lịch. Bấm “Chi tiết” để xem tách phí phụ huynh và phí gia sư."
+                subtitle="Tiến độ dạy và doanh thu của từng lịch. Bấm “Xem” để tách phí phụ huynh và phí gia sư."
                 action={
                     <div className="rev-segmented" role="tablist" aria-label="Cách sắp xếp">
                         {SORTS.map((item) => (
@@ -283,9 +307,11 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                                         <td>
                                             <Link
                                                 to={`/admin-portal/bookings/${b.bookingId}`}
-                                                className="rev-detail-link"
+                                                className="admin-ui-row-btn"
+                                                aria-label={`Xem chi tiết booking #${b.bookingId}`}
                                             >
-                                                Chi tiết
+                                                <span className="material-symbols-outlined">visibility</span>
+                                                <span className="admin-ui-row-btn-label">Xem</span>
                                             </Link>
                                         </td>
                                     </tr>
