@@ -26,6 +26,11 @@ const OUTCOMES: { value: CloseDisputeOutcome; title: string; desc: string }[] = 
         title: 'Học lại buổi này',
         desc: 'Buổi gốc chuyển "Đã hủy" (dữ liệu vẫn giữ), tạo buổi học lại mới vào giờ bạn chọn.',
     },
+    {
+        value: 'keep_scheduled',
+        title: 'Bỏ phản ánh, giữ nguyên buổi học',
+        desc: 'Buổi về lại "Sắp diễn ra", hai bên vào lớp như bình thường. Không đụng tới tiền.',
+    },
 ];
 
 interface CloseDisputeModalProps {
