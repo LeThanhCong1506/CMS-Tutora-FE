@@ -9,12 +9,14 @@ import {
 import type { RevenueRange } from '../services/revenueReports.service';
 
 /**
- * Mặc định của báo cáo doanh thu: 12 tháng.
+ * Mặc định của báo cáo doanh thu: 30 ngày — cùng mốc với dashboard.
  *
- * Khác dashboard (30 ngày) một cách có chủ đích — doanh thu phát sinh thưa hơn nhiều so với
- * lượt truy cập, nên 30 ngày thường cho biểu đồ theo tháng chỉ có một cột.
+ * Trước đây để 12 tháng, với lý do "30 ngày thì biểu đồ theo tháng chỉ có một cột". Lý do đó
+ * không còn đúng: `AdminRevenueAnalyticsService.TimeBuckets` tự đổi độ chia theo độ dài
+ * khoảng — dưới 31 ngày thì chia theo NGÀY, dưới 90 ngày chia theo TUẦN, dài hơn mới theo
+ * tháng. Nên 30 ngày cho ra 30 cột chứ không phải một.
  */
-const REVENUE_DEFAULT_SELECTION: DashboardRangeSelection = { kind: 'preset', preset: '12m' };
+const REVENUE_DEFAULT_SELECTION: DashboardRangeSelection = { kind: 'preset', preset: '30d' };
 
 /**
  * Khoảng thời gian của cụm báo cáo doanh thu, đồng bộ với `?range=` trên URL.

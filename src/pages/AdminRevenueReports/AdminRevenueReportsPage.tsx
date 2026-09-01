@@ -27,9 +27,9 @@ const MERGED_AWAY = ['recognition'];
 
 const tabSubtitle: Record<TabSlug, string> = {
     overview: 'Tiền vào chia cho ai, bao nhiêu đã thành doanh thu, và rủi ro đang treo ở đâu.',
-    tutors: 'Hoa hồng theo gia sư và mức độ tập trung rủi ro.',
+    tutors: 'Doanh thu theo gia sư và mức độ tập trung rủi ro.',
     customers: 'Chi tiêu, giữ chân và giá trị khách hàng.',
-    subjects: 'Hoa hồng theo môn học và khối lớp.',
+    subjects: 'Doanh thu theo môn học và khối lớp.',
     ai: 'Doanh số gói AI và mức độ sử dụng.',
 };
 
@@ -59,25 +59,28 @@ const AdminRevenueReportsPage = () => {
             eyebrowInfo={tabSubtitle[active]}
             title="Báo cáo doanh thu"
             maxWidth="wide"
-            // Bộ chọn khoảng thời gian áp cho MỌI tab, nên nó thuộc về hàng tiêu đề chứ không
-            // phải thanh tab. Để chung một hàng với tab thì trang mất hẳn một dòng chỉ để chứa
-            // hai nhóm nút, mà nhóm bên phải lại không đổi khi bấm tab.
+            // Hàng tiêu đề chỉ chứa bộ chọn thời gian. Từng thử nhét cả thanh tab vào đây để
+            // tiết kiệm một hàng, nhưng nhìn thật thì hỏng: tab và các nút chọn kỳ đều là pill
+            // cùng cỡ, xếp liền nhau thì mắt đọc thành MỘT dải chín nút, không còn thấy đó là
+            // hai nhóm điều khiển làm hai việc khác hẳn nhau. Đổi một hàng bố cục lấy sự rõ
+            // ràng đó là đáng.
             headerAction={<DashboardRangePicker selection={selection} onChange={setSelection} />}
         >
-            <div className="rev-toolbar">
-                <nav className="rev-tabs" aria-label="Nhóm báo cáo">
-                    {TABS.map((t) => (
-                        <NavLink
-                            key={t.slug}
-                            to={linkTo(t.slug)}
-                            className={t.slug === active ? 'is-active' : ''}
-                        >
-                            <span className="material-symbols-outlined">{t.icon}</span>
-                            {t.label}
-                        </NavLink>
-                    ))}
-                </nav>
-            </div>
+            {/* `.rev-tabs` tự bám mép trái bằng `align-self` nên không cần <div> bọc. Bản trước
+                có một lớp bọc thừa với `justify-content: space-between` cho đúng MỘT phần tử
+                con — tàn dư từ thời bộ chọn kỳ còn nằm chung hàng. */}
+            <nav className="rev-tabs" aria-label="Nhóm báo cáo">
+                {TABS.map((t) => (
+                    <NavLink
+                        key={t.slug}
+                        to={linkTo(t.slug)}
+                        className={t.slug === active ? 'is-active' : ''}
+                    >
+                        <span className="material-symbols-outlined">{t.icon}</span>
+                        {t.label}
+                    </NavLink>
+                ))}
+            </nav>
 
             {active === 'overview' && <RevenueTab range={range} />}
             {active === 'tutors' && <TutorsTab range={range} />}

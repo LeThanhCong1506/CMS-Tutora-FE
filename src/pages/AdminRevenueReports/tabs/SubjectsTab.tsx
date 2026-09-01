@@ -17,13 +17,13 @@ import {
     LineTrendChart,
     RankBarChart,
 } from '@/components/shared/RevenueCharts/RevenueCharts';
-import { PALETTE, SERIES_COLORS } from '@/components/shared/RevenueCharts/revenueChartTheme';
+import { PALETTE, SERIES_COLORS, rankHeight } from '@/components/shared/RevenueCharts/revenueChartTheme';
 
 const SubjectsTab = ({ range }: { range: RevenueRange }) => {
     const { data, loading, error, reload } = useRevenueReport(getSubjectRevenue, range);
     const subjectPage = useClientPagination(data?.subjects ?? []);
 
-    if (loading) return <ReportSkeleton charts={4} />;
+    if (loading) return <ReportSkeleton charts={3} splits={1} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!data) return null;
 
@@ -53,10 +53,10 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                 <MetricCard
                     icon="category"
                     value={moneyVnd(totalRevenue)}
-                    label="Hoa hồng theo môn"
+                    label="Doanh thu theo môn"
                     subLabel={`${data.subjects.length} môn đang có giao dịch`}
                     badgeVariant="green"
-                    hint="Tổng hoa hồng nền tảng thu được từ các buổi đã dạy, cộng theo tất cả môn học trong kỳ."
+                    hint="Tổng doanh thu đã ghi nhận trong kỳ, cộng theo tất cả môn học: phí phụ huynh (tính từ khi buổi đầu đã dạy) cộng phí gia sư của các buổi đã dạy."
                 />
                 <MetricCard
                     icon="trophy"
@@ -64,7 +64,7 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                     label="Môn dẫn đầu"
                     subLabel={`${moneyVnd(topSubject.platformRevenue)}${totalRevenue > 0 ? ` · ${((topSubject.platformRevenue / totalRevenue) * 100).toFixed(0)}% doanh thu` : ''}`}
                     badgeVariant="blue"
-                    hint="Môn mang lại nhiều hoa hồng nhất. Nếu một môn chiếm quá nửa doanh thu thì nền tảng đang phụ thuộc rủi ro vào một sản phẩm duy nhất."
+                    hint="Môn mang lại nhiều doanh thu nhất. Nếu một môn chiếm quá nửa doanh thu thì nền tảng đang phụ thuộc rủi ro vào một sản phẩm duy nhất."
                 />
                 {topGrade && (
                     <MetricCard
@@ -79,44 +79,53 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                 <MetricCard
                     icon="account_balance"
                     value={moneyVnd(totalDeferred)}
-                    label="Doanh thu chờ ghi nhận"
-                    subLabel={`${totalDeferred + totalRevenue > 0 ? ((totalDeferred / (totalDeferred + totalRevenue)) * 100).toFixed(0) : 0}% hoa hồng đã bán chưa dạy`}
+                    label="Doanh thu còn chờ"
+                    subLabel={`${totalDeferred + totalRevenue > 0 ? ((totalDeferred / (totalDeferred + totalRevenue)) * 100).toFixed(0) : 0}% doanh thu đã bán chưa dạy`}
                     badgeVariant="orange"
-                    hint="Hoa hồng của những buổi đã bán nhưng chưa dạy. Chỉ tính phần hoa hồng, không gồm tiền thuộc về gia sư."
+                    hint="Doanh thu tạm tính của những buổi đã bán nhưng chưa dạy. Chỉ tính phần của Tutora, không gồm tiền thuộc về gia sư."
                 />
             </div>
 
-            <div className="rev-grid-2">
-                <ChartBlock
-                    title="Cơ cấu doanh thu theo môn"
-                    hint="Tỷ trọng từng môn trong tổng doanh thu. Nếu một môn chiếm quá nửa, nền tảng đang phụ thuộc rủi ro vào một sản phẩm duy nhất."
-                >
-                    <DonutChart
-                        data={data.subjects.map((s) => ({
-                            name: s.subjectName,
-                            value: s.platformRevenue,
-                        }))}
-                        centerLabel="Tổng"
-                        height={300}
-                    />
-                </ChartBlock>
+            {/* Hai lát cắt ngang hàng của cùng một câu hỏi "tiền đến từ đâu": theo môn và
+                theo khối lớp. Gộp một khung, hai ô ngăn bằng kẻ dọc. */}
+            <ChartBlock
+                title="Doanh thu đến từ đâu"
+                split={[
+                    {
+                        label: 'Theo môn học',
+                        hint: 'Tỷ trọng từng môn trong tổng doanh thu. Nếu một môn chiếm quá nửa, nền tảng đang phụ thuộc rủi ro vào một sản phẩm duy nhất.',
+                        node: (
+                            <DonutChart
+                                data={data.subjects.map((s) => ({
+                                    name: s.subjectName,
+                                    value: s.platformRevenue,
+                                }))}
+                                centerLabel="Tổng"
+                                height={240}
+                            />
+                        ),
+                    },
+                    {
+                        label: 'Theo khối lớp',
+                        hint: 'Khối lớp nào chi nhiều nhất. Lớp cuối cấp thường chiếm tỷ trọng lớn do nhu cầu thi cử — nếu không phải vậy, có thể đang bỏ lỡ phân khúc.',
+                        node: (
+                            <RankBarChart
+                                data={data.grades.map((g) => ({ ...g, label: g.gradeName }))}
+                                labelKey="label"
+                                valueKey="platformRevenue"
+                                name="Doanh thu đã ghi nhận"
+                                color={PALETTE.gold}
+                                height={rankHeight(data.grades.length)}
+                            />
+                        ),
+                    },
+                ]}
+            />
 
-                <ChartBlock
-                    title="Doanh thu theo khối lớp"
-                    hint="Khối lớp nào chi nhiều nhất. Lớp cuối cấp thường chiếm tỷ trọng lớn do nhu cầu thi cử — nếu không phải vậy, có thể đang bỏ lỡ phân khúc."
-                >
-                    <RankBarChart
-                        data={data.grades.map((g) => ({ ...g, label: g.gradeName }))}
-                        labelKey="label"
-                        valueKey="platformRevenue"
-                        name="Hoa hồng Tutora"
-                        color={PALETTE.gold}
-                        height={300}
-                    />
-                </ChartBlock>
-            </div>
-
-            {gradeNames.length > 0 && (
+            {/* Ma trận chỉ có nghĩa khi có ÍT NHẤT hai môn và hai khối để bắt chéo. Một hàng
+                hoặc một cột thì nó chỉ là biểu đồ cột được vẽ bằng ô màu — không nói thêm gì so
+                với hai biểu đồ ngay trên, mà vẫn chiếm trọn một khung 220px. */}
+            {subjectNames.length > 1 && gradeNames.length > 1 && (
                 <ChartBlock
                     title="Ma trận môn học × khối lớp"
                     hint="Giao điểm giữa môn và khối lớp. Ô sáng nhất là ngách nên tập trung nguồn lực. Ô trống là khoảng trống thị trường — có thể do thiếu gia sư chứ không phải không có nhu cầu."
@@ -138,7 +147,7 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                     <LineTrendChart
                         data={data.subjectTrend}
                         xKey="month"
-                        height={320}
+                        height={240}
                         series={trendKeys.map((name, i) => ({
                             key: name,
                             name,
@@ -148,6 +157,10 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                 </ChartBlock>
             )}
 
+            {/* Xếp hạng chỉ có nghĩa khi có nhiều hơn một môn để xếp. Một môn thì đây là một
+                cái cột đơn độc, trong khi cột "Hoàn thành" của bảng cuối trang đã nói đúng con
+                số đó. */}
+            {data.subjects.length > 1 && (
             <ChartBlock
                 title="Tỷ lệ hoàn thành theo môn"
                 hint="Môn tỷ lệ thấp là môn khách hay bỏ dở. Vừa tạo nợ dịch vụ vừa là dấu hiệu chất lượng giảng dạy hoặc kỳ vọng bị lệch."
@@ -161,9 +174,10 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                     name="Tỷ lệ hoàn thành"
                     color={PALETTE.emerald}
                     percent
-                    height={Math.max(220, data.subjects.length * 52 + 60)}
+                    height={rankHeight(data.subjects.length)}
                 />
             </ChartBlock>
+            )}
 
             <DataTableShell
                 title="Chi tiết theo môn học"
@@ -179,8 +193,8 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                         <tr>
                             <th>Môn học</th>
                             <th className="rev-num">Khách trả</th>
-                            <th className="rev-num">Hoa hồng</th>
-                            <th className="rev-num">Chờ ghi nhận</th>
+                            <th className="rev-num">Doanh thu</th>
+                            <th className="rev-num">Còn chờ</th>
                             <th className="rev-num">Booking</th>
                             <th className="rev-num">Buổi đã dạy</th>
                             <th className="rev-num">Giá trung bình</th>

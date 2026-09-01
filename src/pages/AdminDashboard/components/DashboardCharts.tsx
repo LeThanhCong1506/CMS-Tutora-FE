@@ -104,7 +104,7 @@ export const ChartLegend = ({ items }: { items: { label: string; color: string }
     </div>
 );
 
-// ─── 1. Xu hướng tài chính (GMV + Doanh thu nền tảng) ───
+// ─── 1. Xu hướng tài chính (Tiền phụ huynh trả + Doanh thu tạm tính) ───
 
 export const FinancialTrendChart = ({ data }: { data: FinancialTrendPoint[] }) => {
     if (!data || data.length === 0) return <ChartEmpty />;
@@ -112,8 +112,8 @@ export const FinancialTrendChart = ({ data }: { data: FinancialTrendPoint[] }) =
         <>
             <ChartLegend
                 items={[
-                    { label: 'Tổng giá trị giao dịch', color: CHART.gold },
-                    { label: 'Phí dịch vụ Tutora', color: CHART.navy },
+                    { label: 'Tiền phụ huynh trả', color: CHART.gold },
+                    { label: 'Doanh thu tạm tính', color: CHART.navy },
                 ]}
             />
             <ResponsiveContainer width="100%" height={280}>
@@ -145,7 +145,7 @@ export const FinancialTrendChart = ({ data }: { data: FinancialTrendPoint[] }) =
                     <Area
                         type="monotone"
                         dataKey="gmv"
-                        name="Tổng giá trị giao dịch"
+                        name="Tiền phụ huynh trả"
                         stroke={CHART.gold}
                         strokeWidth={2.5}
                         fill="url(#grad-gmv)"
@@ -153,7 +153,7 @@ export const FinancialTrendChart = ({ data }: { data: FinancialTrendPoint[] }) =
                     <Area
                         type="monotone"
                         dataKey="platformRevenue"
-                        name="Phí dịch vụ Tutora"
+                        name="Doanh thu tạm tính"
                         stroke={CHART.navy}
                         strokeWidth={2.5}
                         strokeDasharray="7 4"

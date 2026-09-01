@@ -202,8 +202,18 @@ const AdminDashboardPageEnhanced = () => {
 
     // Hai KPI tiền chỉ lấy từ summary. Không dùng số "tháng này" để thay cho
     // bộ lọc Hôm nay/7 ngày vì sẽ làm sai ngữ cảnh.
+    //
+    // Cả ba số tiền đều do AdminRevenueAnalyticsService tính, đúng service đứng sau trang Báo
+    // cáo doanh thu — nên chúng khớp từng đồng với trang đó. Đừng thay bằng phép tính tại chỗ.
     const gmvValue = summary?.gmv.value;
-    const revValue = summary?.platformRevenue.value;
+    // Doanh thu ĐÃ GHI NHẬN mới là con số to trên thẻ: đây là tiền thật đã kiếm được. Doanh thu
+    // tạm tính lùi xuống dòng phụ vì nó chỉ là phần đã bán, chưa dạy thì vẫn có thể mất — để
+    // nó làm số chính là báo doanh thu cao gấp mấy lần thực tế.
+    // Optional chaining tới tận `.value`: `recognisedRevenue` là trường MỚI của API. Backend
+    // chưa nạp bản mới thì nó về undefined, và `summary?.recognisedRevenue.value` sẽ ném lỗi
+    // làm trắng cả trang thay vì chỉ thiếu một con số.
+    const recognisedValue = summary?.recognisedRevenue?.value;
+    const contractedValue = summary?.platformRevenue.value;
     const activeBookings = summary?.bookings.active ?? booking?.activeBookings;
 
     const tutorApprovals = summary?.pendingActions.tutorApprovals ?? platform?.pendingTutorApprovals;
@@ -228,7 +238,7 @@ const AdminDashboardPageEnhanced = () => {
         .join(' · ');
 
     const gmvBadge = changeBadge(summary?.gmv.changePercent);
-    const revBadge = changeBadge(summary?.platformRevenue.changePercent);
+    const revBadge = changeBadge(summary?.recognisedRevenue?.changePercent);
 
     // ── Chart data ──
     const userRoleData = useMemo(() => {
@@ -292,25 +302,42 @@ const AdminDashboardPageEnhanced = () => {
 
             {/* ── KPI ROW ── */}
             <div className="admin-dash-kpis">
+                {/* Nhãn "Tiền phụ huynh trả" thay cho "Tổng giá trị giao dịch": cùng một chữ với
+                    trang Báo cáo doanh thu, và nói thẳng đây là tiền của khách chứ không phải
+                    tiền của Tutora — chính chỗ mà chữ "giao dịch" trừu tượng hay bị đọc nhầm
+                    thành doanh thu. GMV chỉ còn nhắc trong tooltip cho ai quen thuật ngữ. */}
                 <StatCard
                     icon={<span className="material-symbols-outlined">currency_exchange</span>}
                     value={loading ? '…' : formatDashboardCurrency(gmvValue)}
                     valueClassName="admin-kpi-exact-value"
-                    label="Tổng giá trị giao dịch"
+                    label="Tiền phụ huynh trả"
                     labelClassName="admin-kpi-friendly-label"
                     badge={gmvBadge?.text}
                     badgeVariant={gmvBadge?.variant}
-                    infoTooltip="Tổng giá trị các lượt đặt lịch hợp lệ phát sinh trong khoảng đã chọn, gồm cả phần thuộc về gia sư. Đây không phải doanh thu của Tutora; trong báo cáo tài chính chỉ số này còn gọi là GMV."
+                    infoTooltip="Tổng tiền phụ huynh phải trả cho các lịch đặt trong khoảng đã chọn, đã gồm phí phụ huynh. Phần lớn khoản này chảy về gia sư nên ĐÂY KHÔNG PHẢI doanh thu của Tutora — thuật ngữ tài chính gọi là GMV. Gồm cả lịch về sau bị huỷ mà phụ huynh đã trả tiền, nên khớp đúng với trang Báo cáo doanh thu."
                 />
+                {/* Thẻ này từng hiện doanh thu tạm tính và gọi nó là "Doanh thu từ phí dịch vụ" —
+                    con số cao gấp mấy lần tiền thật vì phần lớn buổi học chưa dạy. Giờ số to là
+                    tiền THẬT đã ghi nhận, còn phần đã bán lùi xuống dòng phụ để vẫn đối chiếu
+                    được với thanh phân bổ ở trang Báo cáo doanh thu. */}
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
-                    value={loading ? '…' : formatDashboardCurrency(revValue)}
+                    value={loading ? '…' : formatDashboardCurrency(recognisedValue)}
                     valueClassName="admin-kpi-exact-value"
-                    label="Doanh thu từ phí dịch vụ"
+                    label="Doanh thu đã ghi nhận"
                     labelClassName="admin-kpi-friendly-label"
+                    subLabel={
+                        loading || contractedValue == null
+                            ? undefined
+                            : `Doanh thu tạm tính ${formatDashboardCurrency(contractedValue)}`
+                    }
                     badge={revBadge?.text}
                     badgeVariant={revBadge?.variant}
-                    infoTooltip="Phần Tutora thu được từ phí nền tảng của các lượt đặt lịch hợp lệ trong khoảng đã chọn — không phải toàn bộ giá trị giao dịch. Đây CHƯA phải tổng doanh thu: AdminDashboardService chỉ cộng Booking.Platformfee, chưa gồm tiền bán gói AI Homework Helper. Số tổng đầy đủ nằm ở trang Báo cáo tài chính."
+                    infoTooltip={
+                        'Doanh thu THẬT của Tutora trong khoảng đã chọn: phí nền tảng của những buổi đã dạy xong và đã giải ngân cho gia sư, cộng tiền bán gói AI Homework Helper.\n\n'
+                        + 'Dòng phụ là doanh thu TẠM TÍNH — toàn bộ phí nền tảng của các lịch đặt trong kỳ, chốt ngay lúc đặt. Buổi chưa dạy thì khoản đó chưa phải tiền, và nếu lịch bị huỷ thì mất hẳn.\n\n'
+                        + 'Hai số neo theo hai mốc khác nhau (ngày dạy và ngày đặt lịch) nên đừng đọc thành tỉ lệ. Xem tiền đã bán trong kỳ giờ ra sao ở trang Báo cáo doanh thu.'
+                    }
                 />
                 <StatCard
                     icon={<span className="material-symbols-outlined">event_available</span>}
@@ -326,7 +353,10 @@ const AdminDashboardPageEnhanced = () => {
                 <div className="admin-dash-priority-grid">
                     <SectionCard
                         className="admin-dash-priority-financial"
-                        title="Giá trị giao dịch và phí dịch vụ"
+                        /* Biểu đồ vẽ doanh thu TẠM TÍNH (neo theo ngày đặt lịch), không phải số
+                           đã ghi nhận ở thẻ KPI phía trên — tiêu đề nói rõ để hai con số không
+                           bị đọc như một. */
+                        title="Tiền phụ huynh trả và doanh thu tạm tính"
                         headerAction={
                             trends?.bucket ? (
                                 <span className="admin-dash-bucket">

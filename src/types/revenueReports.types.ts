@@ -1,8 +1,15 @@
 export interface RevenueSummary {
-    /** Phí của buổi đã dạy xong */
+    /**
+     * DOANH THU ĐÃ GHI NHẬN — doanh thu kế toán của kỳ, và là con số dashboard hiển thị.
+     *
+     * Phí phụ huynh chín trong kỳ (neo theo ngày buổi ĐẦU dạy xong) cộng phí gia sư của các
+     * buổi đã dạy trong kỳ (neo theo NGÀY DẠY), cộng phần chốt thêm khi đóng sổ, cộng tiền
+     * bán gói AI. Khác mốc với `commissionEarned` — số kia neo theo ngày ĐẶT lịch — nên hai
+     * con số không bằng nhau và không được cộng vào nhau.
+     */
     recognisedRevenue: number;
     recognisedPrevious: number;
-    /** Toàn bộ phí tính tại ngày thực hiện booking */
+    /** Doanh thu tạm tính + tiền bán gói AI, quy về ngày đặt lịch. */
     contractedRevenue: number;
     contractedPrevious: number;
     /** Đã thu tiền nhưng chưa dạy — nợ dịch vụ */
@@ -15,16 +22,28 @@ export interface RevenueSummary {
 
     // Bộ số cho khối chia tiền — cùng phạm vi "booking tạo trong kỳ" nên cộng khớp:
     //   gmv = tutorReceivable + commissionSold
-    //   commissionSold = commissionEarned + phần còn chờ
-    /** Học phí gốc — mẫu số của hoa hồng 10%. KHÔNG phải gmv (gmv đã cộng 5% phí phụ huynh). */
+    //   commissionSold = commissionEarned + commissionLost + phần còn chờ
+    /** Học phí gốc — mẫu số của mức phí sàn 10%. KHÔNG phải gmv (gmv đã cộng 5% phí phụ huynh). */
     baseAmount: number;
     /** Tiền gia sư nhận từ booking tạo trong kỳ. */
     tutorReceivable: number;
-    /** Hoa hồng 10% của booking tạo trong kỳ, không gồm doanh thu gói AI. */
+    /** DOANH THU TẠM TÍNH: phí sàn 10% của booking tạo trong kỳ, không gồm gói AI. */
     commissionSold: number;
-    /** Phần hoa hồng trên đã ứng với buổi dạy xong và đã giải ngân. */
+    /** Cùng định nghĩa, của kỳ liền trước — dashboard dùng để tính % thay đổi. */
+    commissionSoldPrevious: number;
+    /**
+     * "Đã thu được": phần doanh thu tạm tính đã thành tiền thật. Khoá đang chạy: phí phụ huynh
+     * của các đợt đã thanh toán — nhưng CHỈ sau khi buổi đầu đã dạy xong, vì trước đó huỷ là
+     * hoàn 100% kể cả phí — cộng phí gia sư của các buổi ĐÃ dạy. Khoá đã đóng sổ: số Tutora
+     * thực giữ theo sổ ví (gồm cả phí dịch vụ không hoàn của những buổi bị huỷ).
+     *
+     * Luỹ kế tới hôm nay trên các lịch ĐẶT trong kỳ — khác mốc với `recognisedRevenue`.
+     */
     commissionEarned: number;
-    /** Hoa hồng của buổi đã giải ngân thuộc booking về sau bị hủy — nằm ngoài hai số trên. */
+    /** "Không thu được": đã bán nhưng vĩnh viễn mất — khoá bị huỷ, hoặc khách bỏ dở sau đợt 1. */
+    commissionLost: number;
+    /** Đối soát sổ ví: tổng Tutora giữ được từ các khoá bị HUỶ đóng sổ trong kỳ. Số luỹ kế cả
+     *  đời khoá, quy về ngày huỷ — KHÔNG cộng vào bất kỳ tổng nào, sẽ tính hai lần. */
     commissionFromCancelled: number;
 }
 
@@ -36,22 +55,16 @@ export interface RevenueTrendPoint {
     gmv: number;
 }
 
+/** Cặp tên–giá trị cho biểu đồ tròn. Chỉ còn dùng ở `concentration` của tab Gia sư. */
 export interface NamedValue {
     name: string;
     value: number;
 }
 
-export interface FunnelStep {
-    stage: string;
-    label: string;
-    count: number;
-}
-
 export interface RevenueOverviewResponse {
     summary: RevenueSummary;
     trend: RevenueTrendPoint[];
-    revenueMix: NamedValue[];
-    bookingFunnel: FunnelStep[];
+    // `revenueMix` và `bookingFunnel` đã bỏ khỏi API 31/08/2026 — không màn hình nào đọc.
 }
 
 // Ghi nhận doanh thu
@@ -73,7 +86,7 @@ export interface StalledBookingStats {
 export interface NeverStartedStats {
     count: number;
     countPrevious: number;
-    /** Hoa hồng của toàn bộ buổi đã bán chưa dạy */
+    /** Doanh thu tạm tính của toàn bộ buổi đã bán chưa dạy */
     feeAtRisk: number;
     /** Tiền khách đã trả đang nằm im (GMV) */
     cashHeld: number;
@@ -92,11 +105,21 @@ export interface BookingProgressRow {
     subject: string;
     totalSessions: number;
     deliveredSessions: number;
-    /** Tổng doanh thu nền tảng của booking (phí phụ huynh + phí sàn gia sư). Xem tách 2 nguồn
-     *  ở trang chi tiết: /admin-portal/bookings/:id */
+    /** Doanh thu TẠM TÍNH của booking (phí phụ huynh + phí sàn gia sư), chốt lúc đặt lịch.
+     *  0 với lịch chết chưa có đồng nào chạy qua. Xem tách 2 nguồn ở trang chi tiết:
+     *  /admin-portal/bookings/:id */
     contractedFee: number;
-    /** Phần doanh thu đã thực hiện: phí/buổi × số buổi đã quyết toán. */
+    /** Phần ĐÃ THU ĐƯỢC của số trên: phí phụ huynh (chỉ sau buổi đầu) + phí gia sư của buổi
+     *  đã dạy. Hiệu hai trường là phần còn chờ (`closed` = false) hoặc mất hẳn (`closed` = true)
+     *  — hai nghĩa khác nhau, đừng gộp thành một cột. */
     recognisedFee: number;
+    /** Tiền phụ huynh đã thực trả — chỉ đợt 1 nếu chưa trả nốt, nên khác `finalPrice`. */
+    cashCollected: number;
+    /** Đã hoàn lại cho phụ huynh, lấy từ sổ ví. */
+    refundedAmount: number;
+    /** Khoá đã chốt sổ. Không suy được từ `status`: hai luồng đóng khoá giữa chừng vẫn để
+     *  status `completed` trong khi escrow đã chốt. */
+    closed: boolean;
     createdAt: string | null;
     status: string;
 }
@@ -132,7 +155,9 @@ export interface TutorRevenueRow {
     tutorName: string;
     subject: string;
     gmv: number;
-    platformRevenue: number;
+    /** Doanh thu đến TỪ GIA SƯ này: 5% cắt từ tiền gia sư của các buổi họ đã dạy trong kỳ.
+     *  KHÔNG gồm 5% phí dịch vụ phụ huynh trả — nửa đó ở tab Khách hàng. */
+    tutorFeeRevenue: number;
     /** % nền tảng giữ lại trên GMV — so sánh tương đối giữa gia sư */
     takeRate: number;
     tutorEarnings: number;
@@ -152,13 +177,18 @@ export interface TutorRevenueResponse {
     /** Số gia sư có buổi trong kỳ, kể cả huỷ hết */
     activeTutors: number;
     concentration: NamedValue[];
-    totalPlatformRevenue: number;
+    /** Tổng doanh thu từ phí gia sư trong kỳ — không gồm phí dịch vụ phụ huynh. */
+    totalTutorFeeRevenue: number;
     /** Escrow toàn sàn hiện tại, không lọc kỳ */
     totalEscrowHeld: number;
 }
 
 // Khách hàng
 export interface CustomerSummary {
+    /** Phí dịch vụ 5% ĐÃ ghi nhận từ các lịch đặt trong kỳ — tiền thật. */
+    serviceFeeRecognised: number;
+    /** Phí dịch vụ 5% còn ĐỢI ghi nhận từ các lịch đặt trong kỳ. */
+    serviceFeePending: number;
     activeParents: number;
     repeatRate: number;
     repeatRatePrevious: number;
@@ -174,8 +204,10 @@ export interface CustomerSegment {
     bookings: number;
     /** Tiền khách trả (GMV) */
     totalSpent: number;
-    /** Hoa hồng nền tảng thực nhận */
-    platformRevenue: number;
+    /** Phí dịch vụ 5% ĐÃ ghi nhận từ nhóm này — khoá đã qua buổi đầu, tiền thật. */
+    serviceFeeRecognised: number;
+    /** Phí dịch vụ 5% còn ĐỢI ghi nhận: chưa trả, hoặc đã trả mà chưa qua buổi đầu. */
+    serviceFeePending: number;
     ltv: number;
     avgBookingValue: number;
     repeatRate: number;
@@ -192,8 +224,10 @@ export interface ParentRevenueRow {
     bookingCount: number;
     sessionsPurchased: number;
     sessionsCompleted: number;
-    /** Hoa hồng buổi đã mua chưa học. BE tính, không suy ra ở FE. */
-    deferredRevenue: number;
+    /** Phí dịch vụ 5% khách này đã trả và ĐÃ ghi nhận. BE tính, không suy ra ở FE. */
+    serviceFeeRecognised: number;
+    /** Phí dịch vụ 5% còn ĐỢI ghi nhận. Cộng hai trường ra tổng phí dịch vụ của khách. */
+    serviceFeePending: number;
     firstBookingAt: string | null;
     lastBookingAt: string | null;
 }
