@@ -1,8 +1,8 @@
-import { NavLink, useLocation, useSearchParams } from 'react-router-dom';
+import { Navigate, NavLink, useLocation, useSearchParams } from 'react-router-dom';
 import { PageContainer } from '@/components/shared';
-import { RANGE_PRESETS, useRevenueRange } from '@/hooks/useRevenueReport';
-import OverviewTab from './tabs/OverviewTab';
-import RecognitionTab from './tabs/RecognitionTab';
+import { useRevenueRange } from '@/hooks/useRevenueReport';
+import DashboardRangePicker from '@/pages/AdminDashboard/components/DashboardRangePicker';
+import RevenueTab from './tabs/RevenueTab';
 import TutorsTab from './tabs/TutorsTab';
 import CustomersTab from './tabs/CustomersTab';
 import SubjectsTab from './tabs/SubjectsTab';
@@ -13,8 +13,7 @@ const BASE = '/admin-portal/revenue-reports';
 
 // Mỗi tab là một sub-route thật
 const TABS = [
-    { slug: 'overview', label: 'Tổng quan', icon: 'donut_large' },
-    { slug: 'recognition', label: 'Ghi nhận doanh thu', icon: 'fact_check' },
+    { slug: 'overview', label: 'Doanh thu', icon: 'donut_large' },
     { slug: 'tutors', label: 'Gia sư', icon: 'cast_for_education' },
     { slug: 'customers', label: 'Khách hàng', icon: 'family_restroom' },
     { slug: 'subjects', label: 'Môn & Lớp', icon: 'category' },
@@ -23,19 +22,21 @@ const TABS = [
 
 type TabSlug = (typeof TABS)[number]['slug'];
 
+/** Tab cũ đã gộp vào "Doanh thu". Giữ để link và bookmark cũ không rơi vào trang trống. */
+const MERGED_AWAY = ['recognition'];
+
 const tabSubtitle: Record<TabSlug, string> = {
-    overview: 'Ba tầng số liệu GMV / doanh thu thuần / tiền mặt và độ lệch giữa hai cách ghi nhận.',
-    recognition: 'Đối chiếu tiền đã thu, doanh thu đã ghi nhận và phần chưa thực hiện.',
-    tutors: 'Ai mang lại doanh thu, ai đang giữ escrow lớn, mức độ tập trung rủi ro.',
-    customers: 'Chi tiêu, giữ chân và giá trị của phụ huynh và học sinh tự do.',
-    subjects: 'Doanh thu theo ngách sản phẩm — môn học và khối lớp.',
-    ai: 'Bán gói lượt AI hỗ trợ giải bài tập và lượng lượt còn lại chưa dùng.',
+    overview: 'Tiền vào chia cho ai, bao nhiêu đã thành doanh thu, và rủi ro đang treo ở đâu.',
+    tutors: 'Hoa hồng theo gia sư và mức độ tập trung rủi ro.',
+    customers: 'Chi tiêu, giữ chân và giá trị khách hàng.',
+    subjects: 'Hoa hồng theo môn học và khối lớp.',
+    ai: 'Doanh số gói AI và mức độ sử dụng.',
 };
 
 const AdminRevenueReportsPage = () => {
     const location = useLocation();
     const [searchParams] = useSearchParams();
-    const { preset, setPreset, range } = useRevenueRange();
+    const { selection, setSelection, range } = useRevenueRange();
 
     const segment = location.pathname.replace(`${BASE}`, '').replace(/^\//, '');
     const active: TabSlug = (TABS.find((t) => t.slug === segment)?.slug ?? 'overview');
@@ -46,12 +47,22 @@ const AdminRevenueReportsPage = () => {
         return `${BASE}/${slug}${qs ? `?${qs}` : ''}`;
     };
 
+    // Chuyển hướng có mang theo query: đổi URL mà mất khoảng thời gian đang xem thì người dùng
+    // mở lại bookmark sẽ thấy số liệu của một kỳ khác hẳn.
+    if (MERGED_AWAY.includes(segment)) {
+        return <Navigate to={linkTo('overview')} replace />;
+    }
+
     return (
         <PageContainer
             eyebrow="Báo cáo"
             eyebrowInfo={tabSubtitle[active]}
             title="Báo cáo doanh thu"
             maxWidth="wide"
+            // Bộ chọn khoảng thời gian áp cho MỌI tab, nên nó thuộc về hàng tiêu đề chứ không
+            // phải thanh tab. Để chung một hàng với tab thì trang mất hẳn một dòng chỉ để chứa
+            // hai nhóm nút, mà nhóm bên phải lại không đổi khi bấm tab.
+            headerAction={<DashboardRangePicker selection={selection} onChange={setSelection} />}
         >
             <div className="rev-toolbar">
                 <nav className="rev-tabs" aria-label="Nhóm báo cáo">
@@ -66,24 +77,9 @@ const AdminRevenueReportsPage = () => {
                         </NavLink>
                     ))}
                 </nav>
-
-                <div className="rev-range" role="group" aria-label="Khoảng thời gian">
-                    {RANGE_PRESETS.map((p) => (
-                        <button
-                            key={p.key}
-                            type="button"
-                            aria-pressed={preset === p.key}
-                            className={preset === p.key ? 'is-active' : ''}
-                            onClick={() => setPreset(p.key)}
-                        >
-                            {p.label}
-                        </button>
-                    ))}
-                </div>
             </div>
 
-            {active === 'overview' && <OverviewTab range={range} />}
-            {active === 'recognition' && <RecognitionTab range={range} />}
+            {active === 'overview' && <RevenueTab range={range} />}
             {active === 'tutors' && <TutorsTab range={range} />}
             {active === 'customers' && <CustomersTab range={range} />}
             {active === 'subjects' && <SubjectsTab range={range} />}

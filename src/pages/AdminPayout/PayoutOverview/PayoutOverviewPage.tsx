@@ -90,8 +90,8 @@ const PayoutOverviewPage: React.FC = () => {
     <PageContainer
       className="payout-overview-page"
       eyebrow="Tài chính"
-      eyebrowInfo="Theo dõi yêu cầu rút tiền, chuyển tiền chủ động và lịch sử thanh toán cho gia sư."
-      title="Payout"
+      eyebrowInfo="Theo dõi yêu cầu rút tiền và lịch sử thanh toán cho gia sư."
+      title="Yêu cầu rút tiền"
       maxWidth="wide"
       headerAction={
         <div className="admin-ui-actions">
@@ -104,6 +104,7 @@ const PayoutOverviewPage: React.FC = () => {
             <span className="material-symbols-outlined">refresh</span>
             {loading ? 'Đang tải...' : 'Làm mới'}
           </button>
+          {/* Tạm ẩn nút "Chuyển tiền chủ động" (route /admin-portal/payouts/transfers vẫn còn)
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
@@ -112,6 +113,7 @@ const PayoutOverviewPage: React.FC = () => {
             <span className="material-symbols-outlined">send_money</span>
             Chuyển tiền chủ động
           </button>
+          */}
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"

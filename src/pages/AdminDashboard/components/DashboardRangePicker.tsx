@@ -9,6 +9,7 @@ import {
     type DashboardRangeKey,
     type DashboardRangeSelection,
 } from '../dashboardDisplay';
+import '../../../styles/components/range-picker.css';
 
 /** Preset trượt nằm trong bảng chọn — các mốc rộng hơn 30 ngày. */
 const WIDE_PRESETS: DashboardRangeKey[] = ['3m', '6m', '12m'];

@@ -6,18 +6,33 @@ const Bar: React.FC<{ w?: string; h?: number; radius?: number }> = ({
     radius = 6,
 }) => <span className="rev-sk-bar" style={{ width: w, height: h, borderRadius: radius }} />;
 
+/** Khung xương một thẻ chỉ số — icon trái, số/nhãn/chú thích phải, khớp `MetricCard`. */
+const MetricBones = () => (
+    <div className="rev-metric">
+        <Bar w="36px" h={36} radius={10} />
+        <div className="rev-metric-body">
+            <Bar w="72%" h={20} />
+            <span style={{ display: 'block', height: 6 }} />
+            <Bar w="48%" h={12} />
+            <span style={{ display: 'block', height: 5 }} />
+            <Bar w="62%" h={10} />
+        </div>
+    </div>
+);
+
 export const SkeletonMetrics: React.FC<{ count?: number }> = ({ count = 4 }) => (
     <div className="rev-metric-grid">
         {Array.from({ length: count }).map((_, i) => (
-            <div key={i} className="rev-metric">
-                <div className="rev-metric-head">
-                    <Bar w="34px" h={34} radius={9} />
-                    <Bar w="52px" h={18} radius={999} />
-                </div>
-                <Bar w="72%" h={22} />
-                <Bar w="56%" h={12} />
-                <Bar w="40%" h={11} />
-            </div>
+            <MetricBones key={i} />
+        ))}
+    </div>
+);
+
+/** Dải chỉ số của tab Doanh thu — một thẻ, ba ô ngăn bằng đường kẻ. */
+export const SkeletonStrip: React.FC<{ count?: number }> = ({ count = 3 }) => (
+    <div className="rev-strip">
+        {Array.from({ length: count }).map((_, i) => (
+            <MetricBones key={i} />
         ))}
     </div>
 );
@@ -77,10 +92,12 @@ const ReportSkeleton: React.FC<{
     metrics?: number;
     charts?: number;
     table?: boolean;
-}> = ({ metrics = 4, charts = 2, table = true }) => (
+    /** Tab Doanh thu mở đầu bằng dải chỉ số liền khối, không phải lưới thẻ rời. */
+    strip?: boolean;
+}> = ({ metrics = 4, charts = 2, table = true, strip = false }) => (
     <div className="rev-stack" aria-busy="true" aria-live="polite">
         <span className="rev-sk-sr">Đang tải số liệu…</span>
-        <SkeletonMetrics count={metrics} />
+        {strip ? <SkeletonStrip count={metrics} /> : <SkeletonMetrics count={metrics} />}
         {Array.from({ length: charts }).map((_, i) => (
             <SkeletonChart key={i} />
         ))}

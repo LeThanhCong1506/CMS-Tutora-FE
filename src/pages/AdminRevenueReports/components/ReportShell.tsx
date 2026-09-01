@@ -1,4 +1,6 @@
 import React from 'react';
+import { TablePagination } from '@/components/shared';
+import type { PaginationConfig } from '@/components/shared';
 import InfoHint from './InfoHint';
 
 // Trạng thái lỗi / rỗng
@@ -69,14 +71,30 @@ export const DataTableShell: React.FC<{
     title: string;
     subtitle?: string;
     children: React.ReactNode;
-}> = ({ title, subtitle, children }) => (
+    /** Nội dung phụ ở góc phải header — bộ chọn cách sắp xếp, nút xuất dữ liệu… */
+    action?: React.ReactNode;
+    /**
+     * Phân trang phía client. Bảng chi tiết ở các tab này nhận nguyên mảng từ API nên khi dữ
+     * liệu nhiều, trang bị kéo dài hàng nghìn dòng. `TablePagination` tự ẩn khi chỉ có một
+     * trang, nên truyền vào luôn kể cả với bảng ngắn.
+     *
+     * Dòng tổng ở `tfoot` vẫn phải cộng trên TOÀN BỘ dữ liệu, không phải trên trang đang xem.
+     */
+    pagination?: PaginationConfig;
+}> = ({ title, subtitle, children, action, pagination }) => (
     <section className="rev-block">
         <header className="rev-block-head">
             <div className="rev-block-text">
                 <h4>{title}</h4>
                 {subtitle && <p>{subtitle}</p>}
             </div>
+            {action && <div className="rev-block-action">{action}</div>}
         </header>
         <div className="rev-table-wrap">{children}</div>
+        {pagination && (
+            <div className="rev-table-pagination">
+                <TablePagination config={pagination} />
+            </div>
+        )}
     </section>
 );

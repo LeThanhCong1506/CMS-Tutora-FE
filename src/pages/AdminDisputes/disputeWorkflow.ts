@@ -85,6 +85,47 @@ export const getPriorityMeta = (priority?: string | null, display?: string | nul
     variant: getPriorityVariant(priority),
 });
 
+// ── Loại phản ánh ───────────────────────────────────────────────────────────
+
+const DISPUTE_TYPE_LABELS: Record<string, string> = {
+    no_show: 'Vắng mặt',
+    quality: 'Chất lượng',
+    payment: 'Thanh toán',
+    other: 'Khác',
+};
+
+const DISPUTE_TYPE_ICONS: Record<string, string> = {
+    no_show: 'person_off',
+    quality: 'sentiment_dissatisfied',
+    payment: 'payments',
+    other: 'help',
+};
+
+export type DisputeTypeTone = 'danger' | 'warn' | 'info' | 'neutral';
+
+const DISPUTE_TYPE_TONES: Record<string, DisputeTypeTone> = {
+    no_show: 'danger',
+    quality: 'warn',
+    payment: 'info',
+    other: 'neutral',
+};
+
+/**
+ * Nhãn + icon cho loại phản ánh.
+ *
+ * BE nhét emoji vào `DisputeTypeDisplay` ("🚫 Vắng mặt", "⚠️ Chất lượng"). Emoji render theo
+ * font hệ điều hành nên mỗi máy một kiểu, và lạc hẳn tông so với bộ Material Symbols dùng
+ * khắp CMS. FE tự dựng nhãn từ `disputeType`, chỉ mượn chuỗi BE (đã gỡ emoji) khi gặp loại
+ * lạ chưa được map — cùng cách đã làm với mức ưu tiên.
+ */
+export const getDisputeTypeMeta = (type?: string | null, display?: string | null) => ({
+    label: DISPUTE_TYPE_LABELS[type ?? '']
+        || display?.replace(LEADING_EMOJI, '').trim()
+        || 'Không xác định',
+    icon: DISPUTE_TYPE_ICONS[type ?? ''] || 'flag',
+    tone: DISPUTE_TYPE_TONES[type ?? ''] || 'neutral',
+});
+
 // ── Xem bằng chứng ──────────────────────────────────────────────────────────
 
 /**
