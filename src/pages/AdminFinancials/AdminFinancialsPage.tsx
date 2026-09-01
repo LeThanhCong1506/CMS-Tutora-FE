@@ -108,7 +108,8 @@ const AdminFinancialsPage = () => {
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
                     value={metricsLoading ? '...' : formatCompactNumber(metrics?.revenue.currentMonthRevenue || 0)}
-                    label="Doanh thu nền tảng (tháng này)"
+                    label="Doanh thu tạm tính (tháng này)"
+                    infoTooltip="Phí nền tảng của các lịch ĐẶT trong tháng này, chốt ngay lúc đặt, cộng tiền bán gói AI. Chưa phải tiền thật — buổi chưa dạy thì khoản này vẫn có thể mất. Doanh thu đã ghi nhận xem ở trang Tổng quan hệ thống hoặc Báo cáo doanh thu."
                     badge={
                         metrics?.revenue.monthOverMonthGrowthPercent != null
                             ? `${metrics.revenue.monthOverMonthGrowthPercent >= 0 ? '+' : ''}${metrics.revenue.monthOverMonthGrowthPercent}%`

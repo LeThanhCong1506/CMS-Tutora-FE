@@ -13,9 +13,10 @@ const clampCommissionRate = (value: number) =>
     Number.isFinite(value) ? Math.min(COMMISSION_RATE_MAX, Math.max(0, value)) : 0;
 
 export const AdminSettingsPage = () => {
-    // Hoa hồng nền tảng là cấu hình thật duy nhất trên trang này — hai % tách riêng phụ huynh/gia
-    // sư, khớp đúng model BE (system_configs + commission_config_history). Các mục còn lại (rút
-    // tối thiểu, escrow, VAT, đóng băng payout) chưa có API nên vẫn giữ nguyên dạng mock cũ.
+    // Hai cấu hình thật trên trang này: hoa hồng nền tảng (2 % tách riêng phụ huynh/gia sư, khớp
+    // model BE system_configs + commission_config_history) và ngưỡng rút tối thiểu
+    // (system_configs.min_withdrawal_amount — mọi portal đọc lại qua GET /api/withdrawal-limit).
+    // Các mục còn lại (escrow, VAT, đóng băng payout) chưa có API nên vẫn giữ nguyên dạng mock cũ.
     const [parentFeePercent, setParentFeePercent] = useState<number>(5);
     const [tutorFeePercent, setTutorFeePercent] = useState<number>(5);
     const [loadingCommission, setLoadingCommission] = useState(true);
@@ -37,7 +38,7 @@ export const AdminSettingsPage = () => {
                 setParentFeePercent(config.parentFeePercent);
                 setTutorFeePercent(config.tutorFeePercent);
             } catch (error) {
-                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được cấu hình hoa hồng.'));
+                if (!cancelled) toast.error(apiErrorMessage(error, 'Không tải được cấu hình phí nền tảng.'));
             } finally {
                 if (!cancelled) setLoadingCommission(false);
             }
@@ -131,7 +132,7 @@ export const AdminSettingsPage = () => {
                     <StatCard
                         icon={<span className="material-symbols-outlined">percent</span>}
                         value={loadingCommission ? '—' : `${parentFeePercent}% + ${tutorFeePercent}%`}
-                        label="Hoa hồng nền tảng"
+                        label="Phí nền tảng"
                         subLabel="Phụ huynh + Gia sư, áp dụng trên mỗi booking"
                         badge="Đang dùng"
                         badgeVariant="dark"
@@ -163,7 +164,7 @@ export const AdminSettingsPage = () => {
                 </div>
 
                 <SectionCard
-                    title="Tỷ lệ hoa hồng"
+                    title="Tỷ lệ phí nền tảng"
                     subtitle="Thiết lập phần trăm nền tảng khấu trừ trước khi thanh toán cho tutor — tách riêng phía phụ huynh và phía gia sư."
                     headerAction={
                         <StatusBadge variant="success">Đã kết nối dữ liệu thật — các mục khác trên trang vẫn là mẫu</StatusBadge>
