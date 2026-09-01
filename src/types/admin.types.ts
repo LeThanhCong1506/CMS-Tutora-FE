@@ -940,8 +940,12 @@ export interface ResolveDisputeRequest {
  * - 'completed': vẫn tính là đã dạy, quyết toán cho gia sư như bình thường.
  * - 'reschedule': hai bên thống nhất học lại — buổi gốc chuyển 'cancelled' (giữ nguyên dữ liệu,
  *   không xoá), tạo 1 buổi học lại MỚI (Link 3) ở giờ do Admin/Staff chọn (relearnScheduledStart).
+ * - 'keep_scheduled': bỏ phản ánh, buổi về lại 'scheduled' và học như bình thường. Dành cho khiếu
+ *   nại nhầm hoặc khiếu nại vào buổi chưa diễn ra — hai lựa chọn trên đều sai trong ca đó:
+ *   'completed' trả tiền cho buổi chưa dạy, 'reschedule' đổi giờ hai bên đã hẹn và đốt một suất
+ *   trong hạn mức học lại của chuỗi.
  */
-export type CloseDisputeOutcome = 'completed' | 'reschedule';
+export type CloseDisputeOutcome = 'completed' | 'reschedule' | 'keep_scheduled';
 
 export interface CloseDisputeRequest {
   classSessionOutcome: CloseDisputeOutcome;

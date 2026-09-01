@@ -53,6 +53,7 @@ const PendingReviewPage = lazy(() => import('./pages/AdminPayout/PendingReview/P
 const AllPayoutRequestsPage = lazy(() => import('./pages/AdminPayout/AllRequests/AllPayoutRequestsPage'));
 const NotificationsPage = lazy(() => import('./pages/Notifications/NotificationsPage'));
 const AdminAiCreditPage = lazy(() => import('./pages/AdminAiCredit/AdminAiCreditPage'));
+const AdminAiUsagePage = lazy(() => import('./pages/AdminAiUsage/AdminAiUsagePage'));
 const AdminSupportInboxPage = lazy(() => import('./pages/AdminSupport/AdminSupportInboxPage'));
 
 const guard = (element: ReactNode, permission?: string, adminOnly = false) => (
@@ -210,6 +211,7 @@ function App() {
               <Route path="support" element={guard(<AdminSupportInboxPage />, 'support.view')} />
               <Route path="ai-credit/packages" element={guard(<AdminAiCreditPage />, 'financial.view')} />
               <Route path="ai-credit/settings" element={guard(<AdminAiCreditPage />, 'financial.view')} />
+              <Route path="ai-usage" element={guard(<AdminAiUsagePage />, 'financial.view')} />
               <Route path="payouts" element={guard(<PayoutOverviewPage />, 'payout.view')} />
               <Route path="payouts/transfers" element={guard(<TransferHistoryPage />, 'payout.view')} />
               <Route path="payouts/history" element={guard(<AllPayoutRequestsPage />, 'payout.view')} />
