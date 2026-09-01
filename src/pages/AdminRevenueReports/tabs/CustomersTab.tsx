@@ -13,10 +13,8 @@ import {
 import ReportSkeleton from '../components/ReportSkeleton';
 import {
     BarGroupChart,
-    DonutChart,
     HeatmapChart,
     LineTrendChart,
-    RankBarChart,
 } from '@/components/shared/RevenueCharts/RevenueCharts';
 import { PALETTE } from '@/components/shared/RevenueCharts/revenueChartTheme';
 
@@ -27,7 +25,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
     );
     const parentPage = useClientPagination(data?.parents ?? []);
 
-    if (loading) return <ReportSkeleton charts={4} />;
+    if (loading) return <ReportSkeleton charts={3} splits={1} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!data) return null;
 
@@ -37,15 +35,10 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
 
     const c = data.summary;
 
-    const topSpenders = data.parents
-        .slice(0, 15)
-        .map((p) => ({ ...p, label: p.parentName }));
-
     // Chỉ hiện phân khúc thực sự có giao dịch — tránh vẽ lát 0đ khi chưa có học sinh tự đặt.
     const activeSegments = (data.segments ?? []).filter(
         (s) => s.customers > 0 || s.totalSpent > 0,
     );
-    const segmentSpent = activeSegments.reduce((s, x) => s + x.totalSpent, 0);
 
     // Cohort → heatmap: hàng là nhóm đăng ký, cột là tháng thứ N.
     const cohortRows = data.cohorts.filter((r) => r.size > 0);
@@ -90,25 +83,36 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                 />
             </div>
 
-            {activeSegments.length > 0 && (
-                <div className="rev-grid-2">
-                    <ChartBlock
-                        title="Doanh thu theo phân khúc khách hàng"
-                        hint="Người trả tiền quyết định kênh và thông điệp marketing. Phụ huynh nhạy giá và quan tâm kết quả thi cử; học sinh tự đặt thường tự chọn theo môn và phong cách gia sư. Nhóm nào đóng góp lớn hơn thì ngân sách nên dồn về đó."
-                    >
-                        <DonutChart
-                            data={activeSegments.map((s) => ({
-                                name: s.segment,
-                                value: s.totalSpent,
-                            }))}
-                            colors={[PALETTE.navy, PALETTE.gold]}
-                            centerLabel="Tổng chi tiêu"
-                            height={290}
-                        />
-                    </ChartBlock>
+            {/* Hai thẻ phí dịch vụ đứng RIÊNG một hàng, không trộn vào dải chỉ số phía trên.
+                Bốn thẻ trên đo TỆP KHÁCH (bao nhiêu người, chi bao nhiêu, quay lại bao nhiêu);
+                hai thẻ này đo TIỀN CỦA SÀN thu từ tệp đó. Hai loại đơn vị khác nhau, để chung
+                một hàng thì người đọc dễ cộng nhầm 534.844 với 26.250 như thể cùng một tổng. */}
+            <div className="rev-metric-grid">
+                <MetricCard
+                    icon="verified"
+                    value={moneyVnd(c.serviceFeeRecognised)}
+                    label="Phí dịch vụ đã ghi nhận"
+                    badgeVariant="green"
+                    hint="5% phí dịch vụ khách trả thêm, phần ĐÃ thành tiền thật: khoá đã qua buổi học đầu tiên nên khoản phí này hết đường hoàn. Đây là MỘT trong hai nguồn của phí sàn 10% — nguồn còn lại là 5% cắt từ tiền gia sư, xem tab Gia sư."
+                />
+                <MetricCard
+                    icon="hourglass_top"
+                    value={moneyVnd(c.serviceFeePending)}
+                    label="Phí dịch vụ đợi ghi nhận"
+                    badgeVariant="orange"
+                    hint="5% phí dịch vụ chưa thành tiền thật: khách chưa trả nốt, HOẶC đã trả mà buổi đầu chưa diễn ra — lúc đó khách huỷ vẫn được hoàn lại 100% kể cả phí này. Cộng với thẻ bên trái đúng bằng tổng phí dịch vụ của các lịch đặt trong kỳ."
+                />
+            </div>
 
+            {/* Vành khuyên "Doanh thu theo phân khúc" đã BỎ.
+                Nó chỉ có tối đa HAI lát (Phụ huynh / Học sinh) và đứng ngay cạnh một cái bảng
+                vốn đã có cột "% doanh thu" — tức cùng một tỉ lệ, in hai lần, cách nhau 16px.
+                Bảng thắng vì nó còn mang thêm số khách, LTV và tỷ lệ tái mua. Bỏ vành khuyên
+                thì bảng chiếm trọn bề ngang và đọc thoải mái hơn. */}
+            {activeSegments.length > 0 && (
                     <DataTableShell
-                        title="So sánh hai phân khúc"
+                        title="Doanh thu theo phân khúc khách hàng"
+                        subtitle="Phụ huynh nhạy giá và quan tâm kết quả thi cử; học sinh tự đặt thường chọn theo môn và phong cách gia sư. Nhóm nào đóng góp lớn hơn thì ngân sách marketing nên dồn về đó."
                     >
                         <table className="rev-table">
                             <thead>
@@ -116,7 +120,8 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                                     <th>Phân khúc</th>
                                     <th className="rev-num">Khách</th>
                                     <th className="rev-num">Chi tiêu</th>
-                                    <th className="rev-num">% doanh thu</th>
+                                    <th className="rev-num">Phí DV đã ghi nhận</th>
+                                    <th className="rev-num">Phí DV đợi ghi nhận</th>
                                     <th className="rev-num">Giá trị vòng đời</th>
                                     <th className="rev-num">Tái mua</th>
                                 </tr>
@@ -129,10 +134,11 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                                         </td>
                                         <td className="rev-num">{count(s.customers)}</td>
                                         <td className="rev-num rev-pos">{money(s.totalSpent)}</td>
-                                        <td className="rev-num">
-                                            {segmentSpent > 0
-                                                ? `${((s.totalSpent / segmentSpent) * 100).toFixed(0)}%`
-                                                : '—'}
+                                        <td className="rev-num rev-pos">
+                                            {money(s.serviceFeeRecognised)}
+                                        </td>
+                                        <td className="rev-num rev-warn">
+                                            {money(s.serviceFeePending)}
                                         </td>
                                         <td className="rev-num">{money(s.ltv)}</td>
                                         <td className="rev-num">{s.repeatRate}%</td>
@@ -141,60 +147,57 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                             </tbody>
                         </table>
                     </DataTableShell>
-                </div>
             )}
 
+            {/* Biểu đồ "Top 15 khách hàng theo chi tiêu" đã BỎ.
+                Bảng "Khách hàng giá trị cao" ở cuối trang CHÍNH LÀ dữ liệu đó — cùng nguồn,
+                cùng thứ tự giảm dần theo chi tiêu — chỉ khác là nó còn kèm 6 cột nữa và phân
+                trang được. Vẽ lại 15 dòng đầu dưới dạng cột chỉ để đọc cùng một thứ tự hai lần. */}
+
+            {/* Hai biểu đồ cùng theo dõi chất lượng tệp khách theo thời gian — một cái đo giá
+                trị mỗi khách, một cái đo tỉ lệ khách quay lại. Ngang hàng nên cùng nằm trong
+                `split`, chung một khung và một tiêu đề. */}
             <ChartBlock
-                title={
-                    // Đừng hứa 15 dòng khi dữ liệu chỉ có 3: tiêu đề bám đúng số thật.
-                    topSpenders.length >= 15
-                        ? 'Top 15 khách hàng theo chi tiêu'
-                        : `${topSpenders.length} khách hàng theo chi tiêu`
-                }
-                hint="Khách ở nhóm đầu đáng được chăm sóc riêng. Nếu vài người chiếm tỷ trọng quá lớn thì doanh thu đang phụ thuộc rủi ro vào một nhóm nhỏ."
-            >
-                <RankBarChart
-                    data={topSpenders}
-                    labelKey="label"
-                    valueKey="totalSpent"
-                    name="Tổng chi tiêu"
-                    color={PALETTE.gold}
-                    height={420}
-                />
-            </ChartBlock>
+                title="Chất lượng tệp khách theo thời gian"
+                split={[
+                    {
+                        label: 'Doanh thu bình quân mỗi khách',
+                        hint: 'Số này tăng nghĩa là bán được gói lớn hơn hoặc khách học nhiều hơn. Nếu số khách tăng mà nó giảm, nền tảng đang tăng trưởng bằng khách giá trị thấp.',
+                        node: (
+                            <LineTrendChart
+                                data={data.arpuTrend}
+                                xKey="month"
+                                height={220}
+                                series={[{ key: 'arpu', name: 'Bình quân mỗi khách', color: PALETTE.navy, area: true }]}
+                            />
+                        ),
+                    },
+                    {
+                        label: 'Khách lần đầu so với khách quay lại',
+                        hint: "Mỗi khách chỉ được đếm một lần trong tháng. 'Quay lại' nghĩa là tháng đầu tiên của họ nằm ở tháng TRƯỚC — khách đặt nhiều lần trong cùng tháng đầu vẫn tính là khách lần đầu, nên chỉ số này khác với card 'Tỷ lệ tái mua' (vốn chỉ cần từ 2 booking trở lên, bất kể thời điểm). Nền tảng khỏe mạnh là khi cột quay lại tăng dần qua các tháng.",
+                        node: (
+                            <BarGroupChart
+                                data={data.newVsReturning}
+                                xKey="month"
+                                money={false}
+                                stacked
+                                height={220}
+                                series={[
+                                    { key: 'returning', name: 'Quay lại tháng sau', color: PALETTE.emerald },
+                                    { key: 'newCustomers', name: 'Khách lần đầu', color: PALETTE.gold },
+                                ]}
+                            />
+                        ),
+                    },
+                ]}
+            />
 
-            <div className="rev-grid-2">
-                <ChartBlock
-                    title="Doanh thu bình quân mỗi khách"
-                    hint="Số này tăng nghĩa là bán được gói lớn hơn hoặc khách học nhiều hơn. Nếu số khách tăng mà nó giảm, nền tảng đang tăng trưởng bằng khách giá trị thấp."
-                >
-                    <LineTrendChart
-                        data={data.arpuTrend}
-                        xKey="month"
-                        height={270}
-                        series={[{ key: 'arpu', name: 'Bình quân mỗi khách', color: PALETTE.navy, area: true }]}
-                    />
-                </ChartBlock>
-
-                <ChartBlock
-                    title="Khách lần đầu so với khách quay lại"
-                    hint="Mỗi khách chỉ được đếm một lần trong tháng. 'Quay lại' nghĩa là tháng đầu tiên của họ nằm ở tháng TRƯỚC — khách đặt nhiều lần trong cùng tháng đầu vẫn tính là khách lần đầu, nên chỉ số này khác với card 'Tỷ lệ tái mua' (vốn chỉ cần từ 2 booking trở lên, bất kể thời điểm). Nền tảng khỏe mạnh là khi cột quay lại tăng dần qua các tháng."
-                >
-                    <BarGroupChart
-                        data={data.newVsReturning}
-                        xKey="month"
-                        money={false}
-                        stacked
-                        height={270}
-                        series={[
-                            { key: 'returning', name: 'Quay lại tháng sau', color: PALETTE.emerald },
-                            { key: 'newCustomers', name: 'Khách lần đầu', color: PALETTE.gold },
-                        ]}
-                    />
-                </ChartBlock>
-            </div>
-
-            {cohortRows.length > 0 && (
+            {/* Bảng giữ chân cần ÍT NHẤT hai cột tháng mới có nghĩa: cột "Tháng 0" theo định
+                nghĩa luôn là 100%, nên một lưới một cột chỉ là một dải ô 100% — không đo được
+                gì về việc giữ chân. Với mốc mặc định "30 ngày qua" thì `MonthBuckets` chỉ sinh
+                đúng một tháng, tức đây là trạng thái THƯỜNG GẶP chứ không phải ca hiếm. Muốn
+                xem giữ chân thì chọn mốc nhiều tháng. */}
+            {cohortRows.length > 0 && cohortCols.length > 1 && (
                 <ChartBlock
                     title="Giữ chân khách hàng"
                     hint="Mỗi hàng là nhóm khách hàng bắt đầu trong cùng một tháng. Ô càng đậm là giữ chân càng tốt. Nếu hàng dưới nhạt hơn hàng trên, chất lượng khách mới đang giảm."
@@ -223,7 +226,7 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                     data={data.bookingValueDistribution}
                     xKey="range"
                     money={false}
-                    height={290}
+                    height={240}
                     series={[{ key: 'count', name: 'Số booking', color: PALETTE.blue }]}
                 />
             </ChartBlock>
@@ -244,7 +247,8 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                             <th>Loại</th>
                             <th>Học sinh</th>
                             <th className="rev-num">Tổng chi tiêu</th>
-                            <th className="rev-num">Chờ ghi nhận</th>
+                            <th className="rev-num">Phí DV đã ghi nhận</th>
+                            <th className="rev-num">Phí DV đợi ghi nhận</th>
                             <th className="rev-num">Booking</th>
                             <th className="rev-num">Buổi đã mua</th>
                             <th className="rev-num">Buổi đã học</th>
@@ -265,7 +269,8 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                                     <td>{p.customerType}</td>
                                     <td>{p.studentName}</td>
                                     <td className="rev-num rev-pos">{money(p.totalSpent)}</td>
-                                    <td className="rev-num rev-warn">{money(p.deferredRevenue)}</td>
+                                    <td className="rev-num rev-pos">{money(p.serviceFeeRecognised)}</td>
+                                    <td className="rev-num rev-warn">{money(p.serviceFeePending)}</td>
                                     <td className="rev-num">{p.bookingCount}</td>
                                     <td className="rev-num">{p.sessionsPurchased}</td>
                                     <td className="rev-num">{p.sessionsCompleted}</td>
@@ -283,8 +288,11 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                             <td className="rev-num rev-pos">
                                 {moneyVnd(data.parents.reduce((s, p) => s + p.totalSpent, 0))}
                             </td>
+                            <td className="rev-num rev-pos">
+                                {moneyVnd(data.parents.reduce((s, p) => s + p.serviceFeeRecognised, 0))}
+                            </td>
                             <td className="rev-num rev-warn">
-                                {moneyVnd(data.parents.reduce((s, p) => s + p.deferredRevenue, 0))}
+                                {moneyVnd(data.parents.reduce((s, p) => s + p.serviceFeePending, 0))}
                             </td>
                             <td className="rev-num">
                                 {count(data.parents.reduce((s, p) => s + p.bookingCount, 0))}

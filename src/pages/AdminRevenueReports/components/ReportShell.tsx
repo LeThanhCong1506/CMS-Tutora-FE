@@ -36,9 +36,27 @@ interface ChartBlockProps {
     subtitle?: string;
     /** Nội dung phụ ở góc phải header */
     action?: React.ReactNode;
-    children: React.ReactNode;
+    /**
+     * Biểu đồ chính của khối. Bỏ trống khi khối chỉ gồm những biểu đồ ngang hàng nhau —
+     * lúc đó tất cả nằm trong `split` và không cái nào được phóng to hơn cái nào.
+     */
+    children?: React.ReactNode;
     /** Cho phép cuộn ngang nội dung (bảng rộng) */
     scrollX?: boolean;
+    /**
+     * Biểu đồ phụ cùng chủ đề, nằm trong CÙNG khung với biểu đồ chính, ngăn nhau bằng
+     * đường kẻ dọc.
+     *
+     * Trước đây mỗi biểu đồ là một `ChartBlock` riêng, nên hai biểu đồ cùng kể một câu
+     * chuyện thành hai khung trắng, hai tiêu đề serif 15px và một khe 16px ở giữa. Gộp
+     * vào đây thì còn một khung và một tiêu đề chính.
+     *
+     * `label` cố ý nhỏ hơn tiêu đề khối (12.5px, không phải h4 serif): tiêu đề khối đã
+     * nói các biểu đồ này thuộc về nhau rồi, nhãn con chỉ cần phân biệt chúng với nhau.
+     * Nhưng `hint` thì PHẢI giữ nguyên câu của biểu đồ cũ — gộp khung không được phép
+     * làm mất lời giải thích, nếu không người đọc phải đoán từng biểu đồ qua trục.
+     */
+    split?: { label: string; hint?: string; node: React.ReactNode }[];
 }
 
 export const ChartBlock: React.FC<ChartBlockProps> = ({
@@ -48,6 +66,7 @@ export const ChartBlock: React.FC<ChartBlockProps> = ({
     action,
     children,
     scrollX,
+    split,
 }) => (
     <section className="rev-block">
         <header className="rev-block-head">
@@ -60,9 +79,24 @@ export const ChartBlock: React.FC<ChartBlockProps> = ({
             </div>
             {action && <div className="rev-block-action">{action}</div>}
         </header>
-        <div className={scrollX ? 'rev-block-body rev-scroll-x' : 'rev-block-body'}>
-            {children}
-        </div>
+        {children && (
+            <div className={scrollX ? 'rev-block-body rev-scroll-x' : 'rev-block-body'}>
+                {children}
+            </div>
+        )}
+        {split && split.length > 0 && (
+            <div className="rev-split">
+                {split.map((item) => (
+                    <div className="rev-split-cell" key={item.label}>
+                        <h5 className="rev-split-label">
+                            {item.label}
+                            {item.hint && <InfoHint text={item.hint} />}
+                        </h5>
+                        {item.node}
+                    </div>
+                ))}
+            </div>
+        )}
     </section>
 );
 

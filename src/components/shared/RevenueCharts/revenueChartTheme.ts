@@ -62,7 +62,12 @@ export const axisLabelStyle = {
 export const baseGrid = {
     left: 8,
     right: 16,
-    top: 28,
+    // 10px chỉ vừa đủ để nửa dòng nhãn trục y trên cùng không bị cắt — nhãn 11.5px
+    // căn giữa trên đường lưới cao nhất nên tràn lên khoảng 6px. Trước đây để 28px:
+    // không chart nào trong cụm khai `title`, legend thì neo `bottom: 0`, mà
+    // `containLabel: true` đã tính cả nhãn trục vào rồi — nên 18px còn lại là khoảng
+    // trắng chết ở ĐỈNH mọi biểu đồ có trục, nhân với ~20 biểu đồ của 5 tab.
+    top: 10,
     bottom: 8,
     containLabel: true,
 };
@@ -87,6 +92,15 @@ export const valueAxis = (money = true) => ({
     axisLine: { show: false },
     axisTick: { show: false },
 });
+
+/**
+ * Chiều cao cho biểu đồ xếp hạng (thanh ngang), tính theo SỐ DÒNG THẬT.
+ *
+ * Trước đây mỗi chỗ gọi một con số cứng (420, 340, hoặc `rows * 52 + 60`), nên khi kỳ báo
+ * cáo chỉ có ba gia sư thì khung vẫn cao 420px và ba cái thanh trôi trong một vùng trắng.
+ * 26px/dòng là vừa đủ cho thanh dày 16px cộng khe thở; 44px là chỗ cho nhãn trục dưới cùng.
+ */
+export const rankHeight = (rows: number) => Math.max(150, rows * 26 + 44);
 
 export const legendStyle = {
     bottom: 0,

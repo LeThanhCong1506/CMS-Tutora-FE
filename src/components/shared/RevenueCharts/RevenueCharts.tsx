@@ -47,14 +47,32 @@ export interface LineSeries {
     area?: boolean;
 }
 
+/** Chuỗi vẽ bằng cột, dùng chung trục với các đường. */
+export interface BarSeries {
+    key: string;
+    name: string;
+    color?: string;
+}
+
 export const LineTrendChart: React.FC<
     BaseProps & {
         data: ChartRow[];
         xKey: string;
         series: LineSeries[];
+        /**
+         * Cột vẽ CHUNG một trục Y với các đường — chỉ truyền khi cùng đơn vị.
+         *
+         * Cố tình KHÔNG mở trục Y thứ hai như `ComboChart`. Hai trục cho phép nhồi hai đại
+         * lượng khác đơn vị vào một khung, nhưng lúc đó chiều cao cột và chiều cao đường
+         * không còn so được với nhau — người đọc vẫn cứ so, và đọc ra kết luận sai. Cụm
+         * trang này đã phải bỏ hẳn một biểu đồ vì đúng lỗi đó.
+         *
+         * Cột khai báo trước đường nên nằm dưới, đường luôn nổi lên trên.
+         */
+        bars?: BarSeries[];
         money?: boolean;
     }
-> = ({ data, xKey, series, money = true, height = 300 }) => (
+> = ({ data, xKey, series, bars = [], money = true, height = 300 }) => (
     <Chart
         height={height}
         option={{
@@ -63,27 +81,43 @@ export const LineTrendChart: React.FC<
                 ...tooltipStyle,
                 valueFormatter: (v) => fmt(money)(Number(v)),
             },
-            legend: { ...legendStyle, data: series.map((s) => s.name) },
+            legend: {
+                ...legendStyle,
+                data: [...bars.map((b) => b.name), ...series.map((s) => s.name)],
+            },
             grid: { ...baseGrid, bottom: 26 },
             xAxis: categoryAxis(data.map((d) => String(cell(d, xKey)))),
             yAxis: valueAxis(money),
-            series: series.map((s, i) => {
-                const color = s.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
-                return {
-                    name: s.name,
-                    type: 'line',
-                    smooth: true,
-                    showSymbol: false,
-                    data: data.map((d) => Number(cell(d, s.key) ?? 0)),
-                    lineStyle: {
-                        width: 2.2,
-                        color,
-                        type: s.dashed ? ('dashed' as const) : ('solid' as const),
+            series: [
+                ...bars.map((b, i) => ({
+                    name: b.name,
+                    type: 'bar' as const,
+                    barMaxWidth: 18,
+                    itemStyle: {
+                        color: b.color ?? SERIES_COLORS[i % SERIES_COLORS.length],
+                        borderRadius: [3, 3, 0, 0] as [number, number, number, number],
+                        opacity: 0.85,
                     },
-                    itemStyle: { color },
-                    areaStyle: s.area ? { opacity: 0.12, color } : undefined,
-                };
-            }),
+                    data: data.map((d) => Number(cell(d, b.key) ?? 0)),
+                })),
+                ...series.map((s, i) => {
+                    const color = s.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
+                    return {
+                        name: s.name,
+                        type: 'line' as const,
+                        smooth: true,
+                        showSymbol: false,
+                        data: data.map((d) => Number(cell(d, s.key) ?? 0)),
+                        lineStyle: {
+                            width: 2.2,
+                            color,
+                            type: s.dashed ? ('dashed' as const) : ('solid' as const),
+                        },
+                        itemStyle: { color },
+                        areaStyle: s.area ? { opacity: 0.12, color } : undefined,
+                    };
+                }),
+            ],
         }}
     />
 );
@@ -268,8 +302,25 @@ export const DonutChart: React.FC<
         colors?: readonly string[];
         money?: boolean;
         centerLabel?: string;
+        /**
+         * Tắt số ở tâm khi con số đó đã hiện ngay cạnh trong cùng một thẻ — in lại
+         * lần nữa ở tâm vành khuyên chỉ là lặp. Tắt xong thì lỗ donut không còn phải
+         * chứa chuỗi tiền đầy đủ, nên ràng buộc "bán kính trong phải đủ rộng cho chữ
+         * 14px" hết hiệu lực và biểu đồ hạ được chiều cao.
+         */
+        showCenter?: boolean;
+        /** Vành dày hơn để hình vẫn đọc được khi đã hạ chiều cao. */
+        ring?: 'normal' | 'thick';
     }
-> = ({ data, colors = SERIES_COLORS, money = true, centerLabel, height = 280 }) => {
+> = ({
+    data,
+    colors = SERIES_COLORS,
+    money = true,
+    centerLabel,
+    height = 280,
+    showCenter = true,
+    ring = 'normal',
+}) => {
     const total = data.reduce((s, d) => s + d.value, 0);
     return (
         <Chart
@@ -299,12 +350,12 @@ export const DonutChart: React.FC<
                 series: [
                     {
                         type: 'pie',
-                        radius: ['58%', '80%'],
+                        radius: ring === 'thick' ? ['46%', '80%'] : ['58%', '80%'],
                         center: ['34%', '50%'],
                         avoidLabelOverlap: true,
                         itemStyle: { borderWidth: 2, borderColor: '#fff' },
                         label: {
-                            show: true,
+                            show: showCenter,
                             position: 'center',
                             formatter: () =>
                                 `{v|${money ? axisMoney(total) : plainNumber(total)}}\n{l|${centerLabel ?? ''}}`,
@@ -321,7 +372,7 @@ export const DonutChart: React.FC<
                                 l: { fontSize: 10.5, color: PALETTE.axis, lineHeight: 15 },
                             },
                         },
-                        emphasis: { label: { show: true } },
+                        emphasis: { label: { show: showCenter } },
                         labelLine: { show: false },
                         data: data.map((d, i) => ({
                             ...d,
