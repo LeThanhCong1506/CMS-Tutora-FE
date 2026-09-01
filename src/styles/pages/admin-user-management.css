@@ -389,41 +389,11 @@
 }
 
 /* Nút hành động trong hàng — gọn, chỉ icon trên màn hẹp. */
-.um-row-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    height: 30px;
-    padding: 0 10px;
-    border: 1px solid var(--um-line);
-    border-radius: var(--radius-button);
-    background: var(--um-surface);
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--um-ink);
-    cursor: pointer;
-    transition:
-        background-color 0.16s ease,
-        border-color 0.16s ease;
-}
-
-.um-row-btn:hover {
-    background: var(--um-surface-alt);
-    border-color: var(--um-line-strong);
-}
-
-.um-row-btn:focus-visible,
 .um-search-clear:focus-visible,
 .um-reset-btn:focus-visible,
 .um-btn:focus-visible {
     outline: 2px solid rgba(212, 180, 131, 0.9);
     outline-offset: 2px;
-}
-
-.um-row-btn .material-symbols-outlined {
-    font-size: 16px;
 }
 
 /* =============================== BADGE =============================== */
@@ -1476,15 +1446,6 @@
 
     .um-cell-mobile-meta {
         display: block;
-    }
-
-    .um-row-btn-label {
-        display: none;
-    }
-
-    .um-row-btn {
-        width: 32px;
-        padding: 0;
     }
 
     .um-table-wrap {

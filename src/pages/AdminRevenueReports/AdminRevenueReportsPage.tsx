@@ -59,6 +59,10 @@ const AdminRevenueReportsPage = () => {
             eyebrowInfo={tabSubtitle[active]}
             title="Báo cáo doanh thu"
             maxWidth="wide"
+            // Bộ chọn khoảng thời gian áp cho MỌI tab, nên nó thuộc về hàng tiêu đề chứ không
+            // phải thanh tab. Để chung một hàng với tab thì trang mất hẳn một dòng chỉ để chứa
+            // hai nhóm nút, mà nhóm bên phải lại không đổi khi bấm tab.
+            headerAction={<DashboardRangePicker selection={selection} onChange={setSelection} />}
         >
             <div className="rev-toolbar">
                 <nav className="rev-tabs" aria-label="Nhóm báo cáo">
@@ -73,8 +77,6 @@ const AdminRevenueReportsPage = () => {
                         </NavLink>
                     ))}
                 </nav>
-
-                <DashboardRangePicker selection={selection} onChange={setSelection} />
             </div>
 
             {active === 'overview' && <RevenueTab range={range} />}

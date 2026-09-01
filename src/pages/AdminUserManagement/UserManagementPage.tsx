@@ -549,7 +549,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
             render: (user) => (
                 <button
                     type="button"
-                    className="um-row-btn"
+                    className="admin-ui-row-btn"
                     onClick={(e) => {
                         e.stopPropagation();
                         handleUserClick(user);
@@ -557,7 +557,7 @@ const UserManagementPage = ({ lockedRole }: UserManagementPageProps) => {
                     aria-label={`Xem chi tiết ${user.fullname}`}
                 >
                     <span className="material-symbols-outlined">visibility</span>
-                    <span className="um-row-btn-label">Xem</span>
+                    <span className="admin-ui-row-btn-label">Xem</span>
                 </button>
             ),
             width: 84,
