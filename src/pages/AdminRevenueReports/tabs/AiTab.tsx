@@ -17,13 +17,13 @@ import {
     LineTrendChart,
     RankBarChart,
 } from '@/components/shared/RevenueCharts/RevenueCharts';
-import { PALETTE } from '@/components/shared/RevenueCharts/revenueChartTheme';
+import { PALETTE, rankHeight } from '@/components/shared/RevenueCharts/revenueChartTheme';
 
 const AiTab = ({ range }: { range: RevenueRange }) => {
     const { data, loading, error, reload } = useRevenueReport((r) => getAiRevenue(r, 20), range);
     const packagePage = useClientPagination(data?.packages ?? []);
 
-    if (loading) return <ReportSkeleton charts={3} />;
+    if (loading) return <ReportSkeleton charts={2} splits={1} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!data) return null;
 
@@ -40,6 +40,20 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
 
     // Gói miễn phí không tạo doanh thu
     const paidPackages = data.packages.filter((p) => p.price > 0 && p.revenue > 0);
+
+    /**
+     * Kỳ này có bán được gói nào không.
+     *
+     * Cụm ba khối phía doanh thu (biểu đồ theo thời gian, top người mua, cơ cấu gói) đều đọc
+     * từ cùng một nguồn: các lượt mua trong kỳ. Không có lượt nào thì chúng lần lượt là một
+     * đường thẳng dính đáy, một ô "chưa có ai mua" và một ô "chưa có gói nào bán được" — gần
+     * 600px chiều cao để nói đúng một điều mà thẻ "Doanh thu AI kỳ này" ở trên đã nói bằng số 0.
+     *
+     * Nửa còn lại của tab (tỷ lệ kích hoạt, tỷ lệ sử dụng, lượt cấp/lượt dùng, bảng gói) vẫn
+     * hiện: chúng nói về việc DÙNG credit, thứ vẫn diễn ra kể cả khi chưa ai trả tiền — và với
+     * sản phẩm này thì đó mới là phần đang có dữ liệu thật.
+     */
+    const hasPaidSales = data.trend.some((t) => t.aiRevenue > 0) || a.revenue > 0;
 
     const topBuyers = data.topUsers
         .filter((u) => u.amountPaid > 0)
@@ -95,6 +109,7 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                 </div>
             )}
 
+            {hasPaidSales && (
             <ChartBlock
                 title="Doanh thu AI theo thời gian"
                 hint="Doanh thu từ AI giải bài tập. Tỷ trọng này tăng thì biên lợi nhuận chung của nền tảng cải thiện."
@@ -102,47 +117,57 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                 <LineTrendChart
                     data={data.trend}
                     xKey="month"
-                    height={290}
+                    height={240}
                     series={[
                         { key: 'aiRevenue', name: 'Doanh thu AI', color: PALETTE.blue, area: true },
                     ]}
                 />
             </ChartBlock>
+            )}
 
-            <div className="rev-grid-2">
-                <ChartBlock
-                    title="Top 5 người mua gói AI"
-                    hint="Nhóm chi nhiều nhất cho sản phẩm AI."
-                >
-                    {topBuyers.length === 0 ? (
-                        <ReportEmpty label="Chưa có ai mua gói AI trong kỳ" />
-                    ) : (
-                        <RankBarChart
-                            data={topBuyers}
-                            labelKey="label"
-                            valueKey="amountPaid"
-                            name="Đã trả"
-                            color={PALETTE.gold}
-                            height={290}
-                        />
-                    )}
-                </ChartBlock>
-
-                <ChartBlock
-                    title="Cơ cấu doanh thu theo gói"
-                    hint="Tỷ trọng đóng góp của từng gói. Gói cao cấp thường ít người mua nhưng đóng góp lớn — nếu không phải vậy thì mức giá chưa hợp lý."
-                >
-                    {paidPackages.length === 0 ? (
-                        <ReportEmpty label="Chưa có gói có phí nào bán được" />
-                    ) : (
-                        <DonutChart
-                            data={paidPackages.map((p) => ({ name: p.name, value: p.revenue }))}
-                            centerLabel="Tổng doanh thu"
-                            height={290}
-                        />
-                    )}
-                </ChartBlock>
-            </div>
+            {/* Cả khối ẩn khi kỳ này chưa bán được gói nào — xem `hasPaidSales` ở trên. Khi có
+                bán, hai ô vẫn nằm chung một khung để một ô rỗng lẻ không kéo cao cả hàng. */}
+            {hasPaidSales && (
+            <ChartBlock
+                title="Ai mua gói AI, và mua gói nào"
+                split={[
+                    {
+                        label: 'Top 5 người mua',
+                        hint: 'Nhóm chi nhiều nhất cho sản phẩm AI.',
+                        node:
+                            topBuyers.length === 0 ? (
+                                <ReportEmpty label="Chưa có ai mua gói AI trong kỳ" />
+                            ) : (
+                                <RankBarChart
+                                    data={topBuyers}
+                                    labelKey="label"
+                                    valueKey="amountPaid"
+                                    name="Đã trả"
+                                    color={PALETTE.gold}
+                                    height={rankHeight(topBuyers.length)}
+                                />
+                            ),
+                    },
+                    {
+                        label: 'Cơ cấu theo gói',
+                        hint: 'Tỷ trọng đóng góp của từng gói. Gói cao cấp thường ít người mua nhưng đóng góp lớn — nếu không phải vậy thì mức giá chưa hợp lý.',
+                        node:
+                            paidPackages.length === 0 ? (
+                                <ReportEmpty label="Chưa có gói có phí nào bán được" />
+                            ) : (
+                                <DonutChart
+                                    data={paidPackages.map((p) => ({
+                                        name: p.name,
+                                        value: p.revenue,
+                                    }))}
+                                    centerLabel="Tổng doanh thu"
+                                    height={220}
+                                />
+                            ),
+                    },
+                ]}
+            />
+            )}
 
             <ChartBlock
                 title="Lượt đã cấp so với lượt đã dùng"
@@ -152,7 +177,7 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     data={data.creditFlow}
                     xKey="month"
                     money={false}
-                    height={290}
+                    height={240}
                     series={[
                         { key: 'granted', name: 'Lượt đã cấp', color: PALETTE.navy },
                         { key: 'consumed', name: 'Lượt đã dùng', color: PALETTE.emerald },

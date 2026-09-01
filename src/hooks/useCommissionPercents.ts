@@ -5,7 +5,7 @@ import { getCommissionConfig } from '@/services/adminCommission.service';
 export interface CommissionPercents {
     parent: number;
     tutor: number;
-    /** Tổng hai chiều — đây mới là mức hoa hồng Tutora thu trên học phí gốc. */
+    /** Tổng hai chiều — đây mới là mức phí nền tảng Tutora thu trên học phí gốc. */
     total: number;
 }
 

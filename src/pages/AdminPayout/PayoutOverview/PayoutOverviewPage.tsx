@@ -104,7 +104,6 @@ const PayoutOverviewPage: React.FC = () => {
             <span className="material-symbols-outlined">refresh</span>
             {loading ? 'Đang tải...' : 'Làm mới'}
           </button>
-          {/* Tạm ẩn nút "Chuyển tiền chủ động" (route /admin-portal/payouts/transfers vẫn còn)
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
@@ -113,7 +112,6 @@ const PayoutOverviewPage: React.FC = () => {
             <span className="material-symbols-outlined">send_money</span>
             Chuyển tiền chủ động
           </button>
-          */}
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"
@@ -181,8 +179,7 @@ const PayoutOverviewPage: React.FC = () => {
           </div>
           {lastLoadedAt && (
             <span className="payout-last-updated">
-              Cập nhật lúc{' '}
-              {lastLoadedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              Cập nhật lúc {lastLoadedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
         </div>

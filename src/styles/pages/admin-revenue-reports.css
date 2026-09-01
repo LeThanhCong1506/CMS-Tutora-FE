@@ -1,28 +1,24 @@
-.rev-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-/* Điều hướng tab (mỗi tab là 1 route) */
+/* Điều hướng tab (mỗi tab là 1 route), đứng riêng một hàng dưới tiêu đề.
+   `align-self: flex-start` để viên pill chỉ rộng bằng nội dung — `.rev-tabs` là con trực
+   tiếp của khung trang (flex cột), không có nó thì thanh tab kéo dài hết bề ngang và cái
+   nền kem trải thành một dải trống bên phải. */
 .rev-tabs {
     display: flex;
+    align-self: flex-start;
     flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px;
+    gap: 2px;
+    padding: 3px;
     border: 1px solid var(--color-stone-100);
-    border-radius: 12px;
+    border-radius: var(--radius-control, 8px);
     background: rgba(250, 249, 246, 0.7);
 }
 
 .rev-tabs a {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 12px;
-    border-radius: 7px;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: var(--radius-badge, 6px);
     color: var(--color-navy-70);
     font-size: 12.5px;
     font-weight: 500;
@@ -31,8 +27,13 @@
     transition: background-color 0.18s ease, color 0.18s ease;
 }
 
+/* `line-height: 1` mới là chỗ ăn tiền, không phải padding: icon 17px đang kế thừa
+   line-height 1.5 của body nên hộp dòng của NÓ cao 25.5px — cao hơn cả dòng chữ
+   12.5×1.5 = 18.75px, tức chính cái icon quyết định chiều cao thanh tab. Neo về 1
+   thì icon chỉ còn chiếm đúng 16px và dòng chữ giành lại quyền quyết định. */
 .rev-tabs a .material-symbols-outlined {
-    font-size: 17px;
+    font-size: 16px;
+    line-height: 1;
 }
 
 .rev-tabs a:hover {
@@ -74,9 +75,14 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 15px 18px 4px;
+    /* Mọi ChartBlock trong cụm chỉ truyền title + hint, không truyền subtitle, nên đầu
+       thẻ chỉ có đúng một dòng h4 cao 20px mà vẫn đeo 19px đệm dọc. */
+    padding: 12px 16px 4px;
 }
 
+/* `font-weight` khai tường minh, không dựa vào mặc định của trình duyệt cho <h4> — và để
+   khớp đúng `.rev-alloc-title`, vốn đã đặt 700. IBM Plex Serif nạp các nét 400/500/700 nên
+   700 là nét đậm nhất có thật; đặt cao hơn thì trình duyệt phải tự làm giả, chữ sẽ nhoè. */
 .rev-block-text h4 {
     display: flex;
     align-items: center;
@@ -85,6 +91,7 @@
     color: var(--color-navy);
     font-family: var(--font-serif);
     font-size: 15px;
+    font-weight: 700;
     line-height: 1.35;
 }
 
@@ -99,8 +106,134 @@
     flex-shrink: 0;
 }
 
+/* Con số tổng đứng cạnh tiêu đề biểu đồ, đóng thành viên thuốc XANH.
+ *
+ * Đây là con số trả lời câu hỏi trung tâm của cả trang — "rốt cuộc kỳ này Tutora thu được
+ * bao nhiêu" — nên nó là thứ duy nhất trong cụm báo cáo được nhuộm màu ngoài badge trạng
+ * thái. Bản đầu để chữ xám 13.5px, đứng cạnh tiêu đề serif 15px thì chìm nghỉm, không ai
+ * thấy nó ở đó.
+ *
+ * Xanh lấy đúng emerald #10b981 của ĐƯỜNG LIỀN trong biểu đồ ngay bên dưới, và chấm tròn
+ * cũng đúng màu đó: viên thuốc này là tổng của đường ấy, trùng màu thì mắt tự nối hai thứ
+ * mà không cần thêm một chữ giải thích nào.
+ *
+ * Chữ thì dùng sắc xanh SẪM hơn (#047857 cho nhãn, #065f46 cho số) — #10b981 trên nền nhạt
+ * không đạt ngưỡng tương phản WCAG AA cho cỡ chữ này. Chỉ chấm tròn mới được dùng màu gốc,
+ * vì nó là hình trang trí, đã aria-hidden theo mặc định của pseudo-element. */
+.rev-block-figure {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    flex-shrink: 0;
+    align-self: center;
+    padding: 5px 12px 5px 10px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.1);
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+/* Chấm dẫn màu — cùng màu, cùng cỡ với chấm chú giải của biểu đồ bên dưới. */
+.rev-block-figure::before {
+    content: "";
+    align-self: center;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+}
+
+.rev-block-figure-label {
+    color: #047857;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.rev-block-figure strong {
+    color: #065f46;
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Màn hẹp: viên thuốc xuống hẳn dòng dưới thay vì ép tiêu đề co lại. Nó không xuống dòng
+   được (white-space: nowrap) nên khi hai bên tranh chỗ thì tiêu đề phải là bên nhường. */
+@media (max-width: 640px) {
+    .rev-block-head {
+        flex-wrap: wrap;
+    }
+
+    .rev-block-figure {
+        align-self: flex-start;
+    }
+}
+
 .rev-block-body {
-    padding: 0 8px 10px;
+    padding: 0 8px 8px;
+}
+
+/* ─── Nhóm biểu đồ con trong CÙNG một thẻ ──────────────────────────────
+ *
+ * Trước đây mỗi biểu đồ là một thẻ trắng riêng, nên hai biểu đồ cùng kể một câu chuyện
+ * thành hai cái khung, hai tiêu đề serif 15px và một khe 16px ở giữa. Ở đây chỉ còn một
+ * khung và một tiêu đề chính; biểu đồ con ngăn nhau bằng đường kẻ dọc 1px và mang nhãn
+ * cỡ chú thích, vì tiêu đề khối đã nói chúng thuộc về nhau rồi.
+ *
+ * Nhãn con VẪN giữ ⓘ riêng của từng biểu đồ — gộp khung không được phép làm mất câu
+ * giải thích, nếu không hai biểu đồ mất danh tính và người đọc phải đoán qua trục.
+ */
+/* `auto-fit` chứ không phải `repeat(2, 1fr)` cứng: khối nào chỉ có MỘT biểu đồ phụ thì nó
+   chiếm trọn bề ngang, không để lại nửa ô trắng. Hai biểu đồ thì vẫn chia đôi như cũ. */
+.rev-split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    border-top: 1px solid var(--color-stone-100);
+}
+
+/* Khối chỉ gồm các biểu đồ ngang hàng thì .rev-split nối thẳng vào header, mà header chỉ
+   chừa 4px đệm dưới — đường kẻ sẽ dính vào chân chữ tiêu đề. */
+.rev-block-head + .rev-split {
+    margin-top: 9px;
+}
+
+.rev-split-cell {
+    min-width: 0;
+    padding: 10px 8px 8px;
+    border-left: 1px solid var(--color-stone-100);
+}
+
+.rev-split-cell:first-child {
+    border-left: 0;
+}
+
+/* padding-left 8px để mép chữ trùng mép vùng vẽ ECharts (baseGrid.left = 8). */
+.rev-split-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 2px;
+    padding-left: 8px;
+    color: var(--color-navy-70);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+@media (max-width: 1080px) {
+    .rev-split {
+        grid-template-columns: 1fr;
+    }
+
+    .rev-split-cell {
+        border-left: 0;
+        border-top: 1px solid var(--color-stone-100);
+    }
+
+    .rev-split-cell:first-child {
+        border-top: 0;
+    }
 }
 
 /* Chart/bảng rộng cuộn trong khung riêng — body trang không cuộn ngang */
@@ -138,7 +271,7 @@
     border-radius: 10px;
     background: var(--color-navy);
     color: var(--color-cream-light);
-    font-family: var(--font-sans, inherit);
+    font-family: inherit;
     font-size: 13px;
     font-weight: 400;
     line-height: 1.55;
@@ -205,6 +338,105 @@
     font-weight: 600;
 }
 
+/* Số dòng của mỗi nhóm, in ngay trong chip lọc.
+
+   Dùng `tabular-nums` để chip không nhảy ngang khi số đổi độ rộng (9 → 10), và nền mờ theo
+   `currentColor` để tự đảo màu ở trạng thái is-active mà không cần khai màu lần thứ hai. */
+.rev-chip-count {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Thanh công cụ của bảng chi tiết: lọc + tìm + sắp xếp.
+
+   `flex-wrap` là bắt buộc chứ không phải phòng xa — ba bộ điều khiển này nằm ở góc phải
+   header, cùng hàng với tiêu đề khối, nên trên màn hình hẹp chúng phải xuống dòng thay vì
+   ép tiêu đề co lại. `.rev-block-action` có `flex-shrink: 0` nên nếu không cho wrap thì cả
+   header sẽ tràn ngang. */
+.rev-table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.rev-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    height: 32px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: 9px;
+    background: rgba(250, 249, 246, 0.8);
+    transition: border-color 0.18s ease;
+}
+
+.rev-search:focus-within {
+    border-color: var(--color-navy-60);
+}
+
+.rev-search .material-symbols-outlined {
+    font-size: 17px;
+    color: var(--color-navy-60);
+}
+
+.rev-search input {
+    width: 180px;
+    border: none;
+    background: transparent;
+    color: var(--color-navy);
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.rev-search input:focus {
+    outline: none;
+}
+
+/* Nút xoá sẵn có của <input type="search"> trong WebKit bị ẩn: nó chỉ hiện khi hover và nằm
+   sát mép, dễ bấm nhầm hơn là xoá tay. */
+.rev-search input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.rev-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    height: 32px;
+    border: 1px solid var(--color-stone-100);
+    border-radius: 9px;
+    background: rgba(250, 249, 246, 0.8);
+}
+
+.rev-select-label {
+    color: var(--color-navy-60);
+    font-size: 11.5px;
+}
+
+.rev-select select {
+    border: none;
+    background: transparent;
+    color: var(--color-navy);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.rev-select select:focus {
+    outline: none;
+}
+
 /* Callout */
 .rev-callout {
     display: flex;
@@ -257,6 +489,21 @@
     font-size: 13px;
 }
 
+/* min-height 260px ở trên sinh ra cho trạng thái rỗng của CẢ TRANG. Nhét nguyên con số
+   đó vào ruột một khối biểu đồ thì một câu "chưa có dữ liệu" ngốn hơn 300px kể cả vỏ —
+   cao hơn phần lớn biểu đồ thật. Trong khối thì chỉ cần đủ chỗ cho icon và một dòng chữ.
+   Nặng nhất ở tab Doanh thu AI: khi chưa ai mua gói nào, cả hàng thành dải trắng. */
+.rev-block-body > .rev-state,
+.rev-split-cell > .rev-state {
+    min-height: 120px;
+    padding: 20px 16px;
+}
+
+.rev-block-body > .rev-state .material-symbols-outlined,
+.rev-split-cell > .rev-state .material-symbols-outlined {
+    font-size: 26px;
+}
+
 .rev-state-error .material-symbols-outlined {
     color: #dc2626;
 }
@@ -299,22 +546,57 @@
 }
 
 .rev-table th {
-    padding: 10px 14px;
+    padding: 9px 16px;
     border-bottom: 1px solid var(--color-stone-100);
     background: rgba(250, 249, 246, 0.7);
     color: var(--color-navy-70);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
+    line-height: 1.3;
     text-align: left;
     text-transform: uppercase;
+    /* Kế thừa `white-space: nowrap` của .rev-table — MỌI tiêu đề nằm trên một dòng.
+     *
+     * Từng thử cho tiêu đề gãy dòng để tránh cuộn ngang. Hỏng về mặt thị giác: chỉ đúng hai
+     * cột dài nhất bị gãy, nên hàng tiêu đề có chỗ một dòng chỗ hai dòng, chân chữ so le.
+     * Đo thật trên bảng "Doanh thu theo booking" (font Geist, nội dung dài nhất hiện có):
+     *
+     *     bề rộng khả dụng          1358px   = 1440 (PageContainer .max_wide)
+     *                                        − 80 (đệm 2.5rem hai bên) − 2 (viền thẻ)
+     *     bảng cần, tiêu đề 1 dòng  1365px   → thiếu 7px, và 7px đó đủ để gãy dòng
+     *     bảng cần, sau khi bóp
+     *     đệm 4 cột số bên dưới     1317px   → dư 41px
+     *
+     * Nên thay vì cho chữ xuống dòng, lấy lại chỗ ở phần đệm. Xem quy tắc .rev-num ngay dưới. */
+}
+
+/* Bốn cột tiền bóp đệm ngang 16px → 10px.
+ *
+ * Đây là chỗ rẻ nhất để lấy 48px: giá trị trong các cột này căn PHẢI và ngắn (dưới 90px),
+ * trong khi tiêu đề của chúng lại dài nhất bảng — tức phần đệm 16px đang đứng cạnh khoảng
+ * trắng sẵn có chứ không ngăn cách gì. Bóp lại còn gom bốn cột tiền thành một khối đọc liền
+ * mạch, tách khỏi nhóm cột chữ bên trái.
+ *
+ * Chỉ đặt padding-left/right nên đệm dọc của th (9px) và td (10px) giữ nguyên. */
+.rev-table th.rev-num,
+.rev-table td.rev-num {
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .rev-table td {
-    padding: 11px 14px;
+    padding: 10px 16px;
     border-bottom: 1px solid rgba(62, 47, 40, 0.06);
     color: var(--color-navy-70);
     vertical-align: top;
+}
+
+/* Bảng nào có phân trang mà không có tfoot (tab Gia sư) thì hairline 0.06 của ô cuối
+   và viền 0.1 của vùng phân trang dính nhau thành một vệt 2px loang. Khung xương đã
+   xử lý đúng ca này rồi, bảng thật thì chưa. */
+.rev-table tbody tr:last-child td {
+    border-bottom: 0;
 }
 
 .rev-table tbody tr:hover {
@@ -369,12 +651,10 @@
 }
 
 @media (max-width: 720px) {
-    .rev-toolbar {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
+    /* Màn hẹp: thanh tab cuộn ngang trong khung của nó thay vì xuống dòng thành hai tầng
+       pill. `align-self: stretch` để khung cuộn rộng đúng bằng bề ngang trang. */
     .rev-tabs {
+        align-self: stretch;
         overflow-x: auto;
         flex-wrap: nowrap;
         overscroll-behavior-x: contain;
@@ -400,6 +680,40 @@
 }
 
 /*
+ * Dải chỉ số + khối phân bổ trong CÙNG một khung.
+ *
+ * Đây chính là thủ pháp mà .rev-strip ngay dưới đã dùng để ngăn ba ô chỉ số, chỉ áp lên
+ * một cấp cao hơn: hai khối này là hai nửa của một câu — trên là các con số tổng, dưới
+ * là cách chúng được chia — nên không có lý do gì để mắt phải nhảy qua một mép thẻ ở
+ * đúng chỗ nội dung đang chảy liền mạch.
+ *
+ * Viền và bo góc bị đè ở cấp .rev-hero chứ không sửa vào .rev-strip / .rev-alloc, để hai
+ * class đó giữ nguyên định nghĩa gốc và vẫn dùng độc lập được (ReportSkeleton đang dùng
+ * .rev-strip qua prop `strip`).
+ */
+.rev-hero {
+    border: 1px solid var(--color-stone-100);
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+/* Nền của hai khối con phải TRONG SUỐT, không phải `overflow: hidden` ở thẻ cha.
+   Overflow cũng bo được góc, nhưng nó cắt mọi thứ tràn ra ngoài — kể cả hộp ⓘ của các
+   thẻ chỉ số và của phần chú thích, vốn mở XUỐNG DƯỚI nên rất dễ vượt mép thẻ. Để nền
+   con trong suốt thì nền trắng bo góc của .rev-hero hiện xuyên qua, góc vẫn tròn, mà
+   tooltip vẫn thoát ra được. */
+.rev-hero > .rev-strip,
+.rev-hero > .rev-alloc {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.rev-hero > .rev-alloc {
+    border-top: 1px solid var(--color-stone-100);
+}
+
+/*
  * Dải chỉ số đầu trang: MỘT thẻ trắng, các ô ngăn nhau bằng đường kẻ mảnh thay vì
  * mỗi ô một cái khung riêng. Ít viền hơn thì mắt đọc dãy số theo hàng ngang, không
  * phải nhảy qua từng hộp.
@@ -413,7 +727,7 @@
 }
 
 .rev-strip .rev-metric {
-    padding: 16px 20px;
+    padding: 14px 18px;
     border: 0;
     border-left: 1px solid var(--color-stone-100);
     border-radius: 0;
@@ -689,23 +1003,16 @@
     background: #fff;
 }
 
+/* Hai cột từng thụt trái 20px và 18px trong CÙNG một thẻ; về chung 18px là hết lệch. */
 .rev-alloc-main {
     min-width: 0;
-    padding: 16px 20px 18px;
+    padding: 14px 18px 16px;
 }
 
 .rev-alloc-aside {
     min-width: 0;
-    padding: 16px 18px 10px;
+    padding: 14px 18px 10px;
     border-left: 1px solid var(--color-stone-100);
-}
-
-.rev-alloc-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
 }
 
 .rev-alloc-title {
@@ -720,27 +1027,85 @@
     line-height: 1.35;
 }
 
-/* Học phí gốc + phí phụ huynh: dòng chú thích mảnh, không phải hai cái hộp. */
-.rev-alloc-source {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 14px;
-    color: var(--color-navy-60);
-    font-size: 11.5px;
+/* Thanh phân bổ chỉ vẽ tỉ lệ, không mang chữ: lát hoa hồng chưa tới 10% bề ngang nên
+   nhãn nhét vào trong sẽ bị cắt cụt. Số và % nằm hết ở phần chú thích ngay dưới. */
+/* MỘT grid cho cả hai hàng, không phải mỗi hàng một grid.
+   Cột nhãn dùng `max-content` nên nếu tách thành hai grid riêng thì nó tính lại cho từng
+   hàng: "Tiền vào" rộng hơn "Tiền ra" vài pixel, hai thanh bắt đầu ở hai vị trí khác nhau
+   và thành ra DÀI KHÁC NHAU. Mà "cùng tổng nên dài bằng nhau" chính là tiền đề để so hai
+   thanh — lệch một chút là hỏng cả thông điệp. Gộp một grid thì cột nhãn rộng bằng nhãn
+   dài nhất, dùng chung cho mọi hàng. */
+.rev-alloc-flow {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 5px;
+    margin: 12px 0 0;
 }
 
-.rev-alloc-source strong {
+.rev-alloc-flow-label {
+    grid-column: 1;
+    color: var(--color-navy-60);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rev-alloc-flow .rev-alloc-bar {
+    grid-column: 2;
+}
+
+/* Chú thích xuống dòng riêng nhưng vẫn ở cột 2 — thẳng mép trái với thanh ngay trên nó. */
+.rev-alloc-parts {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 22px;
+    /* Khe giữa hai NHÓM lớn hơn khe trong một nhóm, để mắt gom đúng "thanh + chú thích của
+       nó" thành một cụm thay vì đọc thành bốn dòng rời. */
+    margin: 0 0 9px;
+}
+
+.rev-alloc-parts:last-child {
+    margin-bottom: 0;
+}
+
+.rev-alloc-part {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--color-navy-60);
+    font-size: 12px;
+}
+
+/* Chip tỉ lệ phí. Nền mờ để nó đọc thành NHÃN gắn vào cái tên, không thành một con số nữa
+   đứng ngang hàng với số tiền bên cạnh. */
+.rev-alloc-rate {
+    padding: 1px 5px;
+    border-radius: var(--radius-badge, 6px);
+    background: rgba(26, 34, 56, 0.06);
     color: var(--color-navy-70);
+    font-size: 10.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.rev-alloc-part b {
+    color: var(--color-navy);
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
-/* Thanh phân bổ chỉ vẽ tỉ lệ, không mang chữ: lát hoa hồng chưa tới 10% bề ngang nên
-   nhãn nhét vào trong sẽ bị cắt cụt. Số và % nằm hết ở phần chú thích ngay dưới. */
+/* Thanh cố ý không mang chữ: đoạn phí phụ huynh chưa tới 5% bề ngang nên nhãn nhét vào
+   trong sẽ bị cắt cụt. Tên và số tiền nằm hết ở phần chú thích ngay dưới. */
 .rev-alloc-bar {
     display: flex;
     gap: 3px;
-    height: 28px;
-    margin: 18px 0 16px;
+    height: 18px;
 }
 
 .rev-alloc-seg {
@@ -750,61 +1115,28 @@
     border-radius: 6px;
 }
 
-.rev-alloc-seg.is-tutor { background: #7a8aa0; }
-.rev-alloc-seg.is-platform { background: #1a2238; }
+/* ĐÚNG HAI màu cho cả bốn đoạn, mang đúng hai nghĩa:
+     is-out  — tiền rời khỏi Tutora (học phí gốc ở thanh trên, gia sư nhận ở thanh dưới)
+     is-keep — phần Tutora giữ lại (phí phụ huynh ở thanh trên, hoa hồng ở thanh dưới)
+   Giữ nguyên nghĩa qua cả hai thanh thì khối sẫm nở ra từ ~5% lên ~10% trở thành thông điệp
+   duy nhất mắt bắt được — chính là chỗ phí gia sư nhập vào phí phụ huynh để thành hoa hồng.
+   Bản trước dùng bốn sắc độ gần nhau: thông điệp đó chìm mất, mà lại thành bốn thứ phải
+   phân biệt. */
+.rev-alloc-seg.is-out { background: #9aa7ba; }
+.rev-alloc-seg.is-keep { background: #1a2238; }
 
-.rev-alloc-legend {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 18px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.rev-alloc-legend li {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-}
-
-.rev-alloc-name {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--color-navy-70);
-    font-size: 12.5px;
-    font-weight: 600;
-}
-
+/* Chấm màu nhỏ trước mỗi tên. Chỉ hai màu, mang đúng hai nghĩa như hai đoạn của thanh —
+   xem khối `.rev-alloc-seg` ở trên. */
 .rev-alloc-dot {
     flex-shrink: 0;
-    width: 9px;
-    height: 9px;
-    border-radius: 3px;
+    align-self: center;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
 }
 
-.rev-alloc-dot.is-tutor { background: #7a8aa0; }
-.rev-alloc-dot.is-platform { background: #1a2238; }
-
-/* Tỉ lệ đẩy về mép phải dòng tên — hai dòng chú thích thẳng cột, mắt so được ngay. */
-.rev-alloc-share {
-    margin-left: auto;
-    padding-left: 8px;
-    color: var(--color-navy-60);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-}
-
-.rev-alloc-amount {
-    color: var(--color-navy);
-    font-family: var(--font-serif);
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1.25;
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-}
+.rev-alloc-dot.is-out { background: #9aa7ba; }
+.rev-alloc-dot.is-keep { background: #1a2238; }
 
 .rev-alloc-note {
     color: var(--color-navy-60);
@@ -813,37 +1145,11 @@
 }
 
 /* Cột phải — vành khuyên trạng thái hoa hồng */
-.rev-alloc-aside-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-}
 
-.rev-alloc-aside-total {
-    color: var(--color-navy);
-    font-family: var(--font-serif);
-    font-size: 15px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-/* Ghi chú hoa hồng từ lịch đặt đã hủy — nằm ngoài mọi phép cộng ở trên nên tách
-   xuống chân thẻ, chữ nhỏ, không đứng cạnh con số nào để khỏi bị đọc nhầm là số hạng. */
-.rev-alloc-foot {
-    grid-column: 1 / -1;
-    padding: 10px 20px 12px;
-    border-top: 1px dashed var(--color-stone-100);
-    color: var(--color-navy-60);
-    font-size: 11.5px;
-    line-height: 1.5;
-}
-
-.rev-alloc-foot strong {
-    color: var(--color-navy-70);
-    font-variant-numeric: tabular-nums;
-}
+/* `.rev-alloc-foot` từng nằm ở đây: dòng ghi chú hoa hồng từ lịch đặt đã hủy ở chân thẻ.
+   Đã bỏ cùng với phần JSX của nó — lý do ghi ở đầu MoneySplit.tsx. Nếu sau này cần dựng
+   lại một dòng tổng ở chân thẻ thì viết mới, đừng khôi phục selector cũ: nó mang theo
+   `border-top: dashed` vốn chỉ hợp với vai trò "ngoại lệ", không hợp với một số hạng thật. */
 
 .rev-flow-amount {
     font-variant-numeric: tabular-nums;
@@ -853,7 +1159,7 @@
 .rev-flow-currency {
     margin-left: 0.32em;
     color: var(--color-navy-60);
-    font-family: var(--font-sans, inherit);
+    font-family: inherit;
     font-size: 0.55em;
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -877,7 +1183,8 @@
         padding: 15px 16px;
     }
 
-    .rev-alloc-legend {
-        grid-template-columns: 1fr;
+    /* Man hep: hai muc cua mot thanh xep doc thay vi nam ngang. */
+    .rev-alloc-parts {
+        gap: 2px 14px;
     }
 }

@@ -187,8 +187,12 @@ export interface SummaryPendingActions {
 }
 
 export interface AdminDashboardSummary {
+  /** Tiền phụ huynh trả (GMV). Cùng con số với `summary.gmv` của báo cáo doanh thu. */
   gmv: MetricWithChange;
+  /** Doanh thu TẠM TÍNH — cùng con số với `summary.commissionSold` của báo cáo doanh thu. */
   platformRevenue: MetricWithChange;
+  /** Doanh thu ĐÃ GHI NHẬN — cùng con số với `summary.recognisedRevenue` của báo cáo. */
+  recognisedRevenue: MetricWithChange;
   bookings: SummaryBookings;
   pendingActions: SummaryPendingActions;
   filterFrom: string;
