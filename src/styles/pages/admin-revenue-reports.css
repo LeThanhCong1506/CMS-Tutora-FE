@@ -67,7 +67,30 @@
     border: 1px solid var(--color-stone-100);
     border-radius: var(--radius-md);
     background: #fff;
+    /* Cắt nội dung theo góc bo — thứ THỰC SỰ cần nó là `DataTableShell`: `.rev-table-wrap`
+       nằm sát hai góc dưới của thẻ, mà hàng bảng thì vuông góc và có nền riêng khi hover,
+       nên không cắt thì góc bo bị vuông lại. Khối biểu đồ KHÔNG cần và phải gỡ ra —
+       xem `.rev-block-chart` ngay dưới. */
     overflow: hidden;
+}
+
+/* Khối biểu đồ mở khoá đường cắt đó.
+ *
+ * Hộp định nghĩa ⓘ ở tiêu đề là `position: absolute` neo vào icon, treo xuống dưới. Nó
+ * thường CAO HƠN quãng còn lại của thẻ — chú thích của "Dòng tiền theo thời gian" có bốn
+ * đoạn, khoảng 480px, trong khi cả thẻ chỉ cao ~305px — nên `overflow: hidden` ở thẻ cha
+ * xén ngang giữa câu và người đọc mất đúng phần cuối, chỗ nói cách cộng ra con số ở tiêu đề.
+ *
+ * `z-index: 30` của `.rev-infobox` vốn đã đủ để hộp nổi trên biểu đồ và trên khối kế tiếp:
+ * trong cả tệp này không có phần tử nào khác tạo ngữ cảnh xếp chồng. Nên vấn đề chưa bao giờ
+ * là thứ tự chồng, chỉ là bị xén — sửa bằng cách cho tràn, không phải bằng cách nâng z-index.
+ *
+ * An toàn với khối biểu đồ vì `.rev-block-body` đã chừa 8px mỗi bên và `.rev-split` thì có
+ * đệm riêng: không có con nào chạm tới góc bo để mà lòi ra. Nếu sau này nhét bảng hoặc ảnh
+ * sát mép vào ChartBlock thì phải xét lại chỗ này.
+ */
+.rev-block-chart {
+    overflow: visible;
 }
 
 .rev-block-head {
@@ -122,8 +145,9 @@
  * vì nó là hình trang trí, đã aria-hidden theo mặc định của pseudo-element. */
 .rev-block-figure {
     display: inline-flex;
-    align-items: baseline;
-    gap: 7px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     flex-shrink: 0;
     align-self: center;
     padding: 5px 12px 5px 10px;
@@ -134,14 +158,45 @@
     white-space: nowrap;
 }
 
-/* Chấm dẫn màu — cùng màu, cùng cỡ với chấm chú giải của biểu đồ bên dưới. */
-.rev-block-figure::before {
+/* Bo góc vuông lại khi có dòng thứ hai: 999px trên một khối cao 40px cắt mất hai đầu dòng
+   dưới. Chọn theo :has() cho đúng đối tượng — viên thuốc một dòng vẫn giữ hình viên nhộng. */
+.rev-block-figure:has(.rev-block-figure-split) {
+    padding: 6px 14px 7px 12px;
+    border-radius: 12px;
+}
+
+/* Dòng chính: nhãn và số nằm ngang, canh theo đường chân chữ. */
+.rev-block-figure-main {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+}
+
+/* Chấm dẫn màu — cùng màu, cùng cỡ với chấm chú giải của biểu đồ bên dưới. Gắn vào DÒNG
+   CHÍNH chứ không vào cả viên thuốc: nếu để ở ngoài thì khi có hai dòng nó tụt xuống giữa
+   khối, mất khả năng dẫn mắt vào con số. */
+.rev-block-figure-main::before {
     content: "";
     align-self: center;
     width: 7px;
     height: 7px;
     border-radius: 50%;
     background: #10b981;
+}
+
+/* Dòng tách nguồn. Thụt vào 14px để thẳng hàng với chữ của dòng trên (7px chấm + 7px gap),
+   nhạt hơn hẳn số chính — đây là chú thích, không phải một con số thứ hai ngang vai. */
+.rev-block-figure-split {
+    padding-left: 14px;
+    color: #047857;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+.rev-block-figure-op {
+    padding: 0 1px;
+    opacity: 0.6;
 }
 
 .rev-block-figure-label {
@@ -621,9 +676,9 @@
     vertical-align: top;
 }
 
-/* Bảng nào có phân trang mà không có tfoot (tab Gia sư) thì hairline 0.06 của ô cuối
-   và viền 0.1 của vùng phân trang dính nhau thành một vệt 2px loang. Khung xương đã
-   xử lý đúng ca này rồi, bảng thật thì chưa. */
+/* Hairline 0.06 của ô cuối và viền 0.1 của vùng phân trang dính nhau thành một vệt 2px
+   loang. Trước 02/09/2026 chỉ tab Gia sư dính vì các bảng khác còn `tfoot` che mất chỗ nối;
+   nay không bảng nào còn dòng tổng nên mọi bảng đều đi qua đây. */
 .rev-table tbody tr:last-child td {
     border-bottom: 0;
 }
@@ -665,13 +720,6 @@
     font-weight: 600;
 }
 
-.rev-table tfoot td {
-    border-top: 1px solid var(--color-stone-100);
-    border-bottom: none;
-    background: rgba(250, 249, 246, 0.7);
-    color: var(--color-navy);
-    font-weight: 700;
-}
 
 @media (max-width: 1080px) {
     .rev-grid-2 {
@@ -1240,6 +1288,13 @@
 .rev-fate-dot.is-matured { background: #10b981; }
 .rev-fate-dot.is-pending { background: #f59e0b; }
 .rev-fate-dot.is-dead { background: #dc2626; }
+
+/* Cụm `.rev-bridge*` đã xoá 02/09/2026. Nó vẽ một dòng ở cuối thẻ Phân bổ:
+ * `doanh thu đã ghi nhận = X đã thu được + Y gói AI ± Z chênh mốc`. Số hạng "chênh mốc" là
+ * phần dư bắt buộc phải có khi cộng hai đại lượng neo hai mốc khác nhau (ngày ĐẶT với ngày
+ * DẠY) — nó đúng về số học nhưng cần cả một tooltip mới đọc được, đặt ngay dưới một hàng đã
+ * có ba con số. Thay bằng cách tách theo NGUỒN ở `.rev-block-figure-split`, khít tuyệt đối
+ * và không có số hạng nào phải giải thích. */
 
 .rev-eq-part-name {
     display: flex;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { money, moneyVnd } from '@/utils/formatMoney';
+import { money } from '@/utils/formatMoney';
 import { matchesSearch } from '@/utils/vietnameseSearch';
 import { FilterChips, SearchInput, SortSelect, TableToolbar } from '../components/TableToolbar';
 import { getSubjectRevenue } from '@/services/revenueReports.service';
@@ -266,34 +266,6 @@ const SubjectsTab = ({ range }: { range: RevenueRange }) => {
                                 </tr>
                             ))}
                         </tbody>
-                        {/* Cộng trên TẬP ĐANG LỌC, không phải trên toàn bộ dữ liệu — đưa
-                            chúng xuống đây thì dòng tổng không khớp với các dòng đang hiển thị.
-                            Nhãn tự đổi thành "Tổng (đã lọc)" để không ai đọc nhầm. */}
-                        <tfoot>
-                            <tr>
-                                <td>
-                                    {subjectRows.length < (allSubjects?.length ?? 0)
-                                        ? 'Tổng (đã lọc)'
-                                        : 'Tổng'}
-                                </td>
-                                <td className="rev-num">
-                                    {moneyVnd(subjectRows.reduce((x, s) => x + s.gmv, 0))}
-                                </td>
-                                <td className="rev-num rev-pos">
-                                    {moneyVnd(subjectRows.reduce((x, s) => x + s.platformRevenue, 0))}
-                                </td>
-                                <td className="rev-num rev-warn">
-                                    {moneyVnd(subjectRows.reduce((x, s) => x + s.deferredRevenue, 0))}
-                                </td>
-                                <td className="rev-num">
-                                    {subjectRows.reduce((x, s) => x + s.bookings, 0)}
-                                </td>
-                                <td className="rev-num">
-                                    {subjectRows.reduce((x, s) => x + s.sessionsDelivered, 0)}
-                                </td>
-                                <td colSpan={2} />
-                            </tr>
-                        </tfoot>
                     </table>
                 )}
             </DataTableShell>

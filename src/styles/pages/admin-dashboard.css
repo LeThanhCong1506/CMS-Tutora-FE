@@ -708,6 +708,51 @@
     text-transform: none !important;
 }
 
+/* ─── Thẻ "Doanh thu tạm tính": nền hổ phách, dòng phụ lục ──────────────────────
+ *
+ * Cùng bộ màu và cùng ý nghĩa với trang Báo cáo doanh thu (`.rev-metric-value.is-pending` /
+ * `.is-recognised`): HỔ PHÁCH = tạm tính, chưa chắc thành tiền; LỤC = đã ghi nhận, tiền thật.
+ * Dùng lại đúng hai mã màu đó để một người đọc cả hai trang không phải học lại quy ước.
+ *
+ * Chữ giữ nguyên màu navy, KHÔNG nhuộm theo nền: ba thẻ trong cùng một hàng KPI phải đọc như
+ * cùng một loại đại lượng, đổi màu chữ một thẻ sẽ làm nó trông như khác đơn vị đo.
+ *
+ * `margin-left` âm bằng đúng `padding-left`: mép trái CON SỐ vẫn thẳng hàng với nhãn ngay dưới
+ * nó, chỉ có nền tràn ra ngoài. Thiếu nó thì con số thụt vào 8px và lệch khỏi nhãn. */
+/* `align-self: flex-start` là thứ giữ nền hổ phách ôm SÁT con số, không phải `inline-block`.
+   `.statCard` là `display: flex; flex-direction: column`, nên ô này là một FLEX ITEM: `inline-block`
+   bị blockify thành `block`, rồi `align-items: stretch` mặc định kéo nó dài hết bề ngang thẻ — đúng
+   lỗi đã thấy trên dashboard 02/09/2026. `align-self: flex-start` cho kích thước trục ngang co
+   theo nội dung, nên nền dừng ngay sau chứ "đ". `max-width: 100%` chặn số cực dài tràn khỏi thẻ.
+   `display: inline-block` giữ lại để selector này còn đúng nếu sau này `.statCard` thôi dùng flex. */
+.admin-kpi-exact-value.admin-kpi-value-contracted {
+    display: inline-block;
+    align-self: flex-start;
+    max-width: 100%;
+    margin-left: -8px;
+    padding: 1px 8px 2px;
+    border-radius: 7px;
+    background: rgba(245, 158, 11, 0.16);
+}
+
+/* Dòng phụ mang doanh thu THẬT. Nhuộm lục và in đậm riêng con số để nó không chìm xuống thành
+   chú thích mờ — đây vẫn là con số quan trọng nhất về mặt kế toán, chỉ đổi vai chứ không hạ cấp. */
+.admin-kpi-sub-recognised {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 1px 7px 2px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.14);
+    color: #047857;
+}
+
+.admin-kpi-sub-recognised b {
+    color: #065f46;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
 
 @media (max-width: 860px) {
     .admin-dash-kpis {

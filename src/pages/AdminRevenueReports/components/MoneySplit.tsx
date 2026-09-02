@@ -27,10 +27,12 @@ export interface MoneySplitProps {
     /** Doanh thu TẠM TÍNH: phí sàn của mọi lịch đặt trong kỳ, chốt ngay lúc đặt. */
     commissionSold: number;
     /**
-     * Ba số phận của `commissionSold`, cộng khít bằng nó theo construction.
+     * Ba số phận của `commissionSold`, cộng khít bằng nó theo construction ở mọi kỳ.
      *
-     * CỐ Ý tính bằng công thức ở backend (`EarnedSoFar`), KHÔNG đọc sổ ví — nên miễn nhiễm với
-     * lỗi đảo escrow từng làm vành khuyên cũ sai. Xem ghi chú "Ba bản đã bỏ" ở dưới.
+     * Khoá đã chốt sổ đọc SỔ VÍ, khoá đang chạy dùng công thức — cùng một chính sách với
+     * `recognisedRevenue`. Đổi 02/09/2026; trước đó bộ ba cố ý không chạm sổ ví, và hệ quả là
+     * "Đã thu được" lệch 2.500 so với phần dạy học của doanh thu đã ghi nhận mà không ai giải
+     * thích được. Xem ghi chú đầy đủ ở DTO `AdminRevenueAnalyticsResponse`.
      */
     commissionMatured: number;
     commissionPending: number;
@@ -63,14 +65,16 @@ export interface MoneySplitProps {
  *
  * ─── Ba bản đã bỏ, đừng dựng lại bản nào ──────────────────────────────────────
  *
- * 1. **Vành khuyên "Số tạm tính đi về đâu"** (gỡ 01/09/2026). Không phải vì khó hiểu, mà vì
- *    cả ba lát SAI SỐ: chúng suy từ `PlatformKept = cashIn − refunded − released`, mà
- *    `released` đang hụt do lỗi đảo escrow ở backend (escrow là túi chung theo ví gia sư, luồng
- *    huỷ đảo theo số buổi HỢP ĐỒNG nên rút vượt phần khoá đó thực nạp và ăn sang khoá khác).
- *    Đo trên dev 01/09/2026: 950.000đ bị đảo lố, 2 gia sư thiếu 665.000đ; booking #294 phụ huynh
- *    trả đủ 262.500đ, gia sư dạy 3 buổi nhận 0đ mà báo cáo vẫn tính là "đã thu đủ".
- *    Backend VẪN trả `commissionEarned`/`commissionLost` — cố ý giữ để đo lại sau khi sửa xong.
- *    Đừng thay bằng một dòng chữ kiểu "trong đó đã thu được X": X cũng đang phồng.
+ * 1. **Vành khuyên "Số tạm tính đi về đâu"** (gỡ 01/09/2026). Ba lát vẫn còn — chúng là hàng
+ *    `.rev-fate` bây giờ — nhưng HÌNH TRÒN thì không dựng lại: tỉ lệ thật quá lệch để đọc bằng
+ *    hình (đã thu 25%, không thu 49%, chờ 26%, và ở kỳ khác lát nhỏ nhất từng chỉ còn 4,8%).
+ *    Chữ nói được tỉ lệ chính xác, hình thì không.
+ *
+ *    Lý do thứ hai lúc gỡ — "ba lát sai số vì đọc `PlatformKept`, mà `released` hụt do lỗi đảo
+ *    escrow" — nay đã được xử lý ở backend, không còn là lý do nữa: chặn `ledgerTouched` khử
+ *    doanh thu ảo, chặn trên ở `PlatformFee` khử phần phồng. Lỗi đảo escrow thì VẪN CHƯA SỬA
+ *    (950.000đ đảo lố, 2 gia sư thiếu 665.000đ, đo 01/09/2026) — nó chỉ không còn rò vào con số
+ *    này nữa thôi.
  *
  * 2. **Hai thanh tỉ lệ "Tiền vào / Tiền ra"**. Tỉ lệ thật là 90,5 / 4,8 / 4,8 — quá lệch để
  *    thanh đọc được, hai thanh chênh nhau đúng 4,8% nên trông y hệt nhau.
@@ -93,6 +97,17 @@ export interface MoneySplitProps {
  * Nhưng nó cũng không thể chỉ nằm trong tooltip: hai chip −5% / +5% tính TRÊN nó, không có nó
  * thì đọc "−5%" mà không biết 5% của cái gì. Nên từ 02/09/2026 nó là một DÒNG BỐI CẢNH cỡ nhỏ
  * ngay dưới tiêu đề — cùng tầng với con số tổng ở góc phải, tách hẳn khỏi phép cộng bên dưới.
+ *
+ * ─── "Dòng nối" đã bỏ (02/09/2026, sống được đúng một bản) ────────────────────
+ *
+ * Từng có một dòng ở cuối thẻ: `Doanh thu đã ghi nhận = X đã thu được + Y gói AI ± Z chênh
+ * mốc`. Ý định đúng — cho người đọc thấy hai con số khác mốc nối với nhau thế nào — nhưng
+ * cách làm sai: nó bắt người đọc nuốt một số hạng "chênh mốc" mà bản thân nó cần cả một
+ * tooltip mới hiểu, ngay dưới một hàng đã có ba con số.
+ *
+ * Thay bằng cách tách theo NGUỒN ở viên thuốc đầu biểu đồ: doanh thu dạy học + doanh thu gói
+ * AI = doanh thu đã ghi nhận. Phép cộng đó KHÍT TUYỆT ĐỐI, không có số dư, không cần giải
+ * thích gì thêm — vì nó chia một con số theo nguồn gốc chứ không đối chiếu hai mốc khác nhau.
  *
  * `summary.commissionFromCancelled` vẫn CỐ Ý không vẽ ở đây: nó là số luỹ kế CẢ ĐỜI khoá, quy
  * về ngày huỷ, trong khi mọi con số của thẻ này neo theo "booking tạo trong kỳ". Cộng vào bất
@@ -131,11 +146,30 @@ const MoneySplit = (props: MoneySplitProps) => {
         + '\n\nHọc phí gốc là giá gia sư niêm yết, bằng gia sư nhận cộng phí gia sư. Phí gia sư'
         + ' trừ vào bên trong khoản đó, còn phí phụ huynh cộng thêm lên trên — nên tiền khách'
         + ' trả luôn lớn hơn học phí gốc.'
-        + '\n\nChip −5% / +5% là mức phí tính trên HỌC PHÍ GỐC, không phải trên tiền khách trả.'
+        + '\n\nChip −5% / +5% và cả phí sàn 10% đều tính trên HỌC PHÍ GỐC, KHÔNG phải trên giá trị'
+        + ' lịch đặt. Giá trị lịch đặt đã cộng thêm 5% phí phụ huynh, nên lấy doanh thu tạm tính'
+        + ' chia cho nó sẽ ra khoảng 9,5% chứ không phải 10% — đó không phải lỗi.'
         // Nói thẳng để không ai đọc "Gia sư nhận" như số gia sư đã cầm về.
         + '\n\nĐây là cách chia THEO HỢP ĐỒNG, chốt ngay lúc đặt lịch — nên gọi là TẠM TÍNH. Với'
         + ' lịch bị huỷ giữa chừng, số thực nhận ít hơn: phần đã thành tiền thật xem ở tab Gia sư'
         + ' (phí gia sư) và tab Khách hàng (phí dịch vụ).';
+
+    /**
+     * Tooltip của lát "Đã thu được".
+     *
+     * Lý do phải có: con số này giờ TRÙNG với phần "dạy học" ở viên thuốc xanh đầu biểu đồ, và
+     * người đọc cần biết trùng đó là CỐ Ý chứ không phải trùng hợp — cũng như biết khi nào nó
+     * hết trùng, để lúc lệch thì không tưởng là lỗi.
+     */
+    const maturedHint =
+        'Phí sàn của các lịch đặt trong kỳ đã thành tiền thật tính tới cuối kỳ. Khoá đang chạy'
+        + ' tính theo buổi đã dạy; khoá đã đóng thì đọc thẳng sổ ví, vì lúc đó tiền thực giữ mới'
+        + ' là con số đúng.'
+        + '\n\nĐây cũng chính là phần ‘dạy học’ của Doanh thu đã ghi nhận ở đầu biểu đồ phía'
+        + ' trên — hai chỗ dùng chung một cách tính.'
+        + '\n\nVới kỳ báo cáo rất ngắn hai số có thể lệch nhau: số ở đây gom theo NGÀY ĐẶT LỊCH,'
+        + ' còn doanh thu ghi nhận gom theo NGÀY DẠY, nên buổi dạy trong kỳ của một khoá đặt từ'
+        + ' trước kỳ chỉ vào một bên.';
 
     return (
         <section className="rev-alloc" aria-labelledby="rev-alloc-title">
@@ -206,14 +240,17 @@ const MoneySplit = (props: MoneySplitProps) => {
                     </div>
                 </div>
 
-                {/* Ba số phận của doanh thu tạm tính — khôi phục 02/09/2026, nhưng tính bằng
-                    CÁCH KHÁC hẳn bản vành khuyên đã gỡ.
+                {/* Ba số phận của doanh thu tạm tính — khôi phục 02/09/2026.
 
-                    Bản cũ đọc `PlatformKept` từ sổ ví, mà ví đang sai vì lỗi đảo escrow → cả ba
-                    lát sai số. Bản này chỉ dùng công thức `EarnedSoFar` (phí phụ huynh đã chín +
-                    phí gia sư của buổi đã dạy), không chạm sổ ví một dòng nào. Đã kiểm nó tái lập
-                    đúng ví dụ chuẩn của doc §2.1 (khoá 100k/10 buổi, học 1 buổi rồi huỷ → đã chín
-                    5.500, gồm cả 4.500 phí dịch vụ không hoàn).
+                    Khoá đã chốt sổ đọc SỔ VÍ, khoá đang chạy dùng công thức `EarnedSoFar` (phí phụ
+                    huynh đã chín + phí gia sư của buổi đã dạy). Đã kiểm nó tái lập đúng ví dụ
+                    chuẩn của doc §2.1 (khoá 100k/10 buổi, học 1 buổi rồi huỷ → đã chín 5.500, gồm
+                    cả 4.500 phí dịch vụ không hoàn).
+
+                    Bản phục hồi đầu tiên cố ý KHÔNG đọc sổ ví, và đó là một sai lầm đã sửa trong
+                    cùng ngày: `recognisedRevenue` ở viên thuốc phía trên vẫn cộng phần chênh chốt
+                    sổ suy từ ví, nên trang in hai con số cho cùng một ý niệm (461.000 và 458.500)
+                    mà không có cách nào tự nối. Đừng tách chính sách của hai chỗ này ra lần nữa.
 
                     Một HÀNG NGANG chứ không phải vành khuyên: tỉ lệ ba lát vẫn lệch tới mức không
                     vẽ hình được (đã thu 25%, không thu 49%, chờ 26% — riêng lát nhỏ nhất từng chỉ
@@ -231,6 +268,7 @@ const MoneySplit = (props: MoneySplitProps) => {
                     <span className="rev-fate-item">
                         <span className="rev-fate-dot is-matured" aria-hidden="true" />
                         Đã thu được
+                        <InfoHint text={maturedHint} />
                         <b><VndAmount value={matured} /></b>
                     </span>
                     <span className="rev-fate-item">
