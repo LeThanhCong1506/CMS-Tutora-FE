@@ -26,6 +26,16 @@ export const getDisputeStatusVariant = (status?: string | null): StatusVariant =
     }
 };
 
+/**
+ * Phản ánh đã chốt xong, không còn gì để phân xử.
+ *
+ * PHẢI xét cả 'closed', không chỉ 'resolved': hoà giải ("hai bên học tiếp") đóng hồ sơ bằng
+ * 'closed' và cũng đã chạm vào buổi học/tiền. Chỉ xét 'resolved' khiến trang vẫn hiện đầy đủ form
+ * "Hủy khóa học & hoàn tiền" trên một hồ sơ đã đóng — admin bấm được và tiền đi lần hai.
+ */
+export const isDisputeSettled = (status?: string | null): boolean =>
+    status === 'resolved' || status === 'closed';
+
 export const getDisputeStatusLabel = (status?: string | null) => {
     switch (status) {
         case 'pending':
