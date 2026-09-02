@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { count, growthBadge, money, moneyVnd } from '@/utils/formatMoney';
+import { matchesSearch } from '@/utils/vietnameseSearch';
 import MetricCard from '../components/MetricCard';
+import { FilterChips, SearchInput, SortSelect, TableToolbar } from '../components/TableToolbar';
 import { getAiRevenue } from '@/services/revenueReports.service';
 import type { RevenueRange } from '@/services/revenueReports.service';
 import { useRevenueReport } from '@/hooks/useRevenueReport';
@@ -11,19 +14,80 @@ import {
     ReportError,
 } from '../components/ReportShell';
 import ReportSkeleton from '../components/ReportSkeleton';
-import {
-    BarGroupChart,
-    DonutChart,
-    LineTrendChart,
-    RankBarChart,
-} from '@/components/shared/RevenueCharts/RevenueCharts';
-import { PALETTE, rankHeight } from '@/components/shared/RevenueCharts/revenueChartTheme';
+import { LineTrendChart } from '@/components/shared/RevenueCharts/RevenueCharts';
+import { PALETTE } from '@/components/shared/RevenueCharts/revenueChartTheme';
+import type { AiPackageRow } from '@/types/revenueReports.types';
+
+/**
+ * Hai nhóm gói, đúng theo cột "Giá": gói bán tiền và gói tặng kèm khi đăng ký (giá 0, in ra
+ * dấu "—"). Phân hoạch thật, và tách được là cần: gói miễn phí có `unitsSold` rất lớn nhưng
+ * doanh thu bằng 0, nên nó luôn nằm lẫn trong bảng mà không đóng góp gì cho cột tiền.
+ */
+type PackageGroup = 'all' | 'paid' | 'free';
+
+const PACKAGE_GROUPS: { key: PackageGroup; label: string }[] = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'paid', label: 'Gói có phí' },
+    { key: 'free', label: 'Gói miễn phí' },
+];
+
+type PackageSort = 'revenue' | 'units' | 'price' | 'credits';
+
+const PACKAGE_SORTS: { key: PackageSort; label: string }[] = [
+    { key: 'revenue', label: 'Doanh thu cao nhất' },
+    { key: 'units', label: 'Bán chạy nhất' },
+    { key: 'price', label: 'Giá cao nhất' },
+    { key: 'credits', label: 'Nhiều lượt nhất' },
+];
+
+const PACKAGE_SORTERS: Record<PackageSort, (a: AiPackageRow, b: AiPackageRow) => number> = {
+    revenue: (a, b) => b.revenue - a.revenue,
+    units: (a, b) => b.unitsSold - a.unitsSold,
+    price: (a, b) => b.price - a.price,
+    credits: (a, b) => b.creditAmount - a.creditAmount,
+};
+
+/**
+ * Lọc theo nhóm + từ khoá rồi sắp xếp. Nhận `undefined` vì hook phân trang chạy trước khi
+ * dữ liệu về.
+ *
+ * `revenue` là mặc định vì đó đúng là thứ tự backend trả về (`OrderByDescending(Revenue)`) —
+ * mở trang lên chưa đụng gì thì bảng không được tự đổi thứ tự.
+ */
+const selectPackages = (
+    rows: AiPackageRow[] | undefined,
+    group: PackageGroup,
+    query: string,
+    sort: PackageSort,
+): AiPackageRow[] => {
+    if (!rows) return [];
+
+    let out = rows;
+    if (group === 'paid') out = out.filter((p) => p.price > 0);
+    if (group === 'free') out = out.filter((p) => p.price === 0);
+
+    if (query.trim()) out = out.filter((p) => matchesSearch(query, p.name));
+
+    return [...out].sort(PACKAGE_SORTERS[sort]);
+};
 
 const AiTab = ({ range }: { range: RevenueRange }) => {
+    const [group, setGroup] = useState<PackageGroup>('all');
+    const [query, setQuery] = useState('');
+    const [sort, setSort] = useState<PackageSort>('revenue');
     const { data, loading, error, reload } = useRevenueReport((r) => getAiRevenue(r, 20), range);
-    const packagePage = useClientPagination(data?.packages ?? []);
+    const allPackages = data?.packages;
+    const packageRows = selectPackages(allPackages, group, query, sort);
+    const packagePage = useClientPagination(packageRows);
 
-    if (loading) return <ReportSkeleton charts={2} splits={1} />;
+    // Đếm trên TOÀN BỘ dữ liệu, không phải trên kết quả đã lọc — xem `ChipItem.count`.
+    const groupCounts = {
+        all: allPackages?.length ?? 0,
+        paid: (allPackages ?? []).filter((p) => p.price > 0).length,
+        free: (allPackages ?? []).filter((p) => p.price === 0).length,
+    };
+
+    if (loading) return <ReportSkeleton metrics={2} charts={1} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!data) return null;
 
@@ -33,36 +97,25 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
         return <ReportEmpty label="Chưa có giao dịch gói AI nào trong kỳ" />;
     }
 
-    const activationRate = a.totalUsers > 0 ? (a.activatedUsers / a.totalUsers) * 100 : 0;
-    const consumptionRate = a.activatedCreditsGranted > 0
-        ? (a.activatedCreditsConsumed / a.activatedCreditsGranted) * 100
-        : 0;
-
-    // Gói miễn phí không tạo doanh thu
-    const paidPackages = data.packages.filter((p) => p.price > 0 && p.revenue > 0);
-
     /**
      * Kỳ này có bán được gói nào không.
      *
-     * Cụm ba khối phía doanh thu (biểu đồ theo thời gian, top người mua, cơ cấu gói) đều đọc
-     * từ cùng một nguồn: các lượt mua trong kỳ. Không có lượt nào thì chúng lần lượt là một
-     * đường thẳng dính đáy, một ô "chưa có ai mua" và một ô "chưa có gói nào bán được" — gần
-     * 600px chiều cao để nói đúng một điều mà thẻ "Doanh thu AI kỳ này" ở trên đã nói bằng số 0.
-     *
-     * Nửa còn lại của tab (tỷ lệ kích hoạt, tỷ lệ sử dụng, lượt cấp/lượt dùng, bảng gói) vẫn
-     * hiện: chúng nói về việc DÙNG credit, thứ vẫn diễn ra kể cả khi chưa ai trả tiền — và với
-     * sản phẩm này thì đó mới là phần đang có dữ liệu thật.
+     * Không có lượt mua nào thì biểu đồ doanh thu theo thời gian chỉ là một đường thẳng dính
+     * đáy — 240px chiều cao để nói đúng điều mà thẻ "Doanh thu AI kỳ này" ở trên đã nói bằng
+     * số 0. Bảng chi tiết gói thì vẫn hiện: nó nói về việc DÙNG credit, thứ vẫn diễn ra kể cả
+     * khi chưa ai trả tiền.
      */
     const hasPaidSales = data.trend.some((t) => t.aiRevenue > 0) || a.revenue > 0;
 
-    const topBuyers = data.topUsers
-        .filter((u) => u.amountPaid > 0)
-        .slice(0, 5)
-        .map((u) => ({ ...u, label: u.userName }));
-
     return (
         <div className="rev-stack">
-            <div className="rev-metric-grid">
+            {/* `.rev-strip` — khuôn dùng chung cả 5 tab (thống nhất 01/09/2026).
+
+                Hai thẻ "Tỷ lệ kích hoạt" và "Tỷ lệ sử dụng" đã bỏ cùng đợt: chúng đo mức độ
+                DÙNG sản phẩm (bao nhiêu người mở tính năng, dùng hết bao nhiêu lượt), không
+                phải tiền về bao nhiêu. `activatedUsers`, `activatedCreditsGranted`… vẫn còn
+                trong response. */}
+            <div className="rev-strip">
                 <MetricCard
                     icon="smart_toy"
                     value={moneyVnd(a.revenue)}
@@ -78,22 +131,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     badge={growthBadge(a.packagesSold, a.packagesSoldPrevious)}
                     badgeVariant="blue"
                     hint="Số lượt mua gói AI thanh toán thành công. Không tính gói dùng thử miễn phí được cấp tự động."
-                />
-                <MetricCard
-                    icon="person_check"
-                    value={`${activationRate.toFixed(1)}%`}
-                    label="Tỷ lệ kích hoạt"
-                    subLabel={`${count(a.activatedUsers)} / ${count(a.totalUsers)} tài khoản`}
-                    badgeVariant={activationRate > 20 ? 'green' : 'orange'}
-                    hint="Phần trăm tài khoản được cấp lượt AI đã thực sự hỏi ít nhất một câu. Mọi tài khoản đều được tặng lượt khi đăng ký, nên đây là tỷ lệ người chịu dùng thử."
-                />
-                <MetricCard
-                    icon="bolt"
-                    value={`${consumptionRate.toFixed(1)}%`}
-                    label="Tỷ lệ sử dụng"
-                    subLabel={`${count(a.activatedCreditsConsumed)} / ${count(a.activatedCreditsGranted)} lượt`}
-                    badgeVariant={consumptionRate > 50 ? 'green' : 'orange'}
-                    hint="Trong nhóm ĐÃ từng hỏi bài, họ đã dùng bao nhiêu phần trăm số lượt được cấp. Đo cường độ sử dụng của người thật."
                 />
             </div>
 
@@ -125,68 +162,45 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
             </ChartBlock>
             )}
 
-            {/* Cả khối ẩn khi kỳ này chưa bán được gói nào — xem `hasPaidSales` ở trên. Khi có
-                bán, hai ô vẫn nằm chung một khung để một ô rỗng lẻ không kéo cao cả hàng. */}
-            {hasPaidSales && (
-            <ChartBlock
-                title="Ai mua gói AI, và mua gói nào"
-                split={[
-                    {
-                        label: 'Top 5 người mua',
-                        hint: 'Nhóm chi nhiều nhất cho sản phẩm AI.',
-                        node:
-                            topBuyers.length === 0 ? (
-                                <ReportEmpty label="Chưa có ai mua gói AI trong kỳ" />
-                            ) : (
-                                <RankBarChart
-                                    data={topBuyers}
-                                    labelKey="label"
-                                    valueKey="amountPaid"
-                                    name="Đã trả"
-                                    color={PALETTE.gold}
-                                    height={rankHeight(topBuyers.length)}
-                                />
-                            ),
-                    },
-                    {
-                        label: 'Cơ cấu theo gói',
-                        hint: 'Tỷ trọng đóng góp của từng gói. Gói cao cấp thường ít người mua nhưng đóng góp lớn — nếu không phải vậy thì mức giá chưa hợp lý.',
-                        node:
-                            paidPackages.length === 0 ? (
-                                <ReportEmpty label="Chưa có gói có phí nào bán được" />
-                            ) : (
-                                <DonutChart
-                                    data={paidPackages.map((p) => ({
-                                        name: p.name,
-                                        value: p.revenue,
-                                    }))}
-                                    centerLabel="Tổng doanh thu"
-                                    height={220}
-                                />
-                            ),
-                    },
-                ]}
-            />
-            )}
-
-            <ChartBlock
-                title="Lượt đã cấp so với lượt đã dùng"
-                hint="Cả hai cột chỉ tính nhóm đã kích hoạt, không tính hàng trăm tài khoản được tặng lượt nhưng chưa bao giờ mở tính năng."
-            >
-                <BarGroupChart
-                    data={data.creditFlow}
-                    xKey="month"
-                    money={false}
-                    height={240}
-                    series={[
-                        { key: 'granted', name: 'Lượt đã cấp', color: PALETTE.navy },
-                        { key: 'consumed', name: 'Lượt đã dùng', color: PALETTE.emerald },
-                    ]}
-                />
-            </ChartBlock>
+            {/* Hai khối đã BỎ 01/09/2026:
+                  • "Ai mua gói AI, và mua gói nào" — nửa "Cơ cấu theo gói" trùng cột doanh thu
+                    của bảng ngay dưới, nửa "Top 5 người mua" là xếp hạng người dùng chứ không
+                    phải câu hỏi doanh thu của sàn.
+                  • "Lượt đã cấp so với lượt đã dùng" — đo tiêu thụ lượt AI, thuộc phía chi phí
+                    vận hành. `data.creditFlow` vẫn còn trong response. */}
 
             <DataTableShell
                 title="Chi tiết gói AI"
+                action={
+                    <TableToolbar>
+                        <FilterChips
+                            ariaLabel="Lọc nhóm gói AI"
+                            items={PACKAGE_GROUPS.map((g) => ({ ...g, count: groupCounts[g.key] }))}
+                            value={group}
+                            onChange={(key) => {
+                                setGroup(key);
+                                packagePage.setPage(1);
+                            }}
+                        />
+                        <SearchInput
+                            value={query}
+                            placeholder="Tên gói…"
+                            ariaLabel="Tìm trong danh sách gói AI"
+                            onChange={(value) => {
+                                setQuery(value);
+                                packagePage.setPage(1);
+                            }}
+                        />
+                        <SortSelect
+                            items={PACKAGE_SORTS}
+                            value={sort}
+                            onChange={(key) => {
+                                setSort(key);
+                                packagePage.setPage(1);
+                            }}
+                        />
+                    </TableToolbar>
+                }
                 pagination={{
                     current: packagePage.page,
                     pageSize: packagePage.pageSize,
@@ -194,52 +208,72 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                     onChange: packagePage.setPage,
                 }}
             >
-                <table className="rev-table">
-                    <thead>
-                        <tr>
-                            <th>Gói</th>
-                            <th className="rev-num">Giá</th>
-                            <th className="rev-num">Số lượt cấp</th>
-                            <th className="rev-num">Đã bán</th>
-                            <th className="rev-num">Doanh thu</th>
-                            <th className="rev-num">Giá mỗi lượt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {packagePage.pageItems.map((p) => (
-                            <tr key={p.packageId}>
-                                <td>
-                                    <strong>{p.name}</strong>
-                                </td>
-                                <td className="rev-num">
-                                    {p.price === 0 ? '—' : money(p.price)}
-                                </td>
-                                <td className="rev-num">{count(p.creditAmount)}</td>
-                                <td className="rev-num">{count(p.unitsSold)}</td>
-                                <td className="rev-num rev-pos">
-                                    {p.revenue === 0 ? '—' : money(p.revenue)}
-                                </td>
-                                <td className="rev-num">
-                                    {p.price === 0 || p.creditAmount === 0
-                                        ? '—'
-                                        : money(Math.round(p.price / p.creditAmount))}
-                                </td>
+                {packageRows.length === 0 ? (
+                    /* Khác ba tab kia: ReportEmpty ở đầu tab chỉ chặn ca "chưa bán được gói
+                       nào", không đảm bảo mảng `packages` có phần tử — nên ở đây phải phân
+                       biệt "chưa có gói nào" với "bộ lọc đang che hết". */
+                    <ReportEmpty
+                        label={
+                            (allPackages?.length ?? 0) === 0
+                                ? 'Chưa có gói AI nào'
+                                : 'Không có gói nào khớp bộ lọc đang chọn'
+                        }
+                    />
+                ) : (
+                    <table className="rev-table">
+                        <thead>
+                            <tr>
+                                <th>Gói</th>
+                                <th className="rev-num">Giá</th>
+                                <th className="rev-num">Số lượt cấp</th>
+                                <th className="rev-num">Đã bán</th>
+                                <th className="rev-num">Doanh thu</th>
+                                <th className="rev-num">Giá mỗi lượt</th>
                             </tr>
-                        ))}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colSpan={3}>Tổng</td>
-                            <td className="rev-num">
-                                {count(data.packages.reduce((s, p) => s + p.unitsSold, 0))}
-                            </td>
-                            <td className="rev-num rev-pos">
-                                {moneyVnd(data.packages.reduce((s, p) => s + p.revenue, 0))}
-                            </td>
-                            <td />
-                        </tr>
-                    </tfoot>
-                </table>
+                        </thead>
+                        <tbody>
+                            {packagePage.pageItems.map((p) => (
+                                <tr key={p.packageId}>
+                                    <td>
+                                        <strong>{p.name}</strong>
+                                    </td>
+                                    <td className="rev-num">
+                                        {p.price === 0 ? '—' : money(p.price)}
+                                    </td>
+                                    <td className="rev-num">{count(p.creditAmount)}</td>
+                                    <td className="rev-num">{count(p.unitsSold)}</td>
+                                    <td className="rev-num rev-pos">
+                                        {p.revenue === 0 ? '—' : money(p.revenue)}
+                                    </td>
+                                    <td className="rev-num">
+                                        {p.price === 0 || p.creditAmount === 0
+                                            ? '—'
+                                            : money(Math.round(p.price / p.creditAmount))}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        {/* Cộng trên TẬP ĐANG LỌC, không phải trên toàn bộ dữ liệu — nếu không,
+                            lọc riêng "Gói có phí" xong dòng tổng vẫn kể cả lượt cấp của gói miễn
+                            phí, tức một con số không khớp dòng nào đang hiển thị. */}
+                        <tfoot>
+                            <tr>
+                                <td colSpan={3}>
+                                    {packageRows.length < (allPackages?.length ?? 0)
+                                        ? 'Tổng (đã lọc)'
+                                        : 'Tổng'}
+                                </td>
+                                <td className="rev-num">
+                                    {count(packageRows.reduce((s, p) => s + p.unitsSold, 0))}
+                                </td>
+                                <td className="rev-num rev-pos">
+                                    {moneyVnd(packageRows.reduce((s, p) => s + p.revenue, 0))}
+                                </td>
+                                <td />
+                            </tr>
+                        </tfoot>
+                    </table>
+                )}
             </DataTableShell>
         </div>
     );
