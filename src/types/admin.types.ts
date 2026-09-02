@@ -190,6 +190,9 @@ export interface AdminDashboardSummary {
   /** Giá trị lịch đặt (GMV, theo giá hợp đồng — không phải tiền mặt đã vào).
    *  Cùng con số với `summary.gmv` của báo cáo doanh thu. */
   gmv: MetricWithChange;
+  /** Học phí gốc = gmv trừ phí phụ huynh. MẪU SỐ của phí sàn 10% — thiếu nó thì lấy
+   *  doanh thu tạm tính chia gmv ra 9,5% và tưởng tính sai. Không có % thay đổi. */
+  baseAmount: number;
   /** Doanh thu TẠM TÍNH — cùng con số với `summary.commissionSold` của báo cáo doanh thu. */
   platformRevenue: MetricWithChange;
   /** Doanh thu ĐÃ GHI NHẬN — cùng con số với `summary.recognisedRevenue` của báo cáo. */
