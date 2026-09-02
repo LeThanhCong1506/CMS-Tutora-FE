@@ -68,7 +68,12 @@ export const ChartBlock: React.FC<ChartBlockProps> = ({
     scrollX,
     split,
 }) => (
-    <section className="rev-block">
+    /* `rev-block-chart` chỉ làm một việc: gỡ `overflow: hidden` của `.rev-block`, vì cái đó đang
+       cắt cụt hộp định nghĩa ⓘ ở tiêu đề — hộp dài hơn chiều cao thẻ thì mất phần đuôi.
+       Không bỏ `overflow: hidden` ở `.rev-block` chung được: `DataTableShell` dùng chính nó để
+       bọc bảng theo góc bo. Khối biểu đồ thì không cần: `.rev-block-body` đã chừa 8px nên
+       không có gì chạm tới góc. Xem admin-revenue-reports.css. */
+    <section className="rev-block rev-block-chart">
         <header className="rev-block-head">
             <div className="rev-block-text">
                 <h4>
@@ -112,7 +117,9 @@ export const DataTableShell: React.FC<{
      * liệu nhiều, trang bị kéo dài hàng nghìn dòng. `TablePagination` tự ẩn khi chỉ có một
      * trang, nên truyền vào luôn kể cả với bảng ngắn.
      *
-     * Dòng tổng ở `tfoot` vẫn phải cộng trên TOÀN BỘ dữ liệu, không phải trên trang đang xem.
+     * Không bảng nào trong cụm này còn `tfoot` cộng tổng — bỏ hết 02/09/2026. Các con số tổng
+     * đều đã đứng ở dải chỉ số đầu tab, nơi chúng neo theo KỲ báo cáo; dòng tổng dưới bảng lại
+     * cộng theo TẬP ĐANG LỌC, nên hai chỗ in hai con số khác nhau dưới cùng một chữ "tổng".
      */
     pagination?: PaginationConfig;
 }> = ({ title, subtitle, children, action, pagination }) => (

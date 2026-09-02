@@ -206,9 +206,12 @@ const AdminDashboardPageEnhanced = () => {
     // Cả ba số tiền đều do AdminRevenueAnalyticsService tính, đúng service đứng sau trang Báo
     // cáo doanh thu — nên chúng khớp từng đồng với trang đó. Đừng thay bằng phép tính tại chỗ.
     const gmvValue = summary?.gmv.value;
-    // Doanh thu ĐÃ GHI NHẬN mới là con số to trên thẻ: đây là tiền thật đã kiếm được. Doanh thu
-    // tạm tính lùi xuống dòng phụ vì nó chỉ là phần đã bán, chưa dạy thì vẫn có thể mất — để
-    // nó làm số chính là báo doanh thu cao gấp mấy lần thực tế.
+    // Optional chaining tới `?? undefined`: `baseAmount` là trường MỚI của API, backend chưa
+    // nạp bản mới thì nó undefined và dòng phụ tự ẩn thay vì in 'NaN'.
+    const baseAmountValue = summary?.baseAmount;
+    // Thẻ KPI thứ hai hiện doanh thu TẠM TÍNH làm số to, doanh thu ĐÃ GHI NHẬN xuống dòng phụ —
+    // để hàng KPI khớp đúng hai đường của biểu đồ ngay dưới. Xem lý do đầy đủ ở chỗ dựng thẻ.
+    //
     // Optional chaining tới tận `.value`: `recognisedRevenue` là trường MỚI của API. Backend
     // chưa nạp bản mới thì nó về undefined, và `summary?.recognisedRevenue.value` sẽ ném lỗi
     // làm trắng cả trang thay vì chỉ thiếu một con số.
@@ -238,7 +241,9 @@ const AdminDashboardPageEnhanced = () => {
         .join(' · ');
 
     const gmvBadge = changeBadge(summary?.gmv.changePercent);
-    const revBadge = changeBadge(summary?.recognisedRevenue?.changePercent);
+    // % của doanh thu TẠM TÍNH, không phải của số đã ghi nhận: badge nằm cạnh số nào thì phải
+    // nói về chính số đó. Đổi cùng lúc với việc đảo hai con số trên thẻ (02/09/2026).
+    const contractedBadge = changeBadge(summary?.platformRevenue.changePercent);
 
     // ── Chart data ──
     const userRoleData = useMemo(() => {
@@ -312,31 +317,59 @@ const AdminDashboardPageEnhanced = () => {
                     valueClassName="admin-kpi-exact-value"
                     label="Giá trị lịch đặt"
                     labelClassName="admin-kpi-friendly-label"
+                    subLabel={
+                        loading || baseAmountValue == null
+                            ? undefined
+                            : `Học phí gốc ${formatDashboardCurrency(baseAmountValue)}`
+                    }
                     badge={gmvBadge?.text}
                     badgeVariant={gmvBadge?.variant}
-                    infoTooltip="Tổng giá trị các lịch đặt trong khoảng đã chọn, tính theo GIÁ HỢP ĐỒNG chốt lúc khách bấm đặt, đã gồm phí phụ huynh. ĐÂY KHÔNG PHẢI tiền mặt đã vào — khách trả làm 2 đợt nên khoá mới trả đợt 1 vẫn tính trọn giá gói. Phần lớn khoản này chảy về gia sư nên ĐÂY KHÔNG PHẢI doanh thu của Tutora — thuật ngữ tài chính gọi là GMV. Gồm cả lịch về sau bị huỷ mà khách đã trả tiền, nên khớp đúng với trang Báo cáo doanh thu."
+                    infoTooltip={
+                        'Tổng giá trị các lịch đặt trong khoảng đã chọn, tính theo GIÁ HỢP ĐỒNG chốt lúc khách bấm đặt, đã gồm phí phụ huynh. ĐÂY KHÔNG PHẢI tiền mặt đã vào — khách trả làm 2 đợt nên khoá mới trả đợt 1 vẫn tính trọn giá gói.\n\n'
+                        // Câu này chặn đúng một hiểu nhầm đã xảy ra thật (02/09/2026): lấy doanh
+                        // thu tạm tính chia con số này ra 9,5% rồi tưởng hệ thống tính sai 10%.
+                        // Mẫu số đúng là học phí gốc, giờ đã hiện thành dòng phụ ngay dưới.
+                        + 'Doanh thu tạm tính = 10% HỌC PHÍ GỐC (dòng phụ ngay dưới), KHÔNG phải 10% của con số này. Giá trị lịch đặt đã cộng thêm 5% phí phụ huynh, nên tỉ lệ so với nó chỉ còn khoảng 9,5% — đó không phải lỗi.\n\n'
+                        + 'Phần lớn khoản này chảy về gia sư nên ĐÂY KHÔNG PHẢI doanh thu của Tutora — thuật ngữ tài chính gọi là GMV. Gồm cả lịch về sau bị huỷ mà khách đã trả tiền, nên khớp đúng với trang Báo cáo doanh thu.'
+                    }
                 />
-                {/* Thẻ này từng hiện doanh thu tạm tính và gọi nó là "Doanh thu từ phí dịch vụ" —
-                    con số cao gấp mấy lần tiền thật vì phần lớn buổi học chưa dạy. Giờ số to là
-                    tiền THẬT đã ghi nhận, còn phần đã bán lùi xuống dòng phụ để vẫn đối chiếu
-                    được với thanh phân bổ ở trang Báo cáo doanh thu. */}
+                {/* ─── Vì sao số TO ở đây là doanh thu TẠM TÍNH, không phải đã ghi nhận ──────
+                    Đổi 02/09/2026, đảo lại lựa chọn trước đó. Lý do: BIỂU ĐỒ ngay dưới hai thẻ
+                    này vẽ đúng hai đường `gmv` × `platformRevenue`, tức "Giá trị lịch đặt" ×
+                    "Doanh thu tạm tính". Thẻ bên trái là tổng của đường thứ nhất, nên thẻ này
+                    phải là tổng của đường thứ hai — nếu không thì hàng KPI và biểu đồ nói hai
+                    bộ số khác nhau, và người đọc phải tự dò xem con số nào ứng với đường nào.
+
+                    Cái giá phải trả là có thật và đã cân nhắc: 1.932.500 to gấp ~3,6 lần doanh
+                    thu thật 539.000. Ba thứ giữ cho nó không bị đọc nhầm thành tiền đã kiếm —
+                    (1) nhãn ghi thẳng chữ TẠM TÍNH, (2) nền hổ phách, đúng quy ước màu đã dùng
+                    ở trang Báo cáo doanh thu (hổ phách = tạm tính, lục = đã ghi nhận), (3) dòng
+                    phụ in doanh thu ĐÃ GHI NHẬN màu lục ngay dưới, nên tiền thật không hề biến
+                    mất khỏi màn hình, chỉ đổi vai.
+
+                    Badge % cũng phải đổi theo sang `platformRevenue.changePercent`: badge đứng
+                    cạnh số nào thì phải là % của chính số đó. */}
                 <StatCard
                     icon={<span className="material-symbols-outlined">payments</span>}
-                    value={loading ? '…' : formatDashboardCurrency(recognisedValue)}
-                    valueClassName="admin-kpi-exact-value"
-                    label="Doanh thu đã ghi nhận"
+                    value={loading ? '…' : formatDashboardCurrency(contractedValue)}
+                    valueClassName="admin-kpi-exact-value admin-kpi-value-contracted"
+                    label="Doanh thu tạm tính"
                     labelClassName="admin-kpi-friendly-label"
                     subLabel={
-                        loading || contractedValue == null
-                            ? undefined
-                            : `Doanh thu tạm tính ${formatDashboardCurrency(contractedValue)}`
+                        loading || recognisedValue == null ? undefined : (
+                            <span className="admin-kpi-sub-recognised">
+                                Doanh thu đã ghi nhận
+                                <b>{formatDashboardCurrency(recognisedValue)}</b>
+                            </span>
+                        )
                     }
-                    badge={revBadge?.text}
-                    badgeVariant={revBadge?.variant}
+                    badge={contractedBadge?.text}
+                    badgeVariant={contractedBadge?.variant}
                     infoTooltip={
-                        'Doanh thu THẬT của Tutora trong khoảng đã chọn: phí nền tảng của những buổi đã dạy xong và đã giải ngân cho gia sư, cộng tiền bán gói AI Homework Helper.\n\n'
-                        + 'Dòng phụ là doanh thu TẠM TÍNH — toàn bộ phí nền tảng của các lịch đặt trong kỳ, chốt ngay lúc đặt. Buổi chưa dạy thì khoản đó chưa phải tiền, và nếu lịch bị huỷ thì mất hẳn.\n\n'
-                        + 'Hai số neo theo hai mốc khác nhau (ngày dạy và ngày đặt lịch) nên đừng đọc thành tỉ lệ. Xem tiền đã bán trong kỳ giờ ra sao ở trang Báo cáo doanh thu.'
+                        'Toàn bộ phí nền tảng của các lịch ĐẶT trong khoảng đã chọn, chốt ngay lúc khách bấm đặt. Đây là con số biểu đồ bên dưới đang vẽ (đường nét đứt).\n\n'
+                        + 'CHƯA PHẢI tiền đã kiếm được: buổi chưa dạy thì khoản đó chưa thành tiền, và nếu lịch bị huỷ thì mất hẳn.\n\n'
+                        + 'Dòng phụ mới là doanh thu THẬT đã ghi nhận: phí nền tảng của những buổi đã dạy xong, cộng tiền bán gói AI Homework Helper.\n\n'
+                        + 'Hai số neo theo hai mốc khác nhau (ngày đặt lịch và ngày dạy) nên đừng đọc thành tỉ lệ. Xem số tạm tính đã đi về đâu ở trang Báo cáo doanh thu.'
                     }
                 />
                 <StatCard
