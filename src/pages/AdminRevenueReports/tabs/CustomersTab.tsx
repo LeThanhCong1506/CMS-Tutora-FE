@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { count, growthBadge, money, moneyVnd } from '@/utils/formatMoney';
+import { growthBadge, money, moneyVnd } from '@/utils/formatMoney';
 import { matchesSearch } from '@/utils/vietnameseSearch';
 import MetricCard from '../components/MetricCard';
 import { FilterChips, SearchInput, SortSelect, TableToolbar } from '../components/TableToolbar';
@@ -295,39 +295,6 @@ const CustomersTab = ({ range }: { range: RevenueRange }) => {
                                 );
                             })}
                         </tbody>
-                        {/* Dòng tổng cộng trên TẬP ĐANG LỌC, không phải trên trang đang xem và
-                            cũng không phải trên toàn bộ dữ liệu. Trước khi có bộ lọc thì hai vế
-                            sau là một; giờ thì không, và cộng nguyên `data.parents` sẽ ra một
-                            con số không khớp với bất kỳ dòng nào đang hiển thị. Nhãn tự đổi
-                            thành "Tổng (đã lọc)" để không ai đọc nhầm đây là tổng cả kỳ. */}
-                        <tfoot>
-                            <tr>
-                                <td colSpan={3}>
-                                    {parentRows.length < (allParents?.length ?? 0)
-                                        ? 'Tổng (đã lọc)'
-                                        : 'Tổng'}
-                                </td>
-                                <td className="rev-num rev-pos">
-                                    {moneyVnd(parentRows.reduce((s, p) => s + p.totalSpent, 0))}
-                                </td>
-                                <td className="rev-num rev-pos">
-                                    {moneyVnd(parentRows.reduce((s, p) => s + p.serviceFeeRecognised, 0))}
-                                </td>
-                                <td className="rev-num rev-warn">
-                                    {moneyVnd(parentRows.reduce((s, p) => s + p.serviceFeePending, 0))}
-                                </td>
-                                <td className="rev-num">
-                                    {count(parentRows.reduce((s, p) => s + p.bookingCount, 0))}
-                                </td>
-                                <td className="rev-num">
-                                    {count(parentRows.reduce((s, p) => s + p.sessionsPurchased, 0))}
-                                </td>
-                                <td className="rev-num">
-                                    {count(parentRows.reduce((s, p) => s + p.sessionsCompleted, 0))}
-                                </td>
-                                <td colSpan={2} />
-                            </tr>
-                        </tfoot>
                     </table>
                 )}
             </DataTableShell>

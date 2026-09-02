@@ -210,6 +210,16 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         refund: refundByMonth.get(t.month) ?? 0,
     }));
 
+    /**
+     * Kỳ này có bán được gói AI nào không — quyết định có vẽ đường AI lên biểu đồ hay không.
+     *
+     * Cùng luật với dòng tách nguồn ở góc phải tiêu đề và với biểu đồ cùng tên bên tab AI: không
+     * bán gói nào thì đường này dính đáy suốt kỳ, thêm một mục chú giải để nói đúng điều mà việc
+     * không có đường đã nói. Đọc `timeline` chứ không đọc `s.aiRevenue`: hai cái này là cùng một
+     * số chia theo mốc khác nhau, nhưng thứ quyết định đường có hình hài gì là dữ liệu đang vẽ.
+     */
+    const hasAiRevenue = timeline.some((t) => t.aiRevenue > 0);
+
     return (
         <div className="rev-stack">
             {/* Dải chỉ số đứng MỘT MÌNH từ 01/09/2026.
@@ -308,25 +318,51 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
             <ChartBlock
                 title="Dòng tiền theo thời gian"
                 hint={
-                    'Đường liền là DOANH THU ĐÃ GHI NHẬN — tiền thật: phí phụ huynh cộng vào '
-                    + 'ngày buổi ĐẦU dạy xong, phí gia sư cộng vào ngày dạy của từng buổi. Đường đứt là doanh thu tạm tính, '
+                    'Đường xanh lá là DOANH THU DẠY HỌC ĐÃ GHI NHẬN — tiền thật: phí phụ huynh cộng '
+                    + 'vào ngày buổi ĐẦU dạy xong, phí gia sư cộng vào ngày dạy của từng buổi. Đường đứt là doanh thu tạm tính, '
                     + 'quy về ngày khách đặt lịch; hai đường càng xa nhau thì phần chưa được phép '
-                    + 'ghi nhận càng lớn.\n\n'
+                    + 'ghi nhận càng lớn. Cả hai đường này chỉ tính tiền từ buổi dạy, KHÔNG gồm gói AI.\n\n'
+                    + 'Đường xanh dương là tiền bán gói AI, ghi nhận ngay ngày khách trả tiền chứ không '
+                    + 'chờ buổi dạy nào — nên nó nhảy theo lượt mua chứ không chạy theo lịch học. Kỳ '
+                    + 'không bán được gói nào thì đường này không hiện. Chi tiết ở tab Doanh thu AI.\n\n'
                     + 'Cột đỏ là học phí hoàn trả lại khách, vẽ chung một trục vì cùng đơn vị nên '
                     + 'so trực tiếp được.\n\n'
-                    + 'Cộng cả đường liền trong kỳ, cộng thêm tiền bán gói AI, ra đúng con số ở '
-                    + 'góc phải tiêu đề — cũng chính là "Doanh thu đã ghi nhận" trên trang Tổng '
-                    + 'quan hệ thống.'
+                    + 'Cộng cả đường xanh lá và đường xanh dương trong kỳ ra đúng con số ở góc phải '
+                    + 'tiêu đề, theo đúng phép chia hai nguồn in ngay dưới nó — cũng chính là "Doanh '
+                    + 'thu đã ghi nhận" trên trang Tổng quan hệ thống.'
                 }
-                /* Tổng của đường liền, in ngay cạnh tiêu đề.
+                /* Tổng của đường xanh lá cộng đường xanh dương, in ngay cạnh tiêu đề.
                    Đây là con số trả lời câu "rốt cuộc kỳ này Tutora thu được bao nhiêu", và
                    trước đây nó không hiện ở đâu trên cả trang — `summary.recognisedRevenue`
                    có trong response nhưng chỉ được dùng để vẽ. Hệ quả là dashboard báo một
-                   con số mà người đọc không dò lại được ở báo cáo. */
+                   con số mà người đọc không dò lại được ở báo cáo.
+
+                   Dòng thứ hai bóc nó theo NGUỒN: tiền từ buổi dạy (phí gia sư + phí phụ
+                   huynh) và tiền bán gói AI. Hai nguồn này khác nhau về bản chất — một khoản
+                   chỉ chín khi có buổi dạy xong, một khoản thu đứt ngay lúc mua — nên gộp
+                   chung một con số mà không ghi rõ là để người đọc tự đoán sai tỉ lệ.
+
+                   Phép cộng ở đây KHÍT TUYỆT ĐỐI, không có số dư: nó chia một con số theo
+                   nguồn gốc. Bản trước đặt ở cuối thẻ Phân bổ và cộng "đã thu được" (neo ngày
+                   ĐẶT) với "gói AI" rồi phải thêm một số hạng "chênh mốc" để bù — hai mốc
+                   khác nhau thì không bao giờ khít. Xem đầu MoneySplit.tsx. */
                 action={
                     <span className="rev-block-figure">
-                        <span className="rev-block-figure-label">Doanh thu đã ghi nhận</span>
-                        <strong>{moneyVnd(s.recognisedRevenue)}</strong>
+                        <span className="rev-block-figure-main">
+                            <span className="rev-block-figure-label">Doanh thu đã ghi nhận</span>
+                            <strong>{moneyVnd(s.recognisedRevenue)}</strong>
+                        </span>
+                        {/* Tách theo NGUỒN, và chỉ hiện khi thật sự có hai nguồn. Kỳ không bán
+                            gói AI nào thì dòng này là tiếng ồn: nó lặp lại con số ngay trên đầu
+                            rồi cộng thêm số 0. Backend cũ chưa trả `aiRevenue` cũng rơi vào
+                            nhánh này, nên viên thuốc suy biến về đúng bản một dòng cũ. */}
+                        {s.aiRevenue > 0 && (
+                            <span className="rev-block-figure-split">
+                                {money(s.recognisedRevenue - s.aiRevenue)} dạy học
+                                <span className="rev-block-figure-op" aria-hidden="true">+</span>
+                                {money(s.aiRevenue)} gói AI
+                            </span>
+                        )}
                     </span>
                 }
             >
@@ -336,15 +372,42 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     height={260}
                     bars={[{ key: 'refund', name: 'Hoàn tiền', color: PALETTE.red }]}
                     series={[
+                        /* Hai đường dạy học đều KHÔNG gồm tiền gói AI, và tên chúng nói ra điều đó
+                           từ 02/09/2026. Trước đó đường liền mang đúng nhãn "Doanh thu đã ghi nhận" như
+                           con số ở góc phải tiêu đề, trong khi hai thứ khác nhau đúng phần gói AI: backend
+                           cộng `aiIn` vào `RecognisedRevenue` của summary nhưng KHÔNG cộng vào `Recognised`
+                           của từng mốc trong `trend` — xem AdminRevenueAnalyticsService.Overview.cs. Cùng
+                           một cái tên cho hai con số khác nhau, cách nhau 200px, thì người đọc cộng
+                           nhẩm ra không khớp và không có cách nào tự giải thích. Giờ đường xanh lá cộng
+                           đường xanh dương mới ra con số ở tiêu đề, đúng bằng phép chia nguồn in ngay
+                           dưới nó. Đừng bỏ chữ "dạy học" để nhãn ngắn lại. */
                         {
                             key: 'recognised',
-                            name: 'Doanh thu đã ghi nhận',
+                            name: 'Doanh thu dạy học đã ghi nhận',
                             color: PALETTE.emerald,
                             area: true,
                         },
+                        /* Tiền gói AI vẽ bằng ĐƯỜNG chứ không bằng cột như hoàn tiền: trong khung này hình
+                           dạng đang mã hoá CHIỀU của dòng tiền — đường là tiền vào, cột là tiền ra. Vẽ
+                           nó thành cột thì hai khoản ngược dấu nhau lại trông giống hệt nhau, chỉ khác
+                           màu. Để cạnh đường xanh lá cũng hợp lý: doanh thu ghi nhận cũng rời rạc y hệt
+                           (chín theo từng buổi dạy xong) mà vẫn đã là đường từ đầu.
+
+                           Màu xanh dương là màu đã dùng cho doanh thu AI ở tab AI — giữ nguyên để một
+                           khoản tiền không đổi màu khi đổi tab. Không tô nền: `area` để dành cho chuỗi
+                           chính, hai mảng tô chồng nhau thì không đọc được cái nào.
+
+                           Kỳ không bán gói nào thì bỏ hẳn, không vẽ đường 0 — xem `hasAiRevenue`. */
+                        ...(hasAiRevenue
+                            ? [{
+                                key: 'aiRevenue',
+                                name: 'Doanh thu gói AI',
+                                color: PALETTE.blue,
+                            }]
+                            : []),
                         {
                             key: 'contracted',
-                            name: 'Doanh thu tạm tính',
+                            name: 'Doanh thu dạy học tạm tính',
                             color: PALETTE.amber,
                             dashed: true,
                         },
@@ -537,34 +600,6 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                                     </tr>
                             ))}
                         </tbody>
-                        {/* Dòng tổng cộng trên TẬP ĐANG LỌC, không phải toàn bộ dữ liệu: người
-                            đã bấm "Đã huỷ" thì muốn biết riêng nhóm đó cộng lại bao nhiêu. Vẫn
-                            cộng trên toàn bộ kết quả lọc chứ không phải trang đang xem. */}
-                        <tfoot>
-                            <tr>
-                                {/* colSpan bám đúng số cột phi-tiền ở đầu bảng: Booking, Khách
-                                    hàng, Gia sư, Trạng thái, Tiến độ. Bỏ cột "Môn" nên là 5,
-                                    không còn 6. */}
-                                <td colSpan={5}>
-                                    Tổng {rows.length} booking
-                                    {rows.length !== (allRows?.length ?? 0)
-                                        && ` (lọc từ ${allRows?.length ?? 0})`}
-                                </td>
-                                <td className="rev-num">
-                                    {moneyVnd(rows.reduce((x, b) => x + b.cashCollected, 0))}
-                                </td>
-                                <td className="rev-num rev-neg">
-                                    {moneyVnd(rows.reduce((x, b) => x + b.refundedAmount, 0))}
-                                </td>
-                                <td className="rev-num">
-                                    {moneyVnd(rows.reduce((x, b) => x + b.contractedFee, 0))}
-                                </td>
-                                <td className="rev-num rev-pos">
-                                    {moneyVnd(rows.reduce((x, b) => x + b.recognisedFee, 0))}
-                                </td>
-                                <td />
-                            </tr>
-                        </tfoot>
                     </table>
                 )}
             </DataTableShell>
