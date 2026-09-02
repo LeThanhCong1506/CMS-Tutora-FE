@@ -9,7 +9,11 @@ import { useRevenueReport } from '@/hooks/useRevenueReport';
 import { useCommissionPercents } from '@/hooks/useCommissionPercents';
 import { useClientPagination } from '@/hooks/useClientPagination';
 import { count, money, moneyVnd } from '@/utils/formatMoney';
+import { matchesSearch } from '@/utils/vietnameseSearch';
 import MetricCard from '../components/MetricCard';
+import { FilterChips, SearchInput, SortSelect, TableToolbar } from '../components/TableToolbar';
+import { PersonName } from '../components/PersonName';
+import { findDuplicateNames } from '../components/personIdentity';
 import MoneySplit from '../components/MoneySplit';
 import {
     ChartBlock,
@@ -59,10 +63,6 @@ const BUCKETS: { key: BucketKey; label: string }[] = [
     { key: 'cancelled', label: 'Huỷ / quá hạn' },
 ];
 
-/** Bỏ dấu để gõ "nguyen" vẫn tìm ra "Nguyễn" — admin không gõ dấu khi tra nhanh. */
-const norm = (s: string) =>
-    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').toLowerCase();
-
 const ratioOf = (b: BookingRow) =>
     b.totalSessions > 0 ? b.deliveredSessions / b.totalSessions : 0;
 
@@ -80,13 +80,10 @@ const selectBookings = (
 
     let out = bucket === 'all' ? rows : rows.filter((b) => bucketOf(b) === bucket);
 
-    const q = norm(query.trim());
-    if (q) {
+    if (query.trim()) {
         out = out.filter((b) =>
-            String(b.bookingId).includes(q)
-            || norm(b.parentName).includes(q)
-            || norm(b.tutorName).includes(q)
-            || norm(b.subject).includes(q));
+            matchesSearch(query, String(b.bookingId), b.parentName, b.tutorName, b.subject,
+                b.parentContact, b.tutorContact));
     }
 
     if (sort === 'slowest') return [...out].sort((a, b) => ratioOf(a) - ratioOf(b));
@@ -150,11 +147,24 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         recognition.reload();
     };
 
-    if (loading) return <ReportSkeleton hero metrics={3} charts={1} splits={0} />;
+    if (loading) return <ReportSkeleton alloc metrics={3} charts={1} splits={0} />;
     if (error) return <ReportError message={error} onRetry={reload} />;
     if (!overview.data || !recognition.data) return null;
 
     const data = recognition.data;
+
+    // Trùng tên tính trên TOÀN BỘ booking của kỳ, không phải trang đang xem hay tập đã lọc:
+    // hai người trùng tên rơi vào hai trang khác nhau thì vẫn là trùng, và chuỗi phân biệt
+    // không được lúc có lúc không theo bộ lọc. Hai tập riêng vì cột Khách và cột Gia sư là
+    // hai nhóm người khác nhau — một cái tên trùng bên khách không có nghĩa là trùng bên
+    // gia sư.
+    const dupParentNames = findDuplicateNames(
+        (allRows ?? []).map((b) => ({ name: b.parentName, contact: b.parentContact })),
+    );
+    const dupTutorNames = findDuplicateNames(
+        (allRows ?? []).map((b) => ({ name: b.tutorName, contact: b.tutorContact })),
+    );
+
     const s = overview.data.summary;
     const st = data.stalled;
     const rf = data.refunds;
@@ -178,13 +188,12 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         + `${moneyVnd(st.contractedFeeAtRisk)} doanh thu tạm tính của những buổi đã bán mà sẽ `
         + 'không được dạy.'
         + (ns.count > 0 ? ` Trong đó ${count(ns.count)} lịch chưa học buổi nào.` : '')
-        // Câu cũ ghi khoản này "đã nằm sẵn trong phần còn chờ" — chỉ đúng một nửa. Nhóm dừng
-        // sau đợt 1 có cả lịch đã bị hệ thống đóng khoá, và phần hụt của chúng nằm ở lát
-        // "Không thu được" chứ không phải "Còn chờ". Điều cần nói là nó KHÔNG cộng thêm vào
-        // đâu cả, nên nói đúng cả hai lát thay vì đoán bừa một lát.
-        + '\n\nSố đó KHÔNG phải tiền khách trả. Nó đã nằm sẵn trong doanh thu tạm tính ở dưới — '
-        + 'lát "Còn chờ" với lịch vẫn đang mở, lát "Không thu được" với lịch đã bị đóng khoá — '
-        + 'nên đừng cộng thêm lần nữa.';
+        // Câu này từng chỉ người đọc sang hai lát "Còn chờ" / "Không thu được" của vành khuyên
+        // bên dưới. Vành khuyên đã gỡ (01/09/2026, xem đầu file MoneySplit.tsx) nên phải bỏ chỉ
+        // dẫn đó — một tooltip trỏ tới thứ không còn trên màn hình thì tệ hơn là không trỏ gì.
+        // Điều duy nhất cần giữ vẫn đúng: số này KHÔNG được cộng thêm vào đâu cả.
+        + '\n\nSố đó KHÔNG phải tiền khách trả, và cũng KHÔNG phải một khoản riêng cần cộng thêm '
+        + '— nó đã nằm sẵn trong "Doanh thu tạm tính" ở khối bên dưới.';
 
     /**
      * Một dòng thời gian duy nhất cho cả doanh thu lẫn hoàn tiền.
@@ -203,89 +212,77 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
 
     return (
         <div className="rev-stack">
-            {/* Dải chỉ số và thẻ phân bổ cố ý KHÔNG lặp con số của nhau: trên là các con số
-                tổng, dưới là cách chúng được chia. Cả trang bám một mốc duy nhất — booking tạo
-                trong kỳ — nên không còn cảnh hai con số cùng mang chữ "doanh thu" đứng cạnh
-                nhau mà tính theo hai mốc khác nhau.
-
-                Vì là hai nửa của MỘT câu, chúng nằm chung một khung (.rev-hero) và ngăn nhau
-                bằng đúng một đường kẻ mảnh, thay vì hai khung trắng cách nhau 16px — cùng thủ
-                pháp mà .rev-strip đã dùng để ngăn ba ô chỉ số bên trong nó. */}
-            <section className="rev-hero">
-                <div className="rev-strip">
-                    <MetricCard
-                        icon="account_balance_wallet"
-                        tone="blue"
-                        value={moneyVnd(s.gmv)}
-                        label="Tiền phụ huynh trả"
-                        // Không còn dòng phụ "Học phí gốc … · Phí phụ huynh …": đúng hai con
-                        // số đó giờ nằm ngay dưới, ở chú thích của thanh "Tiền vào". In hai
-                        // lần cách nhau 100px chỉ khiến mắt phải kiểm tra xem chúng có phải
-                        // cùng một số không.
-                        hint={
-                            'Tổng tiền phụ huynh phải trả cho các lịch đặt trong kỳ'
-                            + (percents ? `, đã gồm ${percents.parent}% phí phụ huynh` : '')
-                            + '. Trừ doanh thu tạm tính ra đúng số tiền gia sư nhận.'
-                            + '\n\nĐây KHÔNG phải doanh thu — phần lớn khoản này chảy về gia sư. '
-                            + 'Thuật ngữ tài chính gọi là GMV. Dashboard hiện đúng con số này.'
-                        }
-                    />
-                    <MetricCard
-                        icon="undo"
-                        tone="red"
-                        value={moneyVnd(rf.amount)}
-                        label="Đã hoàn tiền"
-                        subLabel={`${count(rf.count)} lượt hoàn`}
-                        badgeVariant="red"
-                        hint={
-                            // Câu cũ ghi "Hoa hồng Tutora ở trên chưa trừ khoản này", nghe như phải
-                            // lấy phí sàn trừ đi con số này. Sai đơn vị: đây là HỌC PHÍ GỘP trả lại
-                            // khách, còn doanh thu tạm tính chỉ là 10% của học phí.
-                            'Học phí trả lại cho phụ huynh hoặc học sinh do huỷ buổi, gia sư từ chối, '
-                            + 'hoặc xử lý khiếu nại.\n\n'
-                            + 'Đây là tiền học phí gộp, KHÔNG phải doanh thu — đừng trừ thẳng vào '
-                            + 'Doanh thu tạm tính ở dưới.\n\n'
-                            // Câu cũ nói tiếp "lịch đã hủy đã bị loại khỏi mọi con số phía trên nên
-                            // không có gì để trừ" — không còn đúng: lịch huỷ đã có tiền nay nằm
-                            // trong cả GMV lẫn doanh thu tạm tính, và phần hoàn tiền đã được trừ
-                            // sẵn khỏi "Đã thu được".
-                            + 'Khoản hoàn của các lịch đã huỷ ĐÃ được trừ sẵn khi tính "Đã thu được" '
-                            + 'ở vành khuyên bên dưới — trừ lần nữa là trừ hai lần.\n\n'
-                            // Hai mốc thời gian khác nhau, và đây là chỗ DUY NHẤT nói ra điều đó.
-                            // Thẻ này đếm theo ngày hoàn; cột "Đã hoàn" ở bảng cuối trang thì gắn
-                            // vào từng lịch. Hôm nay hai số trùng nhau vì dữ liệu gọn trong một
-                            // tháng, nên nếu không ghi trước thì lần đầu chúng tách ra sẽ bị đọc
-                            // thành lỗi số liệu.
-                            + 'Thẻ này đếm các lượt hoàn PHÁT SINH trong kỳ. Cột "Đã hoàn" ở bảng '
-                            + 'cuối trang lại là tiền đã hoàn của từng lịch ĐẶT trong kỳ, nên hai '
-                            + 'tổng có thể lệch nhau khi một lịch được hoàn tiền ở kỳ sau — cả hai '
-                            + 'đều đúng, chỉ là hai câu hỏi khác nhau.'
-                        }
-                    />
-                    <MetricCard
-                        icon="running_with_errors"
-                        tone="orange"
-                        value={count(st.count)}
-                        label="Booking dừng sau đợt 1"
-                        badgeVariant="orange"
-                        hint={stalledHint}
-                    />
-                </div>
-
-                {/* `s.commissionFromCancelled` cố ý KHÔNG truyền xuống — xem lý do đầy đủ ở
-                    đầu file MoneySplit.tsx. Tóm tắt: nó neo theo NGÀY HUỶ, khác mốc "booking
-                    tạo trong kỳ" của mọi con số trong thẻ này. `commissionLost` thì cùng mốc
-                    nên truyền được. */}
-                <MoneySplit
-                    gmv={s.gmv}
-                    baseAmount={s.baseAmount}
-                    tutorReceivable={s.tutorReceivable}
-                    commissionSold={s.commissionSold}
-                    commissionEarned={s.commissionEarned}
-                    commissionLost={s.commissionLost}
-                    percents={percents}
+            {/* Dải chỉ số đứng MỘT MÌNH từ 01/09/2026.
+                Trước đây nó dùng chung khung `.rev-hero` với thẻ phân bổ, vì hai khối là "hai
+                nửa của một câu": trên là các con số tổng, dưới là cách chúng được chia. Nay
+                thẻ phân bổ đã chuyển xuống dưới biểu đồ nên không còn kề nhau, và `.rev-strip`
+                tự nó đã có khung riêng. */}
+            <div className="rev-strip">
+                <MetricCard
+                    icon="account_balance_wallet"
+                    tone="blue"
+                    value={moneyVnd(s.gmv)}
+                    label="Giá trị lịch đặt"
+                    subLabel={`khách đã thực trả ${moneyVnd(s.gmvPaid)}`}
+                    // Không còn dòng phụ "Học phí gốc … · Phí phụ huynh …": đúng hai con
+                    // số đó giờ nằm ngay dưới, ở chú thích của thanh "Tiền vào". In hai
+                    // lần cách nhau 100px chỉ khiến mắt phải kiểm tra xem chúng có phải
+                    // cùng một số không.
+                    hint={
+                        'Tổng giá trị các lịch đặt trong kỳ, tính theo GIÁ HỢP ĐỒNG chốt lúc khách bấm đặt'
+                        + (percents ? `, đã gồm ${percents.parent}% phí phụ huynh` : '')
+                        + '. Trừ doanh thu tạm tính ra đúng số tiền gia sư nhận.'
+                        + '\n\nĐÂY KHÔNG PHẢI TIỀN MẶT ĐÃ VÀO. Khách trả làm 2 đợt, nên khoá mới'
+                        + ' trả đợt 1 vẫn tính trọn giá gói ở đây. Số khách ĐÃ THỰC TRẢ nằm ở dòng'
+                        + ' ngay dưới con số này.'
+                        + '\n\nĐây KHÔNG phải doanh thu — phần lớn khoản này chảy về gia sư. '
+                        + 'Thuật ngữ tài chính gọi là GMV. Dashboard hiện đúng con số này.'
+                    }
                 />
-            </section>
+                <MetricCard
+                    icon="undo"
+                    tone="red"
+                    value={moneyVnd(rf.amount)}
+                    label="Đã hoàn tiền"
+                    subLabel={`${count(rf.count)} lượt hoàn`}
+                    badgeVariant="red"
+                    hint={
+                        // Câu cũ ghi "Hoa hồng Tutora ở trên chưa trừ khoản này", nghe như phải
+                        // lấy phí sàn trừ đi con số này. Sai đơn vị: đây là HỌC PHÍ GỘP trả lại
+                        // khách, còn doanh thu tạm tính chỉ là 10% của học phí.
+                        'Học phí trả lại cho phụ huynh hoặc học sinh do huỷ buổi, gia sư từ chối, '
+                        + 'hoặc xử lý khiếu nại.\n\n'
+                        + 'Đây là tiền học phí gộp, KHÔNG phải doanh thu — đừng trừ thẳng vào '
+                        + 'Doanh thu tạm tính ở dưới.\n\n'
+                        // Câu cũ nói tiếp "lịch đã hủy đã bị loại khỏi mọi con số phía trên nên
+                        // không có gì để trừ" — không còn đúng: lịch huỷ đã có tiền nay nằm
+                        // trong cả GMV lẫn doanh thu tạm tính, và phần hoàn tiền đã được trừ
+                        // sẵn khỏi "Đã thu được".
+                        // Câu này từng trỏ sang lát "Đã thu được" của vành khuyên bên dưới.
+                        // Vành khuyên đã gỡ 01/09/2026, nên nói thẳng vào chỗ khoản hoàn
+                        // thực sự đã được trừ: doanh thu ghi nhận ở tab Gia sư / Khách hàng.
+                        + 'Khoản hoàn của các lịch đã huỷ ĐÃ được trừ sẵn khi tính doanh thu ghi '
+                        + 'nhận (tab Gia sư và tab Khách hàng) — trừ lần nữa là trừ hai lần.\n\n'
+                        // Hai mốc thời gian khác nhau, và đây là chỗ DUY NHẤT nói ra điều đó.
+                        // Thẻ này đếm theo ngày hoàn; cột "Đã hoàn" ở bảng cuối trang thì gắn
+                        // vào từng lịch. Hôm nay hai số trùng nhau vì dữ liệu gọn trong một
+                        // tháng, nên nếu không ghi trước thì lần đầu chúng tách ra sẽ bị đọc
+                        // thành lỗi số liệu.
+                        + 'Thẻ này đếm các lượt hoàn PHÁT SINH trong kỳ. Cột "Đã hoàn" ở bảng '
+                        + 'cuối trang lại là tiền đã hoàn của từng lịch ĐẶT trong kỳ, nên hai '
+                        + 'tổng có thể lệch nhau khi một lịch được hoàn tiền ở kỳ sau — cả hai '
+                        + 'đều đúng, chỉ là hai câu hỏi khác nhau.'
+                    }
+                />
+                <MetricCard
+                    icon="running_with_errors"
+                    tone="orange"
+                    value={count(st.count)}
+                    label="Booking dừng sau đợt 1"
+                    badgeVariant="orange"
+                    hint={stalledHint}
+                />
+            </div>
 
             {/* Hoàn tiền GỘP THẲNG vào biểu đồ chính dưới dạng cột, thay vì đứng riêng một ô.
                 Ba lý do, theo thứ tự quan trọng:
@@ -355,65 +352,68 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                 />
             </ChartBlock>
 
+            {/* Thẻ phân bổ nằm SAU biểu đồ (đổi chỗ 01/09/2026). Biểu đồ trả lời câu hỏi lớn
+                của trang — tiền vào ra thế nào theo thời gian — nên nó lên ngay dưới dải chỉ
+                số; phần bóc tách một con số thành hai vế là chi tiết, để sau.
+
+                `s.commissionFromCancelled` cố ý KHÔNG truyền xuống — xem lý do đầy đủ ở đầu
+                file MoneySplit.tsx. Tóm tắt: nó neo theo NGÀY HUỶ, khác mốc "booking tạo trong
+                kỳ" của mọi con số trong thẻ này.
+
+                `s.commissionEarned` / `s.commissionLost` cũng không truyền nữa từ 01/09/2026:
+                vành khuyên "Số tạm tính đi về đâu" đã gỡ vì cả ba lát đang sai số (lỗi đảo
+                escrow ở backend làm `released` hụt ⇒ hai số này lệch). API vẫn trả về, giữ để
+                đối soát sau khi sửa xong luồng escrow. */}
+            <MoneySplit
+                gmv={s.gmv}
+                baseAmount={s.baseAmount}
+                tutorReceivable={s.tutorReceivable}
+                commissionSold={s.commissionSold}
+                commissionMatured={s.commissionMatured}
+                commissionPending={s.commissionPending}
+                commissionUnrecoverable={s.commissionUnrecoverable}
+                percents={percents}
+            />
+
             <DataTableShell
                 title="Doanh thu theo booking"
                 /* Ba bộ điều khiển, mỗi cái trả lời một câu hỏi khác nhau — trước đây chỉ có
                    thanh sắp xếp, nên muốn xem riêng lịch đã huỷ thì phải lật từng trang.
 
-                   Chip lọc để trống nhóm nào không có dòng nào: một chip "Đã huỷ 0" chỉ tổ
-                   mời người ta bấm vào một bảng rỗng. */
+                   Markup đã chuyển sang `TableToolbar` để bốn tab còn lại dùng đúng một hình
+                   dạng; luật ẩn chip rỗng nằm trong `FilterChips`. */
                 action={
-                    <div className="rev-table-toolbar">
-                        <div className="rev-segmented" role="tablist" aria-label="Lọc theo trạng thái">
-                            {BUCKETS.filter((b) => b.key === 'all' || counts[b.key] > 0).map((item) => (
-                                <button
-                                    key={item.key}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={bucket === item.key}
-                                    className={bucket === item.key ? 'is-active' : ''}
-                                    onClick={() => {
-                                        setBucket(item.key);
-                                        bookingPage.setPage(1);
-                                    }}
-                                >
-                                    {item.label}
-                                    <span className="rev-chip-count">
-                                        {item.key === 'all' ? allRows?.length ?? 0 : counts[item.key]}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-
-                        <label className="rev-search">
-                            <span className="material-symbols-outlined" aria-hidden="true">search</span>
-                            <input
-                                type="search"
-                                value={query}
-                                placeholder="Mã lịch, khách, gia sư, môn…"
-                                aria-label="Tìm trong danh sách booking"
-                                onChange={(e) => {
-                                    setQuery(e.target.value);
-                                    bookingPage.setPage(1);
-                                }}
-                            />
-                        </label>
-
-                        <label className="rev-select">
-                            <span className="rev-select-label">Sắp xếp</span>
-                            <select
-                                value={sort}
-                                onChange={(e) => {
-                                    setSort(e.target.value as SortKey);
-                                    bookingPage.setPage(1);
-                                }}
-                            >
-                                {SORTS.map((item) => (
-                                    <option key={item.key} value={item.key}>{item.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                    </div>
+                    <TableToolbar>
+                        <FilterChips
+                            ariaLabel="Lọc theo trạng thái"
+                            items={BUCKETS.map((b) => ({
+                                ...b,
+                                count: b.key === 'all' ? allRows?.length ?? 0 : counts[b.key],
+                            }))}
+                            value={bucket}
+                            onChange={(key) => {
+                                setBucket(key);
+                                bookingPage.setPage(1);
+                            }}
+                        />
+                        <SearchInput
+                            value={query}
+                            placeholder="Mã lịch, khách, gia sư, môn…"
+                            ariaLabel="Tìm trong danh sách booking"
+                            onChange={(value) => {
+                                setQuery(value);
+                                bookingPage.setPage(1);
+                            }}
+                        />
+                        <SortSelect
+                            items={SORTS}
+                            value={sort}
+                            onChange={(key) => {
+                                setSort(key);
+                                bookingPage.setPage(1);
+                            }}
+                        />
+                    </TableToolbar>
                 }
                 pagination={{
                     current: bookingPage.page,
@@ -465,7 +465,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                                 <th>Tiến độ</th>
                                 {/* "Đã thanh toán", KHÔNG phải "Khách trả": cột này là tiền
                                     mặt thực nhận (mới đợt 1 thì chỉ có đợt 1), còn thẻ "Tiền
-                                    phụ huynh trả" ở đầu trang là giá hợp đồng cả kỳ. Hai tên
+                                    khách trả" ở đầu trang là giá hợp đồng cả kỳ. Hai tên
                                     cũ gần như trùng chữ mà số chênh gấp gần ba lần, đọc lướt
                                     là tưởng một trong hai sai. */}
                                 <th className="rev-num">Đã thanh toán</th>
@@ -484,8 +484,20 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                                                 {b.createdAt ? b.createdAt.slice(0, 10) : '—'}
                                             </span>
                                         </td>
-                                        <td>{b.parentName}</td>
-                                        <td>{b.tutorName}</td>
+                                        <td>
+                                            <PersonName
+                                                name={b.parentName}
+                                                contact={b.parentContact}
+                                                duplicates={dupParentNames}
+                                            />
+                                        </td>
+                                        <td>
+                                            <PersonName
+                                                name={b.tutorName}
+                                                contact={b.tutorContact}
+                                                duplicates={dupTutorNames}
+                                            />
+                                        </td>
                                         <td>
                                             <StatusBadge
                                                 variant={BOOKING_STATUS_MAP[b.status]?.variant ?? 'neutral'}

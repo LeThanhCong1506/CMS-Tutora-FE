@@ -42,6 +42,19 @@ export interface RevenueSummary {
     commissionEarned: number;
     /** "Không thu được": đã bán nhưng vĩnh viễn mất — khoá bị huỷ, hoặc khách bỏ dở sau đợt 1. */
     commissionLost: number;
+    /** Phần `gmv` khách ĐÃ THỰC TRẢ (đợt 1, hoặc cả gói nếu đã trả đủ). Cùng phạm vi với
+     *  `gmv` nên so trực tiếp được. Khác `cashCollected` — số kia neo theo ngày thanh toán. */
+    gmvPaid: number;
+
+    /* Ba số phận của `commissionSold`, tính bằng CÔNG THỨC (không đọc sổ ví) nên miễn nhiễm
+       với lỗi đảo escrow đang làm `commissionEarned`/`commissionLost` sai.
+       commissionSold = matured + pending + unrecoverable, khít theo construction. */
+    /** Phí sàn đã thu được tính tới cuối kỳ, của lịch đặt trong kỳ. Nhãn UI: "Đã thu được". */
+    commissionMatured: number;
+    /** Còn CƠ HỘI chín — khoá vẫn đang chạy. */
+    commissionPending: number;
+    /** VĨNH VIỄN không thu được — khoá đã chốt sổ mà phần này chưa kịp chín. */
+    commissionUnrecoverable: number;
     /** Đối soát sổ ví: tổng Tutora giữ được từ các khoá bị HUỶ đóng sổ trong kỳ. Số luỹ kế cả
      *  đời khoá, quy về ngày huỷ — KHÔNG cộng vào bất kỳ tổng nào, sẽ tính hai lần. */
     commissionFromCancelled: number;
@@ -102,6 +115,9 @@ export interface BookingProgressRow {
     bookingId: number;
     parentName: string;
     tutorName: string;
+    /** Chuỗi phân biệt của khách và của gia sư. Hai trường vì mỗi dòng ở đây có HAI người. */
+    parentContact: string | null;
+    tutorContact: string | null;
     subject: string;
     totalSessions: number;
     deliveredSessions: number;
@@ -153,11 +169,17 @@ export interface RevenueRecognitionResponse {
 export interface TutorRevenueRow {
     tutorId: string;
     tutorName: string;
+    /** Số điện thoại (hoặc email nếu không có số) — CHỈ dùng để phân biệt người trùng tên.
+     *  `null` khi tài khoản không có gì phân biệt được. */
+    contact: string | null;
     subject: string;
     gmv: number;
     /** Doanh thu đến TỪ GIA SƯ này: 5% cắt từ tiền gia sư của các buổi họ đã dạy trong kỳ.
      *  KHÔNG gồm 5% phí dịch vụ phụ huynh trả — nửa đó ở tab Khách hàng. */
     tutorFeeRevenue: number;
+    /** Phí gia sư ĐỢI ghi nhận: 5% của buổi đã bán mà chưa dạy. Khoá đã chốt sổ ra 0.
+     *  Đối xứng với `serviceFeePending` của tab Khách hàng. */
+    tutorFeePending: number;
     /** % nền tảng giữ lại trên GMV — so sánh tương đối giữa gia sư */
     takeRate: number;
     tutorEarnings: number;
@@ -179,6 +201,8 @@ export interface TutorRevenueResponse {
     concentration: NamedValue[];
     /** Tổng doanh thu từ phí gia sư trong kỳ — không gồm phí dịch vụ phụ huynh. */
     totalTutorFeeRevenue: number;
+    /** Tổng phí gia sư đợi ghi nhận — vế còn lại của `totalTutorFeeRevenue`. */
+    totalTutorFeePending: number;
     /** Escrow toàn sàn hiện tại, không lọc kỳ */
     totalEscrowHeld: number;
 }
@@ -217,6 +241,9 @@ export interface ParentRevenueRow {
     /** Phụ huynh, hoặc học sinh nếu tự đặt lịch */
     parentId: string;
     parentName: string;
+    /** Số điện thoại (hoặc email nếu không có số) — CHỈ dùng để phân biệt người trùng tên.
+     *  `null` khi tài khoản không có gì phân biệt được. */
+    contact: string | null;
     /** 'Phụ huynh' | 'Học sinh' */
     customerType: string;
     studentName: string;
@@ -342,6 +369,9 @@ export interface AiCreditFlowPoint {
 export interface AiTopUserRow {
     userId: string;
     userName: string;
+    /** Số điện thoại (hoặc email nếu không có số) — CHỈ dùng để phân biệt người trùng tên.
+     *  `null` khi tài khoản không có gì phân biệt được. */
+    contact: string | null;
     role: string;
     creditsConsumed: number;
     creditsPurchased: number;

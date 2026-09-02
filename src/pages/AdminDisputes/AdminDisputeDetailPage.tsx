@@ -31,6 +31,7 @@ import type {
     SessionLogSummary,
 } from '../../types/admin.types';
 import {
+    ConfirmPopover,
     PageContainer,
     SectionCard,
     SessionLogPanel,
@@ -164,6 +165,8 @@ const AdminDisputeDetailPage = () => {
 
     // State management
     const [disputeDetail, setDisputeDetail] = useState<DisputeDetail | null>(null);
+    /** Gia sư còn hạn giải trình → vào xem xét sớm là cắt ngang, phải hỏi lại. */
+    const [investigateCutsResponseWindow, setInvestigateCutsResponseWindow] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -243,6 +246,12 @@ const AdminDisputeDetailPage = () => {
             setError(null);
             const data = await getDisputeDetail(id);
             setDisputeDetail(data);
+            // Chốt cờ "còn hạn phản hồi" ngay lúc tải: render không được gọi Date.now()
+            // (react-hooks/purity). Nó chỉ quyết định có hỏi lại trước khi xem xét hay
+            // không — cờ gửi cho BE vẫn được handleInvestigate tính lại lúc bấm.
+            setInvestigateCutsResponseWindow(
+                isBeforeTutorResponseDeadline(data.tutorResponseDeadline, Date.now()),
+            );
         } catch (err) {
             console.error('Error fetching dispute detail:', err);
             setError('Không thể tải chi tiết phản ánh');
@@ -475,13 +484,9 @@ const AdminDisputeDetailPage = () => {
     const handleInvestigate = async () => {
         if (!disputeDetail || !disputeId) return;
 
+        // Hộp xác nhận nằm ở nút bấm (ConfirmPopover) — ở đây chỉ tính lại cờ để báo BE
+        // rằng admin vào xem xét khi gia sư vẫn còn hạn phản hồi.
         const beforeDeadline = isBeforeTutorResponseDeadline(disputeDetail.tutorResponseDeadline, Date.now());
-        if (beforeDeadline) {
-            const confirmed = window.confirm(
-                `Gia sư còn thời gian đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để phản hồi. Bạn có muốn chuyển hồ sơ sang bước xem xét sớm không?`,
-            );
-            if (!confirmed) return;
-        }
 
         try {
             setIsSubmitting(true);
@@ -498,10 +503,6 @@ const AdminDisputeDetailPage = () => {
 
     const handleConfirmNoShow = async () => {
         if (!disputeDetail || !disputeId) return;
-        const confirmed = window.confirm(
-            'Xác nhận gia sư thực sự vắng mặt? Sau bước này, phụ huynh/học sinh có thể tự chọn phương án hoàn tiền, học bù hoặc hủy khóa học.',
-        );
-        if (!confirmed) return;
 
         try {
             setIsSubmitting(true);
@@ -649,15 +650,23 @@ const AdminDisputeDetailPage = () => {
                             {disputeDetail.status === 'pending' && (
                                 <Can permission="dispute.investigate">
                                 <div className="dispute-investigate-action">
-                                    <button
-                                        type="button"
-                                        className="admin-ui-button admin-ui-button-primary"
-                                        onClick={handleInvestigate}
-                                        disabled={isSubmitting}
+                                    <ConfirmPopover
+                                        skip={!investigateCutsResponseWindow}
+                                        title="Gia sư vẫn còn hạn phản hồi"
+                                        description={`Gia sư còn đến ${formatDateTime(disputeDetail.tutorResponseDeadline)} để giải trình. Chuyển hồ sơ sang bước xem xét sớm?`}
+                                        okText="Xem xét sớm"
+                                        placement="bottomRight"
+                                        onConfirm={handleInvestigate}
                                     >
-                                        <span className="material-symbols-outlined">search</span>
-                                        Bắt đầu xem xét
-                                    </button>
+                                        <button
+                                            type="button"
+                                            className="admin-ui-button admin-ui-button-primary"
+                                            disabled={isSubmitting}
+                                        >
+                                            <span className="material-symbols-outlined">search</span>
+                                            Bắt đầu xem xét
+                                        </button>
+                                    </ConfirmPopover>
                                     {disputeDetail.tutorResponseDeadline && (
                                         <span className="dispute-action-helper">
                                             Hạn phản hồi: {formatDateTime(disputeDetail.tutorResponseDeadline)}
@@ -670,15 +679,23 @@ const AdminDisputeDetailPage = () => {
                                 && classSession?.status === 'no_show'
                                 && ['pending', 'investigating'].includes(disputeDetail.status || '') && (
                                 <Can permission="dispute.resolve">
-                                    <button
-                                        type="button"
-                                        className="admin-ui-button admin-ui-button-primary"
-                                        onClick={handleConfirmNoShow}
-                                        disabled={isSubmitting}
+                                    <ConfirmPopover
+                                        danger
+                                        title="Xác nhận gia sư thực sự vắng mặt?"
+                                        description="Sau bước này phụ huynh / học sinh được tự chọn hoàn tiền, học bù hoặc huỷ khoá học — bạn không quay lại trạng thái cũ được."
+                                        okText="Xác nhận vắng mặt"
+                                        placement="bottomRight"
+                                        onConfirm={handleConfirmNoShow}
                                     >
-                                        <span className="material-symbols-outlined">verified</span>
-                                        Xác nhận gia sư vắng mặt
-                                    </button>
+                                        <button
+                                            type="button"
+                                            className="admin-ui-button admin-ui-button-primary"
+                                            disabled={isSubmitting}
+                                        >
+                                            <span className="material-symbols-outlined">verified</span>
+                                            Xác nhận gia sư vắng mặt
+                                        </button>
+                                    </ConfirmPopover>
                                 </Can>
                             )}
                             {disputeDetail.status === 'confirmed_no_show' && (
@@ -1564,9 +1581,26 @@ const AdminDisputeDetailPage = () => {
                                             </div>
 
                                             <Can permission="dispute.resolve">
+                                            {/* Nút này chuyển tiền thật và huỷ các buổi còn lại của khoá — trước đây
+                                                bấm nhầm một cái là xong, không có bước hỏi lại nào. */}
+                                            <ConfirmPopover
+                                                danger
+                                                title="Chốt phương án xử lý?"
+                                                description={(
+                                                    <>
+                                                        {courseCancelPreview
+                                                            ? `Huỷ ${courseCancelPreview.remainingSessionsCount} buổi chưa dạy, hoàn phụ huynh ${formatCurrency(courseCancelPreview.parentRefundAmount)} và thu hồi ${formatCurrency(courseCancelPreview.tutorEscrowReversed)} từ gia sư.`
+                                                            : 'Huỷ các buổi chưa dạy và hoàn tiền cho phụ huynh theo giá gốc.'}
+                                                        {createWarning && ` Gia sư nhận nhắc nhở mức ${warningLevel}.`}
+                                                        {' '}Tiền đã chuyển thì không hoàn tác được.
+                                                    </>
+                                                )}
+                                                okText="Chốt phương án"
+                                                placement="topRight"
+                                                onConfirm={handleResolveDispute}
+                                            >
                                             <button
                                                 className="dispute-submit-btn"
-                                                onClick={handleResolveDispute}
                                                 disabled={
                                                     isSubmitting ||
                                                     adminNotes.trim().length < 10 ||
@@ -1578,6 +1612,7 @@ const AdminDisputeDetailPage = () => {
                                                 <span className="material-symbols-outlined" style={{ fontWeight: 'bold' }}>check_circle</span>
                                                 {isSubmitting ? 'Đang xử lý...' : 'Xác nhận phương án'}
                                             </button>
+                                            </ConfirmPopover>
                                             </Can>
 
                                             {['pending', 'investigating'].includes(disputeDetail.status || '') && (
