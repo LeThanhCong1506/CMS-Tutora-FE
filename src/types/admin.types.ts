@@ -937,6 +937,11 @@ export interface ResolveDisputeRequest {
   resolutionNote: string;
   createTutorWarning?: boolean;
   warningLevel?: number;
+  /**
+   * Phân bổ từng buổi cho phương án 'cancel_course'. Phải phủ ĐỦ mọi buổi chưa settle —
+   * backend từ chối nếu thiếu, vì buổi bị bỏ sót sẽ kẹt tiền trong escrow sau khi booking đóng.
+   */
+  sessionAllocations?: { classSessionId: number; allocation: 'tutor' | 'parent' }[];
 }
 
 /**

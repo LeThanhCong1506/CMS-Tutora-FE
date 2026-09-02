@@ -397,17 +397,6 @@ export const getDisputeDetail = async (disputeId: string | number): Promise<Disp
   }
 };
 
-/** Confirm a tutor no-show after admin review without moving money or closing the dispute. */
-export const confirmTutorNoShow = async (disputeId: string | number): Promise<DisputeDetail> => {
-  try {
-    const { data } = await api.put(`/admin/disputes/${disputeId}/confirm-no-show`);
-    return data.content;
-  } catch (error) {
-    console.error('confirmTutorNoShow error:', error);
-    throw error;
-  }
-};
-
 /** (Re)run AI priority classification for a dispute — backfills older disputes or retries a failed run. */
 export const classifyDispute = async (disputeId: string | number): Promise<DisputeDetail> => {
   try {
@@ -514,6 +503,42 @@ export interface RefundPreviewDto {
   isRemainingPaid: boolean;
   tutorFrozenBalance: number;
   warnings: string[];
+
+}
+
+/** Ai được nhận tiền của một buổi. */
+export type SessionAllocation = 'tutor' | 'parent' | 'none';
+
+/** Một dòng trong bảng "Hủy khóa học & hoàn tiền". */
+export interface CancelPreviewSessionRow {
+  classSessionId: number;
+  /** Thứ tự buổi trong khóa (1-based). */
+  sessionNumber: number;
+  scheduledStart: string;
+  status: string | null;
+  /** Buổi đang bị khiếu nại — tô sáng dòng này. */
+  isDisputedSession: boolean;
+  /**
+   * Buổi đã CHỐT (phụ huynh xác nhận xong). Không có nghĩa tiền đã rời escrow — escrow chỉ giải
+   * phóng khi cả booking hoàn tất — nhưng phần của gia sư đã định đoạt nên buổi luôn tính cho gia
+   * sư và không đổi được.
+   */
+  isAlreadySettled: boolean;
+  /** Buổi đã bị hủy từ trước — tiền đã xử lý hoặc chưa từng thu, không thuộc lần chia này. */
+  isCancelled: boolean;
+  /** False = dòng chỉ để tham khảo: không tick được và không tính vào ràng buộc "phải chọn hết". */
+  isAllocatable: boolean;
+  tutorSeconds: number | null;
+  studentSeconds: number | null;
+  overlapSeconds: number | null;
+  /** False khi KHÔNG có bằng chứng nào (cả Agora lẫn heartbeat trình duyệt) — hiện gạch ngang. */
+  hasAttendanceData: boolean;
+  /** False khi số liệu chỉ đến từ heartbeat trình duyệt, không có dữ liệu Agora — bằng chứng yếu hơn. */
+  isEvidenceConclusive: boolean;
+  tutorAmount: number;
+  parentAmount: number;
+  /** Ô được tick sẵn khi mở trang. */
+  defaultAllocation: SessionAllocation;
 }
 
 /**
@@ -544,6 +569,24 @@ export interface CourseCancelPreviewDto {
   tutorEscrowReversed: number;
   tutorFrozenBalance: number;
   warnings: string[];
+
+  // ── Bảng tick thủ công ────────────────────────────────────────────────────
+  /** Toàn bộ buổi của khóa, sắp theo thời gian — mỗi dòng là một cặp ô tick. */
+  sessions: CancelPreviewSessionRow[];
+  /** Chưa thanh toán đợt 2 → hoàn cả 5% phí dịch vụ cho phụ huynh. */
+  refundIncludesServiceFee: boolean;
+  /** Gia sư nhận bao nhiêu cho MỘT buổi được tick (giá gốc đã trừ phí sàn). */
+  tutorAmountPerSession: number;
+  /** Phụ huynh được hoàn bao nhiêu cho MỘT buổi được tick. */
+  parentAmountPerSession: number;
+  /** Phí dịch vụ phụ huynh trả mỗi buổi. */
+  parentServiceFeePerSession: number;
+  /** Phí sàn thu từ gia sư mỗi buổi. */
+  tutorPlatformFeePerSession: number;
+  /** Số buổi phụ huynh ĐÃ thực trả tiền — vế đầu công thức doanh thu, không phải tổng số buổi. */
+  sessionsPaidByParent: number;
+  /** Tổng tiền đã thu của phụ huynh — trần cứng cho mọi khoản chi. */
+  totalCollectedFromParent: number;
 }
 
 /**
