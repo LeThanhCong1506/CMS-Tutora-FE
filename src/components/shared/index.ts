@@ -32,6 +32,9 @@ export type { RowAction } from './SortableDataTable';
 
 export { ConfirmDialog } from './ConfirmDialog';
 
+export { ConfirmPopover } from './ConfirmPopover';
+export type { ConfirmPopoverProps } from './ConfirmPopover';
+
 export { PortalLayout } from './PortalLayout';
 export type { PortalLayoutProps, NavItem } from './PortalLayout';
 

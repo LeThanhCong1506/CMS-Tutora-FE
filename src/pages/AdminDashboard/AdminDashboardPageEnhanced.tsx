@@ -302,7 +302,7 @@ const AdminDashboardPageEnhanced = () => {
 
             {/* ── KPI ROW ── */}
             <div className="admin-dash-kpis">
-                {/* Nhãn "Tiền phụ huynh trả" thay cho "Tổng giá trị giao dịch": cùng một chữ với
+                {/* Nhãn "Tiền khách trả" thay cho "Tổng giá trị giao dịch": cùng một chữ với
                     trang Báo cáo doanh thu, và nói thẳng đây là tiền của khách chứ không phải
                     tiền của Tutora — chính chỗ mà chữ "giao dịch" trừu tượng hay bị đọc nhầm
                     thành doanh thu. GMV chỉ còn nhắc trong tooltip cho ai quen thuật ngữ. */}
@@ -310,11 +310,11 @@ const AdminDashboardPageEnhanced = () => {
                     icon={<span className="material-symbols-outlined">currency_exchange</span>}
                     value={loading ? '…' : formatDashboardCurrency(gmvValue)}
                     valueClassName="admin-kpi-exact-value"
-                    label="Tiền phụ huynh trả"
+                    label="Giá trị lịch đặt"
                     labelClassName="admin-kpi-friendly-label"
                     badge={gmvBadge?.text}
                     badgeVariant={gmvBadge?.variant}
-                    infoTooltip="Tổng tiền phụ huynh phải trả cho các lịch đặt trong khoảng đã chọn, đã gồm phí phụ huynh. Phần lớn khoản này chảy về gia sư nên ĐÂY KHÔNG PHẢI doanh thu của Tutora — thuật ngữ tài chính gọi là GMV. Gồm cả lịch về sau bị huỷ mà phụ huynh đã trả tiền, nên khớp đúng với trang Báo cáo doanh thu."
+                    infoTooltip="Tổng giá trị các lịch đặt trong khoảng đã chọn, tính theo GIÁ HỢP ĐỒNG chốt lúc khách bấm đặt, đã gồm phí phụ huynh. ĐÂY KHÔNG PHẢI tiền mặt đã vào — khách trả làm 2 đợt nên khoá mới trả đợt 1 vẫn tính trọn giá gói. Phần lớn khoản này chảy về gia sư nên ĐÂY KHÔNG PHẢI doanh thu của Tutora — thuật ngữ tài chính gọi là GMV. Gồm cả lịch về sau bị huỷ mà khách đã trả tiền, nên khớp đúng với trang Báo cáo doanh thu."
                 />
                 {/* Thẻ này từng hiện doanh thu tạm tính và gọi nó là "Doanh thu từ phí dịch vụ" —
                     con số cao gấp mấy lần tiền thật vì phần lớn buổi học chưa dạy. Giờ số to là
@@ -356,7 +356,7 @@ const AdminDashboardPageEnhanced = () => {
                         /* Biểu đồ vẽ doanh thu TẠM TÍNH (neo theo ngày đặt lịch), không phải số
                            đã ghi nhận ở thẻ KPI phía trên — tiêu đề nói rõ để hai con số không
                            bị đọc như một. */
-                        title="Tiền phụ huynh trả và doanh thu tạm tính"
+                        title="Giá trị lịch đặt và doanh thu tạm tính"
                         headerAction={
                             trends?.bucket ? (
                                 <span className="admin-dash-bucket">

@@ -4,6 +4,21 @@ import InfoHint from './InfoHint';
 /** Màu nền ô icon. Mặc định trung tính — chỉ nhuộm khi con số tự nó mang sắc thái. */
 export type MetricTone = 'neutral' | 'green' | 'blue' | 'orange' | 'red';
 
+/**
+ * Tô nền cho CHÍNH CON SỐ, khác `MetricTone` (vốn chỉ nhuộm ô icon).
+ *
+ * Đặt tên theo NGHĨA chứ không theo màu, vì đây là cặp đối lập chạy suốt cụm báo cáo:
+ *
+ *   recognised — tiền đã thành thật. Xanh emerald #10b981, đúng màu ĐƯỜNG LIỀN "Doanh thu đã
+ *                ghi nhận" và viên thuốc `.rev-block-figure` ở đầu biểu đồ.
+ *   pending    — tiền chưa chín. Vàng amber #f59e0b, đúng màu ĐƯỜNG ĐỨT "Doanh thu tạm tính"
+ *                và nền con số tạm tính ở thẻ Phân bổ (tab Doanh thu).
+ *
+ * Trùng màu với biểu đồ thì mắt tự nối hai chỗ, khỏi cần thêm chú giải. Đổi bảng màu sau này
+ * thì sửa ở CSS, tên prop vẫn đúng.
+ */
+export type MetricValueTone = 'recognised' | 'pending';
+
 export interface MetricCardProps {
     icon: string;
     value: React.ReactNode;
@@ -12,6 +27,8 @@ export interface MetricCardProps {
     badge?: string;
     badgeVariant?: 'green' | 'blue' | 'orange' | 'dark' | 'red';
     tone?: MetricTone;
+    /** Tô nền con số — xem `MetricValueTone`. Bỏ trống thì con số để trơn. */
+    valueTone?: MetricValueTone;
     /** Định nghĩa con số — bắt buộc với thẻ tài chính để không ai phải đoán. */
     hint: string;
 }
@@ -33,6 +50,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
     badge,
     badgeVariant = 'green',
     tone = 'neutral',
+    valueTone,
     hint,
 }) => (
     <div className="rev-metric">
@@ -46,7 +64,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
         </span>
         <div className="rev-metric-body">
             <div className="rev-metric-top">
-                <span className="rev-metric-value">{value}</span>
+                <span
+                    className={`rev-metric-value${valueTone ? ` is-${valueTone}` : ''}`}
+                >
+                    {value}
+                </span>
                 {badge && (
                     <span className={`rev-metric-badge rev-badge-${badgeVariant}`}>{badge}</span>
                 )}
