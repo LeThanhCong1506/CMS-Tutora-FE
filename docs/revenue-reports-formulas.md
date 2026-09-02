@@ -165,7 +165,7 @@ Hợp của hai nhóm gọi là **cohort**, dùng cho GMV và khối chia tiền
 
 > **Điều kiện là `CashIn − Refunded > 0`, không phải `CashIn > 0`.** Bản trước chỉ chặn nhóm 1;
 > nhóm 2 lọt vào cohort theo GIÁ HỢP ĐỒNG, nên một khoá phụ huynh trả 157.500đ rồi lấy về hết
-> vẫn cộng 1.417.500đ vào "Tiền phụ huynh trả" và 135.000đ vào "Doanh thu tạm tính" — rồi lập
+> vẫn cộng 1.417.500đ vào "Tiền khách trả" và 135.000đ vào "Doanh thu tạm tính" — rồi lập
 > tức bị trừ lại ở lát "Không thu được". Ba con số đầu trang cùng phồng lên vì một giao dịch
 > không tồn tại. Đo trên dữ liệu dev 01/09/2026: 8 khoá như thế thổi GMV lên **17,9%** (21,4tr →
 > 17,6tr), thổi tạm tính lên **17,9%** (2.037.500 → 1.672.500) và chiếm

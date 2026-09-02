@@ -187,7 +187,8 @@ export interface SummaryPendingActions {
 }
 
 export interface AdminDashboardSummary {
-  /** Tiền phụ huynh trả (GMV). Cùng con số với `summary.gmv` của báo cáo doanh thu. */
+  /** Giá trị lịch đặt (GMV, theo giá hợp đồng — không phải tiền mặt đã vào).
+   *  Cùng con số với `summary.gmv` của báo cáo doanh thu. */
   gmv: MetricWithChange;
   /** Doanh thu TẠM TÍNH — cùng con số với `summary.commissionSold` của báo cáo doanh thu. */
   platformRevenue: MetricWithChange;
