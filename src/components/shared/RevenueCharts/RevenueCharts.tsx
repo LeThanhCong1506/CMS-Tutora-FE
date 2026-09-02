@@ -133,8 +133,17 @@ export const RankBarChart: React.FC<
         money?: boolean;
         /** % thay vì tiền/số trần */
         percent?: boolean;
+        /**
+         * Bề ngang chừa cho nhãn trục, px. Nới lên khi nhãn có mang chuỗi phân biệt người
+         * trùng tên (`chartPersonLabel`) — mặc định 150 cắt cụt đúng phần vừa nối thêm.
+         * Nới nhiều thì cột ngắn lại, nên chỉ nới ở biểu đồ thật sự cần.
+         */
+        labelWidth?: number;
     }
-> = ({ data, labelKey, valueKey, name, color = PALETTE.navy, money = true, percent, height = 340 }) => {
+> = ({
+    data, labelKey, valueKey, name, color = PALETTE.navy, money = true, percent,
+    height = 340, labelWidth = 150,
+}) => {
     // ECharts vẽ trục y từ dưới lên — đảo mảng để hạng cao nằm trên cùng.
     const rows = [...data].reverse();
     const format = percent
@@ -159,7 +168,7 @@ export const RankBarChart: React.FC<
                 yAxis: {
                     type: 'category',
                     data: rows.map((d) => String(cell(d, labelKey))),
-                    axisLabel: { ...axisLabelStyle, width: 150, overflow: 'truncate' },
+                    axisLabel: { ...axisLabelStyle, width: labelWidth, overflow: 'truncate' },
                     axisTick: { show: false },
                     axisLine: { show: false },
                 },

@@ -20,15 +20,12 @@ const MetricBones = () => (
     </div>
 );
 
-export const SkeletonMetrics: React.FC<{ count?: number }> = ({ count = 4 }) => (
-    <div className="rev-metric-grid">
-        {Array.from({ length: count }).map((_, i) => (
-            <MetricBones key={i} />
-        ))}
-    </div>
-);
+/* `SkeletonMetrics` (lưới `.rev-metric-grid`, mỗi chỉ số một thẻ rời) đã gỡ 01/09/2026:
+   cả 5 tab báo cáo doanh thu nay dùng chung `.rev-strip`, nên nhánh đó không còn đường chạy
+   tới. Bỏ luôn prop `strip` để khuôn thành BẮT BUỘC — tab thứ 6 sau này không vô tình quay
+   lại lưới cũ được. */
 
-/** Dải chỉ số của tab Doanh thu — một thẻ, ba ô ngăn bằng đường kẻ. */
+/** Dải chỉ số dùng chung cả 5 tab — một thẻ, các ô ngăn bằng đường kẻ mảnh. */
 export const SkeletonStrip: React.FC<{ count?: number }> = ({ count = 3 }) => (
     <div className="rev-strip">
         {Array.from({ length: count }).map((_, i) => (
@@ -100,37 +97,51 @@ export const SkeletonChartSplit: React.FC<{
     </section>
 );
 
-/** Cột trái thẻ phân bổ: hai hàng, mỗi hàng một thanh kèm dòng chú thích ngay dưới. */
+/**
+ * Thẻ phân bổ: tiêu đề rồi BA CỘT của phương trình
+ * (tiền khách trả = gia sư nhận + doanh thu tạm tính).
+ *
+ * Xương phải bám đúng layout thật, lệch là trang giật một nhịp khi dữ liệu về — nên ở đây
+ * cũng là grid ba cột, cột thứ ba cao hơn vì có thêm hai dòng con. Khối này từng là bảng 6
+ * hàng, trước nữa là hai thanh dài, trước nữa nữa có cả cột phải với vòng tròn giả vành
+ * khuyên; lý do bỏ từng bản ghi ở đầu MoneySplit.tsx.
+ */
 const AllocBones = () => (
     <div className="rev-alloc">
         <div className="rev-alloc-main">
             <Bar w="38%" h={15} />
-            {[0, 1].map((i) => (
-                <div key={i} style={{ marginTop: 12 }}>
-                    <Bar h={18} radius={6} />
-                    <span style={{ display: 'block', height: 5 }} />
-                    <Bar w="64%" h={14} />
-                </div>
-            ))}
-        </div>
-        <div className="rev-alloc-aside">
-            <Bar w="52%" h={15} />
-            <span style={{ display: 'block', height: 14 }} />
-            <span
-                className="rev-sk-bar"
-                style={{ display: 'block', width: 106, height: 106, borderRadius: '50%', margin: '0 auto' }}
-            />
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1.35fr',
+                    gap: 24,
+                    marginTop: 16,
+                }}
+            >
+                {[0, 1, 2].map((i) => (
+                    <div key={i}>
+                        <Bar w="52%" h={11} />
+                        <span style={{ display: 'block', height: 7 }} />
+                        <Bar w="78%" h={20} />
+                        {/* Chỉ cột thứ ba có hai dòng con — giống hệt bản thật. */}
+                        {i === 2 && (
+                            <>
+                                <span style={{ display: 'block', height: 14 }} />
+                                <Bar w="64%" h={12} />
+                                <span style={{ display: 'block', height: 6 }} />
+                                <Bar w="68%" h={12} />
+                            </>
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
     </div>
 );
 
-/** Dải chỉ số và khối phân bổ trong CÙNG một khung — khớp `.rev-hero` của tab Doanh thu. */
-export const SkeletonHero: React.FC<{ count?: number }> = ({ count = 3 }) => (
-    <section className="rev-hero">
-        <SkeletonStrip count={count} />
-        <AllocBones />
-    </section>
-);
+/* `SkeletonHero` đã gỡ 01/09/2026: nó bọc dải chỉ số + khối phân bổ trong cùng khung
+   `.rev-hero`. Hai khối giờ không còn kề nhau (khối phân bổ nằm SAU biểu đồ), nên xương
+   cũng phải tách ra — xem prop `alloc` bên dưới. */
 
 export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
     rows = 6,
@@ -160,10 +171,11 @@ const ReportSkeleton: React.FC<{
     metrics?: number;
     charts?: number;
     table?: boolean;
-    /** Tab Doanh thu mở đầu bằng dải chỉ số liền khối, không phải lưới thẻ rời. */
-    strip?: boolean;
-    /** Dải chỉ số và khối phân bổ chung một khung — riêng tab Doanh thu. */
-    hero?: boolean;
+    /**
+     * Xương của thẻ "Phân bổ tiền khách trả" — riêng tab Doanh thu. Đặt SAU các khối
+     * biểu đồ, đúng thứ tự thật của trang; xương lệch thứ tự thì trang nhảy khi dữ liệu về.
+     */
+    alloc?: boolean;
     /** Số khối biểu đồ gộp (một chính + N phụ ngăn bằng kẻ dọc). */
     splits?: number;
     /** Số ô phụ trong mỗi khối gộp. */
@@ -172,26 +184,24 @@ const ReportSkeleton: React.FC<{
     metrics = 4,
     charts = 2,
     table = true,
-    strip = false,
-    hero = false,
+    alloc = false,
     splits = 0,
     splitCells = 2,
 }) => (
     <div className="rev-stack" aria-busy="true" aria-live="polite">
         <span className="rev-sk-sr">Đang tải số liệu…</span>
-        {hero ? (
-            <SkeletonHero count={metrics} />
-        ) : strip ? (
-            <SkeletonStrip count={metrics} />
-        ) : (
-            <SkeletonMetrics count={metrics} />
-        )}
+        {/* `metrics={0}` = tab không có dải chỉ số (tab Môn & Lớp, từ 02/09/2026). Phải bỏ hẳn
+            phần tử chứ không render `.rev-strip` rỗng — nó có viền và nền trắng riêng nên sẽ ra
+            một thanh trắng trống trơn, rồi biến mất khi dữ liệu về: đúng kiểu giật mà khung
+            xương sinh ra để tránh. */}
+        {metrics > 0 && <SkeletonStrip count={metrics} />}
         {Array.from({ length: charts }).map((_, i) => (
             <SkeletonChart key={i} />
         ))}
         {Array.from({ length: splits }).map((_, i) => (
             <SkeletonChartSplit key={`split-${i}`} cells={splitCells} />
         ))}
+        {alloc && <AllocBones />}
         {table && <SkeletonTable />}
     </div>
 );
