@@ -45,6 +45,19 @@ export interface RevenueSummary {
     /** Phần `gmv` khách ĐÃ THỰC TRẢ (đợt 1, hoặc cả gói nếu đã trả đủ). Cùng phạm vi với
      *  `gmv` nên so trực tiếp được. Khác `cashCollected` — số kia neo theo ngày thanh toán. */
     gmvPaid: number;
+    /**
+     * Tiền bán gói AI trong kỳ. ĐÃ nằm trong `recognisedRevenue` — lộ riêng để giao diện tách
+     * được doanh thu theo NGUỒN:
+     *
+     *     recognisedRevenue = (phí gia sư + phí phụ huynh từ buổi dạy) + aiRevenue
+     *
+     * Hai vế cộng khít tuyệt đối vì cùng neo NGÀY GHI NHẬN, nên vế trái suy ngược ra bằng
+     * `recognisedRevenue − aiRevenue` chứ không cần thêm trường mới.
+     *
+     * ĐỪNG cộng nó với `commissionMatured`: số kia neo NGÀY ĐẶT LỊCH, hai mốc khác nhau thì
+     * luôn thừa ra một phần dư. Chỗ này đã sai một bản rồi — xem đầu MoneySplit.tsx.
+     */
+    aiRevenue: number;
 
     /* Ba số phận của `commissionSold`, tính bằng CÔNG THỨC (không đọc sổ ví) nên miễn nhiễm
        với lỗi đảo escrow đang làm `commissionEarned`/`commissionLost` sai.
