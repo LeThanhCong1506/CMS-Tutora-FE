@@ -253,25 +253,6 @@ const AiTab = ({ range }: { range: RevenueRange }) => {
                                 </tr>
                             ))}
                         </tbody>
-                        {/* Cộng trên TẬP ĐANG LỌC, không phải trên toàn bộ dữ liệu — nếu không,
-                            lọc riêng "Gói có phí" xong dòng tổng vẫn kể cả lượt cấp của gói miễn
-                            phí, tức một con số không khớp dòng nào đang hiển thị. */}
-                        <tfoot>
-                            <tr>
-                                <td colSpan={3}>
-                                    {packageRows.length < (allPackages?.length ?? 0)
-                                        ? 'Tổng (đã lọc)'
-                                        : 'Tổng'}
-                                </td>
-                                <td className="rev-num">
-                                    {count(packageRows.reduce((s, p) => s + p.unitsSold, 0))}
-                                </td>
-                                <td className="rev-num rev-pos">
-                                    {moneyVnd(packageRows.reduce((s, p) => s + p.revenue, 0))}
-                                </td>
-                                <td />
-                            </tr>
-                        </tfoot>
                     </table>
                 )}
             </DataTableShell>
