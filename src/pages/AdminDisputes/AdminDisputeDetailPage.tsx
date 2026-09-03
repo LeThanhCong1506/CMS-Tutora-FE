@@ -893,14 +893,6 @@ const AdminDisputeDetailPage = () => {
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">forum</span>
                                         Trao đổi
                                     </button>
-                                    <button
-                                        type="button"
-                                        className={`dispute-evidence-tab ${activeTab === 'reliability' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('reliability')}
-                                    >
-                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">query_stats</span>
-                                        Lịch sử gia sư
-                                    </button>
                                 </div>
 
                                 {/* The same evidence across this tutor's other lessons: one late arrival is an
