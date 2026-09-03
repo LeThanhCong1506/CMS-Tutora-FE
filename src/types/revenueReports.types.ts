@@ -71,10 +71,40 @@ export interface RevenueSummary {
     /** Đối soát sổ ví: tổng Tutora giữ được từ các khoá bị HUỶ đóng sổ trong kỳ. Số luỹ kế cả
      *  đời khoá, quy về ngày huỷ — KHÔNG cộng vào bất kỳ tổng nào, sẽ tính hai lần. */
     commissionFromCancelled: number;
+
+    /**
+     * Các MỨC PHÍ SÀN thực sự có mặt trong kỳ, kèm tiền nằm ở mỗi mức, sắp giảm dần theo
+     * `baseAmount`. Một phần tử = kỳ chỉ chạy đúng một mức.
+     *
+     * Optional vì backend cũ chưa trả — nơi dùng phải lùi được về cách hiển thị cũ.
+     */
+    rateMix?: RevenueRateMix[];
+}
+
+/** Một mức phí sàn và phần tiền của kỳ đang nằm ở mức đó. */
+export interface RevenueRateMix {
+    parentFeePercent: number;
+    tutorFeePercent: number;
+    /** Học phí gốc của nhóm — mẫu số mà hai tỉ lệ tính trên đó. */
+    baseAmount: number;
+    /** Phí sàn hai vế cộng lại của nhóm. */
+    fee: number;
+    bookings: number;
 }
 
 export interface RevenueTrendPoint {
     month: string;
+    /**
+     * Mốc BẮT ĐẦU của khoảng mà điểm này gộp, ISO UTC. Dùng để gắn vạch sự kiện lên biểu đồ
+     * (mốc admin đổi mức phí sàn).
+     *
+     * Không suy ngược từ `month` được: nhãn đó có ba dạng tuỳ độ dài kỳ (`dd/MM` theo ngày,
+     * `dd/MM – dd/MM` theo tuần, `MM/yyyy` theo tháng) và hai dạng đầu không mang năm.
+     *
+     * Optional vì backend cũ chưa trả — nơi dùng phải chịu được `undefined` (không có mốc thì
+     * không vẽ vạch, phần còn lại của biểu đồ vẫn đúng).
+     */
+    start?: string;
     recognised: number;
     contracted: number;
     aiRevenue: number;

@@ -1099,79 +1099,50 @@
     font-weight: 700;
     line-height: 1.35;
 }
-/* ─── Phương trình: tổng = gia sư + Tutora ──────────────────────────────────────
+/* ─── Con số chính của thẻ ──────────────────────────────────────────────────────
  *
- * Lý do chọn dạng này, và ba bản đã bỏ trước nó, ghi ở đầu MoneySplit.tsx. Hai điều bắt
- * buộc phải giữ khi sửa khối này:
+ * Trước 03/09/2026 chỗ này là lưới `.rev-eq`: ba cột, đặt vị trí tường minh bằng
+ * grid-column/grid-row để ghim HAI con số lớn ("Gia sư nhận" + "Doanh thu tạm tính") lên cùng
+ * một đường baseline, cho mắt đọc ra thành một phép cộng. Vế gia sư đã bỏ theo yêu cầu nên
+ * lưới ấy không còn việc: một cột thì không phải lưới.
  *
- *   1. Bề ngang dùng làm CỘT, không phải để kéo dãn hàng. Bản bảng trước đặt nhãn ở x≈340
- *      và con số của chính hàng đó ở x≈1400 — hơn 1000px trống, mắt lạc hàng.
- *   2. Đừng thêm thanh/vành khuyên tỉ lệ. Tỉ lệ thật là 90,5 / 4,8 / 4,8; lát dưới 5% thì
- *      không mã hoá bằng hình được. Cột % nói bằng chữ, chính xác tới 0,1%.
+ * Cùng lượt đó xoá `.rev-eq`, `.rev-eq-label`, `.rev-eq-op`, `.rev-eq-c1/c2/c3`, `.rev-eq-o1/o2`
+ * và điểm ngắt 900px xếp dọc chúng. Muốn dựng lại vế gia sư thì phải dựng lại cả cụm, và đọc
+ * kỹ hai điều kiện cũ trước đã: (1) bề ngang dùng làm CỘT, không kéo dãn hàng — bản bảng 6 hàng
+ * đặt nhãn ở x≈340 còn số của chính hàng đó ở x≈1400; (2) đừng thêm thanh/vành khuyên tỉ lệ,
+ * tỉ lệ thật là 90,1 / 5,0 / 5,0 nên hình không mã hoá được.
  *
- * Vị trí đặt TƯỜNG MINH bằng grid-area chứ không để ba div con tự xếp: ba con số lớn phải
- * nằm đúng một baseline thì mới đọc ra thành một phương trình, mà cột thứ ba lại cao hơn
- * hai cột kia (có thêm hai dòng con). Để tự xếp là lệch ngay.
+ * Flex cột chứ không phải block: `.rev-eq-value` cần là khối con thì `width: fit-content` mới
+ * ăn, nếu không viên thuốc nền hổ phách kéo dài hết bề ngang thẻ.
  */
-.rev-eq {
-    display: grid;
-    /* Cột phải rộng hơn vì nó gánh thêm hai dòng con. */
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.35fr);
-    grid-template-rows: auto auto auto;
-    column-gap: 24px;
-    margin-top: 14px;
-}
-
-.rev-eq-c2 { grid-column: 1; }
-.rev-eq-o2 { grid-column: 2; }
-.rev-eq-c3 { grid-column: 3; }
-
-.rev-eq-label {
-    grid-row: 1;
-    margin-bottom: 5px;
-    color: var(--color-navy-70);
-    font-size: 12.5px;
-}
-
-/* `gap` về 0: khe này từng phải chừa chỗ cho ô phần trăm đứng sau con số (đã gỡ 02/09/2026).
-   Nay con số chỉ còn đi với chữ "VND", mà `.rev-flow-currency` đã tự có `margin-left: .32em` —
-   để nguyên 10px thì đơn vị trôi hẳn ra xa con số nó đang chú thích.
-
-   `width: max-content` + `align-self: start` để nền của ô bên phải ôm sát con số, không kéo
-   dài hết bề rộng cột (ô grid mặc định `stretch`). */
-.rev-eq-value {
-    grid-row: 2;
+.rev-alloc-figure {
     display: flex;
-    align-items: baseline;
-    align-self: start;
-    width: max-content;
-    max-width: 100%;
-    gap: 0;
-    /* Đệm dọc đặt cho CẢ HAI vế, không riêng vế có nền: hai con số phải nằm đúng một đường
-       baseline thì mới đọc ra thành phép cộng, mà đệm chỉ một bên là lệch ngay. */
-    padding: 3px 0;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+.rev-eq-value {
     color: var(--color-navy);
     font-family: var(--font-serif);
-    font-size: 23px;
+    font-size: 27px;
     font-weight: 700;
-    line-height: 1.2;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
 }
 
-/* Nền cho con số DOANH THU TẠM TÍNH — con số đáng đọc nhất của thẻ này.
+/* Viên thuốc nền hổ phách ôm sát con số.
  *
- * Màu amber lấy đúng #f59e0b của ĐƯỜNG ĐỨT "Doanh thu tạm tính" trong biểu đồ ngay phía trên,
- * cùng thủ pháp mà `.rev-block-figure` đã dùng: viên thuốc xanh của "Doanh thu đã ghi nhận"
- * trùng màu với đường liền của chính nó. Trùng màu thì mắt tự nối hai chỗ, khỏi cần thêm chữ.
+ * `align-self: flex-start` là BẮT BUỘC từ 03/09/2026: trước đây ô này là con của lưới `.rev-eq`
+ * và chỉ rộng bằng cột của nó; nay nó là con của một flex CỘT, mà trục chéo của flex cột là
+ * chiều ngang — mặc định `stretch` kéo nền vàng chạy hết bề ngang thẻ, trông như một thanh
+ * highlight cả dòng chứ không phải viên thuốc ôm con số.
  *
- * Chữ giữ nguyên navy chứ KHÔNG nhuộm amber: nó đứng ngang hàng với "Gia sư nhận" trong một
- * phép cộng, đổi màu chữ một vế sẽ làm hai vế trông như hai loại đại lượng khác nhau. Nền nhạt
- * đủ để nổi bật mà vẫn giữ tương phản navy-trên-nền-sáng.
- *
- * `margin-left` âm bằng đúng `padding-left`: nhờ vậy mép trái CON SỐ vẫn thẳng cột với nhãn
- * "Doanh thu tạm tính" ở trên, chỉ có nền tràn ra ngoài. Không có nó thì con số bị đẩy vào
- * trong 10px và lệch khỏi nhãn của chính nó. */
+ * Chỉ đặt cho riêng ô này, không đặt `align-items` ở thẻ cha: dòng tỉ lệ ngay dưới PHẢI giữ
+ * nguyên bề ngang đầy đủ, vì nó mang đường kẻ mảnh phía trên và đường kẻ ấy phải chạy suốt
+ * như đường kẻ của hàng ba số phận bên dưới. */
 .rev-eq-value.rev-eq-c3 {
+    align-self: flex-start;
     margin-left: -10px;
     padding-left: 10px;
     padding-right: 10px;
@@ -1180,22 +1151,41 @@
 }
 
 /* `.rev-eq-pct` (hai tỉ lệ 90.5% / 9.5% đứng cạnh mỗi con số lớn) đã gỡ 02/09/2026 theo yêu
-   cầu. Chỗ của nó nay là dòng "Học phí gốc" dưới tiêu đề — xem `.rev-alloc-base`. */
+   cầu. Chỗ của nó nay là dòng tỉ lệ trong cột phải — xem `.rev-eq-rates`.
 
-/* Dòng bối cảnh dưới tiêu đề: học phí gốc, mẫu số của hai chip −5% / +5%.
-   Cùng tầng thông tin với con số tổng ở góc phải tiêu đề nên dùng chung cỡ chữ nhỏ và màu
-   nhạt — nó KHÔNG được nặng ngang hai con số của phép cộng bên dưới. */
-.rev-alloc-base {
+   `.rev-alloc-base` (dòng "Học phí gốc" dưới tiêu đề) đã gỡ 03/09/2026. Nó chỉ tồn tại để làm
+   mẫu số cho hai tỉ lệ phí; nay `.rev-eq-rates` tự gọi tên mẫu số trong câu nên con số không
+   cần đứng riêng một dòng nữa, trị số lùi vào tooltip ⓘ. Cùng lượt đó gỡ `.rev-alloc-base-note`
+   (câu "giá gia sư niêm yết, chưa cộng phí" — lặp lại thứ tooltip đã nói kỹ hơn). */
+
+/* ─── Dòng tỉ lệ dưới "Doanh thu tạm tính" ──────────────────────────────────────
+ *
+ * Thay cho lưới `.rev-eq-parts` cũ (hai hàng: trị số phí | tên + chip phần trăm), gỡ
+ * 03/09/2026. Hai trị số đó cộng lại đúng bằng con số ngay trên đầu, và khi hai mức phí bằng
+ * nhau thì chúng còn bằng nhau nốt — ba con số cho một sự thật, trong khi thẻ này phải trình
+ * bày được trước người nghe. Giữ TỈ LỆ vì đó mới là thứ nói lên cấu trúc phí hai vế.
+ *
+ * MỘT DÒNG CHỮ chứ không phải lưới: còn đúng hai giá trị và cả hai là phần trăm ngắn, dựng
+ * lưới cho chúng chỉ tạo lại khoảng trống ngang mà cả thẻ này sinh ra để tránh.
+ *
+ * `flex-wrap` + `baseline` để khi cột hẹp thì câu xuống dòng như văn xuôi bình thường, không
+ * bẻ gãy cặp "phí gia sư 5.2%".
+ */
+.rev-eq-rates {
+    grid-row: 3;
+    grid-column: 3;
     display: flex;
-    align-items: baseline;
     flex-wrap: wrap;
-    gap: 4px 8px;
-    margin: 7px 0 0;
+    align-items: baseline;
+    gap: 2px 5px;
+    margin: 11px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid rgba(62, 47, 40, 0.09);
     color: var(--color-navy-60);
-    font-size: 12.5px;
+    font-size: 12px;
 }
 
-.rev-alloc-base b {
+.rev-eq-rates b {
     color: var(--color-navy);
     font-family: var(--font-serif);
     font-size: 14px;
@@ -1203,41 +1193,99 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* `.rev-alloc-base-note` (câu "giá gia sư niêm yết, chưa cộng phí") đã gỡ 02/09/2026: nó lặp
-   lại thứ tooltip ⓘ đã nói kỹ hơn. *//* Dấu = và + nằm ở HÀNG SỐ, canh giữa theo chiều dọc với con số cạnh nó. Chúng thay cho
-   toàn bộ phần thụt cấp / vạch dọc / chú giải màu mà bản bảng phải dùng để nói cùng một
-   quan hệ. Nhạt màu vì là chất kết dính, không phải nội dung. */
-.rev-eq-op {
-    grid-row: 2;
-    align-self: center;
+/* Dấu + nhạt màu: chất kết dính, không phải nội dung. */
+.rev-eq-rates-op {
     color: var(--color-navy-40);
     font-family: var(--font-serif);
-    font-size: 19px;
-    font-weight: 400;
 }
 
-/* Hai nửa phí sàn. Hai cột: số | tên (chip nằm trong ô tên — xem ghi chú ở JSX).
-   `justify-content: start` + `auto` để hai cột ôm sát nội dung, không dãn ra hết bề ngang
-   cột 5 rồi lại tạo đúng cái khoảng trống mà cả thẻ này sinh ra để tránh. */
-.rev-eq-parts {
-    grid-row: 3;
-    grid-column: 3;
-    display: grid;
-    grid-template-columns: auto auto;
-    justify-content: start;
+/* Mẫu số của cả hai tỉ lệ, nên nhạt hơn một bậc: nó là bối cảnh, không phải giá trị. Ở bề
+   ngang thật của thẻ cả câu nằm gọn một dòng; cột hẹp thì nó rớt xuống dòng dưới, vẫn đọc
+   đúng vì nó đứng sau cả hai cặp tỉ lệ. */
+.rev-eq-rates-of {
+    color: var(--color-navy-50);
+}
+
+/* ─── Kỳ chạy NHIỀU mức phí ─────────────────────────────────────────────────────
+ *
+ * Khi trong kỳ có hơn một mức, thẻ thôi in một tỉ lệ trung bình (nó không trùng mức nào cả —
+ * đo thật: 5,5% giữa ba mức 5%, 10% và 20%) và liệt kê thẳng từng mức kèm phần phí của nó.
+ *
+ * Giãn cách rộng hơn dòng một-mức: mỗi cụm ở đây là một CẶP mức–tiền, phải tách nhau rõ hơn
+ * khoảng cách giữa chữ và số bên trong một cặp, nếu không mắt gom nhầm số của mức này với
+ * tên của mức kia.
+ */
+.rev-eq-rates.is-mixed {
+    gap: 6px 15px;
+}
+
+.rev-eq-rates-lead {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-navy-50);
+}
+
+/* `baseline` chứ không phải `center`: chữ mức phí và con số tiền phải nằm cùng một đường chân
+   chữ, y như mọi cặp nhãn–giá trị khác của thẻ. */
+.rev-eq-rate-item {
+    display: inline-flex;
     align-items: baseline;
-    gap: 6px 14px;
-    margin-top: 11px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(62, 47, 40, 0.09);
+    gap: 6px;
+    white-space: nowrap;
 }
 
-.rev-eq-part-amt {
+.rev-eq-rate-item b {
+    color: var(--color-navy-70);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.rev-eq-rate-amt {
     color: var(--color-navy);
     font-family: var(--font-serif);
-    font-size: 14.5px;
+    font-size: 13.5px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+}
+
+/* ─── Vạch dọc ngăn các cụm của hai hàng liệt kê ────────────────────────────────
+ *
+ * Cả hai hàng đều là "nhãn + số, nhãn + số, …" chạy ngang. Chỉ dùng khoảng trắng để ngăn thì
+ * mắt dễ ghép nhầm số của cụm này với nhãn của cụm sau — khoảng cách bên trong một cặp
+ * (6–7px) và khoảng cách giữa hai cặp (15px) không đủ khác nhau để đọc ra thành nhóm.
+ *
+ * Vẽ bằng pseudo-element cao CỐ ĐỊNH 14px chứ không phải `border-left` của chính cụm:
+ * `.rev-eq-rates` canh theo baseline nên chiều cao mỗi cụm phụ thuộc nội dung của nó (cụm dẫn
+ * có icon 16px, các cụm mức phí chỉ có chữ) — border sẽ cao thấp so le. Pseudo-element
+ * `align-self: center` cho ra một dãy vạch đều nhau.
+ *
+ * `margin-right` bù đúng phần `gap` bên trong cụm để vạch nằm GIỮA: 15px trước vạch, và
+ * margin + gap = 15px sau vạch. Hai hàng có gap trong cụm khác nhau (6 và 7) nên bù khác nhau.
+ */
+.rev-eq-rates.is-mixed .rev-eq-rate-item:not(:first-child)::before,
+.rev-fate .rev-fate-item:not(:first-child)::before {
+    content: "";
+    align-self: center;
+    flex-shrink: 0;
+    width: 1px;
+    height: 14px;
+    background: rgba(62, 47, 40, 0.18);
+}
+
+.rev-eq-rates.is-mixed .rev-eq-rate-item:not(:first-child)::before {
+    margin-right: 9px;
+}
+
+.rev-fate .rev-fate-item:not(:first-child)::before {
+    margin-right: 8px;
+}
+
+/* ⓘ của lát "Đã thu được" canh giữa theo chiều dọc. Hàng canh theo baseline, mà baseline của
+   một icon font nằm ở đáy khung glyph nên để mặc định thì icon bị đẩy cao hơn dòng chữ. */
+.rev-fate-item .rev-info {
+    align-self: center;
 }
 
 /* ─── Hàng "ba số phận" của doanh thu tạm tính ──────────────────────────────────
@@ -1255,7 +1303,7 @@
 .rev-fate {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 28px;
+    gap: 6px 15px;
     margin: 14px 0 0;
     padding-top: 12px;
     border-top: 1px solid rgba(62, 47, 40, 0.09);
@@ -1296,24 +1344,26 @@
  * có ba con số. Thay bằng cách tách theo NGUỒN ở `.rev-block-figure-split`, khít tuyệt đối
  * và không có số hạng nào phải giải thích. */
 
-.rev-eq-part-name {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--color-navy-60);
-    font-size: 12px;
-}
+/* `.rev-eq-part-name` và `.rev-alloc-rate` đã gỡ 03/09/2026 cùng lưới `.rev-eq-parts`.
+ *
+ * `.rev-alloc-rate` là hai viên chip `−{tutor}%` / `+{parent}%` đọc thẳng từ bảng cấu hình phí
+ * sàn. Đừng dựng lại dưới bất kỳ tên nào: phí sàn chốt cứng vào từng booking lúc đặt và không
+ * hồi tố, nên sau mỗi lần admin đổi mức, chip nói một tỉ lệ còn số tiền cạnh nó mang tỉ lệ
+ * khác — đo trên dev 03/09/2026: chip ghi 10% cạnh khoản phí thực chỉ 5,2%. Tỉ lệ đứng cạnh
+ * tiền phải chia được từ chính số tiền đó; xem `.rev-eq-rates` và đầu MoneySplit.tsx.
+ */
 
-.rev-alloc-rate {
-    padding: 1px 5px;
-    border-radius: var(--radius-badge, 6px);
-    background: rgba(26, 34, 56, 0.06);
-    color: var(--color-navy-70);
-    font-size: 10.5px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
+/* Cụm `.rev-alloc-drift` đã xoá 03/09/2026 theo yêu cầu — dòng nền hổ phách "Lịch đặt TỪ NAY
+   tính mức X + Y…" nằm ngay dưới phép cộng.
+
+   Lý do bỏ: thẻ này dùng để THUYẾT TRÌNH, mà dòng đó nói về lịch CHƯA tồn tại trong khi mọi
+   con số còn lại trên thẻ đều nói về tiền đã phát sinh — hai thì khác nhau đứng cạnh nhau
+   chính là thứ làm người xem lạc. Hàng `.rev-eq-rates.is-mixed` ngay trên đã kể đủ thành phần
+   thật của kỳ, nên không mất thông tin nào.
+
+   Đừng khôi phục selector này cho một dòng cảnh báo khác: nó mang nền + viền hổ phách vốn chỉ
+   hợp với vai "có gì đó vừa thay đổi", không hợp với một số hạng thật của thẻ. */
+
 
 /* `.rev-alloc-note` từng nằm ở đây: dòng "Chưa phát sinh doanh thu trong kỳ" của cột phải.
    Bỏ cùng vành khuyên (01/09/2026) — không còn chỗ nào dùng.
@@ -1341,40 +1391,26 @@
 /* Điểm ngắt 1080px từng bẻ thẻ hai cột thành một cột. Thẻ chỉ còn một cột nên không cần
    nữa — xem ghi chú ở `.rev-alloc`. */
 
-/* Dưới 900px thì ba cột không đủ chỗ cho số 8 chữ số, nên phương trình xếp DỌC.
-   Phải gỡ hết grid-row/grid-column đã đặt tường minh ở trên, nếu không các ô vẫn bị ghim
-   vào cột cũ và chồng lên nhau. Dấu = và + giữ nguyên: xếp dọc thì chúng đọc như một phép
-   tính viết theo cột, vẫn đúng nghĩa. */
-@media (max-width: 900px) {
-    .rev-eq {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: none;
-        column-gap: 0;
-    }
-
-    .rev-eq-c1,
-    .rev-eq-c2,
-    .rev-eq-c3,
-    .rev-eq-o1,
-    .rev-eq-o2,
-    .rev-eq-parts {
-        grid-column: 1;
-        grid-row: auto;
-    }
-
-    .rev-eq-op {
-        margin: 8px 0 2px;
-        font-size: 17px;
-    }
-
-    .rev-eq-parts {
-        justify-self: start;
-    }
-}
+/* Điểm ngắt 900px (xếp dọc phương trình ba cột) đã bỏ 03/09/2026 cùng `.rev-eq`: thẻ chỉ còn
+   một con số lớn nên không có gì để xếp dọc nữa. */
 
 @media (max-width: 640px) {
     .rev-alloc-main {
         padding: 15px 16px;
+    }
+
+    /* Bỏ vạch dọc khi hai hàng liệt kê bắt đầu xuống dòng.
+       CSS không biết cụm nào vừa rơi xuống dòng mới, nên vạch của nó sẽ đứng ở ĐẦU dòng —
+       một vạch dọc mở đầu một dòng đọc như lỗi hiển thị. Khổ hẹp thì mỗi dòng vốn chỉ còn
+       một hai cụm, khoảng trắng đã đủ ngăn. */
+    .rev-eq-rates.is-mixed .rev-eq-rate-item:not(:first-child)::before,
+    .rev-fate .rev-fate-item:not(:first-child)::before {
+        display: none;
+    }
+
+    .rev-eq-rates.is-mixed,
+    .rev-fate {
+        column-gap: 20px;
     }
 
     /* Số vẫn phải hiện đủ chữ số (không rút gọn K/M — xem formatMoney), nên chỗ nhường là

@@ -171,6 +171,21 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
     const ns = data.neverStarted;
 
     /**
+     * Phí phụ huynh đã cộng vào giá trị lịch đặt, tính bằng TỈ LỆ THỰC TẾ của kỳ chứ không đọc
+     * từ bảng cấu hình phí sàn.
+     *
+     * Bản trước ghép `${percents.parent}%` vào tooltip. Sai cùng một kiểu với hai chip của thẻ
+     * Phân bổ (đã sửa 03/09/2026, xem đầu MoneySplit.tsx): phí chốt cứng lúc khách đặt lịch và
+     * không hồi tố, nên ngay sau khi admin đổi mức, câu này nói 10% trong khi khoản phí thật sự
+     * nằm trong `gmv` chỉ là 5,2%.
+     *
+     * `null` khi kỳ không có lịch đặt nào — mẫu số bằng 0 thì cả mệnh đề tự biến mất.
+     */
+    const parentFeePct = s.baseAmount > 0
+        ? ((s.gmv - s.baseAmount) / s.baseAmount) * 100
+        : null;
+
+    /**
      * Chi tiết của "Booking dừng sau đợt 1" nằm trong tooltip, không in ra mặt thẻ.
      *
      * Chuỗi cũ ("52% số đã đặt cọc · mất 530,000 VND hoa hồng") dài tới mức tràn sang dòng
@@ -220,6 +235,75 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
      */
     const hasAiRevenue = timeline.some((t) => t.aiRevenue > 0);
 
+    /**
+     * Vạch dọc "admin đổi mức phí sàn", vẽ đè lên biểu đồ xu hướng.
+     *
+     * Đây là chỗ câu chuyện về đổi phí trở nên KỂ ĐƯỢC. Doanh thu tạm tính neo theo ngày ĐẶT
+     * lịch, nên vạch chia đúng đường đứt ấy làm hai đoạn: bên trái là lịch bán ở mức cũ, bên
+     * phải ở mức mới. Không có vạch thì người xem chỉ thấy một tỉ lệ trung bình lơ lửng (5,2%
+     * trong khi cấu hình ghi 10%) và không có cách nào tự giải thích.
+     *
+     * Đường doanh thu đã ghi nhận thì KHÔNG đổi dốc ngay tại vạch — nó neo theo ngày DẠY nên
+     * phản ứng trễ, và độ trễ đúng bằng khoảng cách từ lúc đặt tới lúc dạy. Đó là hành vi đúng,
+     * đã ghi vào chú thích ⓘ của biểu đồ để không ai đọc thành lỗi.
+     *
+     * Ô chứa mốc tìm bằng `start` do backend trả, KHÔNG parse ngược nhãn trục: nhãn có ba dạng
+     * tuỳ độ dài kỳ và hai dạng không mang năm — xem `RevenueTrendPoint.start`.
+     */
+    const rateMarkers = (() => {
+        if (!percents || percents.history.length === 0) return [];
+
+        const starts = timeline.map((t) => (t.start ? Date.parse(t.start) : NaN));
+        // Backend chưa nạp bản có `start` thì bỏ hẳn vạch — thà thiếu chú thích còn hơn gắn nó
+        // vào một ô đoán mò.
+        if (!starts.length || !Number.isFinite(starts[0])) return [];
+
+        // `range.to` rỗng nghĩa là "tới hiện tại", đúng như `rangeParams` gửi lên backend.
+        const rangeEnd = (range.to ?? new Date()).getTime();
+
+        // Gộp theo Ô, không theo lần đổi: hai lần đổi rơi cùng một ô thì hai vạch chồng khít
+        // lên nhau và hai nhãn đè nhau thành một vệt không đọc được. Giữ lần MỚI NHẤT của ô —
+        // đó mới là mức có hiệu lực khi ô đó kết thúc.
+        //
+        // NHƯNG phải NÓI RA là đã gộp. Bản đầu im lặng, và trên dev nó nuốt mất hẳn một lần
+        // đổi: admin đổi 5→10 rồi 10→20 trong cùng ngày 03/09, biểu đồ chỉ hiện "→ 20% + 20%"
+        // nên nhìn vào tưởng mức nhảy thẳng từ 5% lên 20%. Một chú thích giấu bớt sự kiện thì
+        // tệ hơn là không có chú thích.
+        const byBucket = new Map<number, { at: number; rate: string; count: number }>();
+
+        for (const h of percents.history) {
+            const at = Date.parse(h.changedAt);
+            if (!Number.isFinite(at) || at < starts[0] || at >= rangeEnd) continue;
+
+            let idx = -1;
+            for (let i = 0; i < starts.length; i += 1) {
+                if (Number.isFinite(starts[i]) && starts[i] <= at) idx = i;
+            }
+            if (idx < 0) continue;
+
+            const kept = byBucket.get(idx);
+            const count = (kept?.count ?? 0) + 1;
+            if (!kept || at > kept.at) {
+                byBucket.set(idx, { at, rate: `${h.tutor}% + ${h.parent}%`, count });
+            } else {
+                byBucket.set(idx, { ...kept, count });
+            }
+        }
+
+        return [...byBucket.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([idx, marker]) => ({
+                x: timeline[idx].month,
+                // Nhiều lần đổi trong cùng một ô thì nhãn phải kể ĐỦ CÂU, không chỉ dán thêm
+                // một con số. "Phí sàn → 5% + 5% (4 lần đổi)" đọc mơ hồ — 4 lần đổi cái gì, và
+                // 5% là lần nào trong bốn lần đó. "Đổi phí 4 lần → 5% + 5%" nói đúng thứ tự sự
+                // việc: đổi mấy lần, rồi dừng ở đâu.
+                label: marker.count > 1
+                    ? `Đổi phí ${marker.count} lần → ${marker.rate}`
+                    : `Phí sàn → ${marker.rate}`,
+            }));
+    })();
+
     return (
         <div className="rev-stack">
             {/* Dải chỉ số đứng MỘT MÌNH từ 01/09/2026.
@@ -240,7 +324,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     // cùng một số không.
                     hint={
                         'Tổng giá trị các lịch đặt trong kỳ, tính theo GIÁ HỢP ĐỒNG chốt lúc khách bấm đặt'
-                        + (percents ? `, đã gồm ${percents.parent}% phí phụ huynh` : '')
+                        + (parentFeePct !== null ? `, đã gồm ${parentFeePct.toFixed(1)}% phí phụ huynh` : '')
                         + '. Trừ doanh thu tạm tính ra đúng số tiền gia sư nhận.'
                         + '\n\nĐÂY KHÔNG PHẢI TIỀN MẶT ĐÃ VÀO. Khách trả làm 2 đợt, nên khoá mới'
                         + ' trả đợt 1 vẫn tính trọn giá gói ở đây. Số khách ĐÃ THỰC TRẢ nằm ở dòng'
@@ -330,6 +414,15 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     + 'Cộng cả đường xanh lá và đường xanh dương trong kỳ ra đúng con số ở góc phải '
                     + 'tiêu đề, theo đúng phép chia hai nguồn in ngay dưới nó — cũng chính là "Doanh '
                     + 'thu đã ghi nhận" trên trang Tổng quan hệ thống.'
+                    // Chỉ nói về vạch mốc khi kỳ này thật sự có vạch. Giải thích một thứ không có
+                    // trên màn hình chỉ làm người đọc đi tìm.
+                    + (rateMarkers.length > 0
+                        ? '\n\nVạch dọc nét đứt là lúc admin đổi mức phí sàn. Phí chốt cứng lúc '
+                          + 'khách bấm đặt nên đổi mức KHÔNG hồi tố: đường đứt (tạm tính, quy về '
+                          + 'ngày đặt) đổi mức ngay tại vạch, còn đường xanh lá (đã ghi nhận, quy '
+                          + 'về ngày dạy) đổi trễ hơn — trễ đúng bằng khoảng cách từ lúc đặt tới '
+                          + 'lúc dạy. Hai đường phản ứng lệch nhau ở đây là đúng, không phải lỗi.'
+                        : '')
                 }
                 /* Tổng của đường xanh lá cộng đường xanh dương, in ngay cạnh tiêu đề.
                    Đây là con số trả lời câu "rốt cuộc kỳ này Tutora thu được bao nhiêu", và
@@ -370,6 +463,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                     data={timeline}
                     xKey="month"
                     height={260}
+                    markers={rateMarkers}
                     bars={[{ key: 'refund', name: 'Hoàn tiền', color: PALETTE.red }]}
                     series={[
                         /* Hai đường dạy học đều KHÔNG gồm tiền gói AI, và tên chúng nói ra điều đó
@@ -436,6 +530,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                 commissionPending={s.commissionPending}
                 commissionUnrecoverable={s.commissionUnrecoverable}
                 percents={percents}
+                rateMix={s.rateMix}
             />
 
             <DataTableShell
