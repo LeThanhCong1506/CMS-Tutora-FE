@@ -1,5 +1,6 @@
-import { money } from '@/utils/formatMoney';
+import { money, moneyVnd } from '@/utils/formatMoney';
 import type { CommissionPercents } from '@/hooks/useCommissionPercents';
+import type { RevenueRateMix } from '@/types/revenueReports.types';
 import InfoHint from './InfoHint';
 
 /**
@@ -16,11 +17,33 @@ const VndAmount = ({ value }: { value: number }) => (
     </>
 );
 
+/** Một chữ số sau dấu chấm, cùng quy ước với `growthBadge` của `formatMoney`. */
+const pct = (value: number) => `${value.toFixed(1)}%`;
+
+/**
+ * Mức phí in dạng "5% + 5%" — bỏ số 0 thừa sau dấu chấm.
+ *
+ * Khác `pct`: chỗ này in một mức phí CÓ THẬT do admin đặt (luôn là số nguyên trên giao diện
+ * Cài đặt), không phải một tỉ lệ suy ra từ phép chia. "5%" đọc ra ngay là mức chính sách, còn
+ * "5.0%" trông như kết quả đo.
+ */
+const onePct = (value: number) => `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
+
+const ratePair = (tutorPercent: number, parentPercent: number) =>
+    `${onePct(tutorPercent)} + ${onePct(parentPercent)}`;
+
+/**
+ * Số mức phí in ra tối đa. Nhiều hơn thì phần còn lại gộp thành "khác" — vẫn cộng khít bằng
+ * doanh thu tạm tính, chỉ mất chi tiết của những mức bé nhất.
+ */
+const MAX_RATE_ROWS = 3;
+
 export interface MoneySplitProps {
     gmv: number;
     /**
-     * Học phí gốc — giá gia sư niêm yết. Vừa hiện thành một dòng riêng dưới tiêu đề (mẫu số
-     * của hai chip −5% / +5%), vừa dùng để suy ra phí gia sư = học phí gốc − tiền gia sư nhận.
+     * Học phí gốc — giá gia sư niêm yết. Là MẪU SỐ của hai tỉ lệ phí trên thẻ, và dùng để suy
+     * ra phí gia sư = học phí gốc − tiền gia sư nhận. Từ 03/09/2026 con số này không còn in ra
+     * mặt thẻ nữa, chỉ còn trong tooltip — xem ghi chú "Đã cắt khỏi mặt thẻ" bên dưới.
      */
     baseAmount: number;
     tutorReceivable: number;
@@ -37,77 +60,91 @@ export interface MoneySplitProps {
     commissionMatured: number;
     commissionPending: number;
     commissionUnrecoverable: number;
-    /** Tỉ lệ phí sàn đang áp dụng. `null` khi chưa tải xong — chip tự ẩn. */
+    /** Mức phí sàn đang cấu hình + mốc đổi. `null` khi chưa tải xong — phần chữ tự ẩn. */
     percents: CommissionPercents | null;
+    /**
+     * Các mức phí THỰC SỰ có trong kỳ, kèm tiền ở mỗi mức. `undefined` khi backend chưa nạp bản
+     * mới — thẻ lùi về in một tỉ lệ trung bình như trước.
+     */
+    rateMix?: RevenueRateMix[];
 }
 
 /**
  * Khối chia tiền của tab Doanh thu, viết dưới dạng MỘT PHÉP CỘNG:
  *
- *     [tiêu đề: tiền khách trả]
+ *     [tiêu đề]
  *     Gia sư nhận  +  Doanh thu tạm tính
+ *                     phí gia sư x% + phí phụ huynh y% của học phí gốc
  *
- * Hai cột lớn, cột phải mở thêm hai dòng con vì phí sàn có hai nửa. Tổng nằm ở tiêu đề, cỡ
- * nhỏ — bản trước để nó thành cột thứ nhất của phương trình `tổng = gia sư + Tutora`, nhưng
- * con số đó đã là thẻ đầu của dải chỉ số nên hiện hai lần cùng cỡ chữ lớn.
+ * Hai cột lớn, cột phải mở thêm một dòng tỉ lệ vì phí sàn có hai nửa. Tổng nằm ở thẻ đầu của
+ * dải chỉ số đầu trang, không lặp lại ở đây.
  *
  * Thẻ này nằm SAU biểu đồ "Dòng tiền theo thời gian" (đổi chỗ 01/09/2026) và có khung trắng
  * riêng — trước đó nó dùng chung khung `.rev-hero` với dải chỉ số.
  *
  * ─── Quy ước từ ngữ dùng chung cả cụm trang lẫn dashboard ─────────────────────
  *
- *   Tiền khách trả       — GMV, tổng tiền khách bỏ ra. KHÔNG phải doanh thu.
+ *   Tiền khách trả           — GMV, tổng tiền khách bỏ ra. KHÔNG phải doanh thu.
  *   Doanh thu tạm tính       — phí sàn chốt lúc đặt lịch. Chưa phải tiền thật.
  *   Doanh thu đã ghi nhận    — doanh thu kế toán của kỳ, neo theo NGÀY DẠY nên khác mốc với
  *                              hai số trên. Hiện ở dashboard và ở tab Gia sư / Khách hàng.
  *
  * Chữ "hoa hồng" đã bỏ hẳn khỏi giao diện.
  *
+ * ─── TỈ LỆ TRÊN THẺ SUY TỪ TIỀN, KHÔNG ĐỌC TỪ CẤU HÌNH (sửa 03/09/2026) ───────
+ *
+ * Bản trước in hai chip `−{percents.tutor}%` / `+{percents.parent}%` lấy thẳng từ bảng cấu
+ * hình phí sàn. Sai — và sai theo kiểu chỉ lộ ra khi admin đổi mức:
+ *
+ *   Phí sàn chốt cứng vào từng booking lúc khách bấm đặt và KHÔNG hồi tố. Sau khi admin đổi
+ *   5%+5% → 10%+10%, thẻ hiện `−10% / +10%` cạnh 1.206.250đ trên học phí gốc 23.125.000đ.
+ *   Người đọc nhẩm theo nhãn ra 20% × 23.125.000 = 4.625.000, nhìn lên thấy doanh thu tạm tính
+ *   2.412.500 — vênh 2.212.500 mà không có gì trên màn hình giải thích được. Phép cộng vẫn
+ *   đúng tuyệt đối; chỉ cái nhãn là sai.
+ *
+ * Luật rút ra, áp cho cả cụm trang: **tỉ lệ đứng cạnh một khoản tiền phải chia được từ chính
+ * những con số đang hiện trên màn hình.** Cấu hình mô tả chính sách SẮP TỚI, số tiền mô tả kết
+ * quả ĐÃ XẢY RA; dán cái trước lên cái sau là trộn hai mốc thời gian.
+ *
+ * Mức đang cấu hình vẫn đáng hiện — nhưng ở dòng riêng, chỉ khi nó thật sự lệch với tỉ lệ của
+ * kỳ. Từ 03/09/2026 nó chỉ còn trong tooltip ⓘ — dòng hiện trên mặt thẻ đã bỏ, xem ghi
+ * chú trong thân component.
+ *
+ * ─── Đã cắt khỏi mặt thẻ 03/09/2026 (thẻ này phải thuyết trình được) ──────────
+ *
+ * Ba thứ bỏ đi đều là số SUY RA ĐƯỢC từ số còn lại, không phải thông tin mới:
+ *
+ * 1. **Dòng "Học phí gốc"**. Nó chỉ tồn tại để làm mẫu số cho hai tỉ lệ. Nay chính dòng tỉ lệ
+ *    tự gọi tên mẫu số ("của học phí gốc") nên con số không cần đứng riêng một dòng nữa; ai
+ *    cần trị số thì mở ⓘ.
+ * 2. **Hai con số phí gia sư / phí phụ huynh** (1.206.250 in hai lần). Tổng của chúng đã là
+ *    "Doanh thu tạm tính" ngay phía trên, và khi hai mức phí bằng nhau thì chúng còn bằng
+ *    nhau nốt — ba con số cho một sự thật. Giữ lại TỈ LỆ vì đó mới là thứ nói lên cấu trúc
+ *    phí hai vế, bỏ trị số.
+ *
+ * Thứ KHÔNG cắt: hàng ba số phận. Nó không suy được từ đâu khác trên trang và là chỗ duy nhất
+ * trả lời "khoản tạm tính rồi sẽ ra sao" — cắt là mất thông tin thật, không phải bớt trùng lặp.
+ *
  * ─── Ba bản đã bỏ, đừng dựng lại bản nào ──────────────────────────────────────
  *
  * 1. **Vành khuyên "Số tạm tính đi về đâu"** (gỡ 01/09/2026). Ba lát vẫn còn — chúng là hàng
  *    `.rev-fate` bây giờ — nhưng HÌNH TRÒN thì không dựng lại: tỉ lệ thật quá lệch để đọc bằng
- *    hình (đã thu 25%, không thu 49%, chờ 26%, và ở kỳ khác lát nhỏ nhất từng chỉ còn 4,8%).
+ *    hình (đã thu 24%, chờ 17%, không thu 59%, và ở kỳ khác lát nhỏ nhất từng chỉ còn 4,8%).
  *    Chữ nói được tỉ lệ chính xác, hình thì không.
+ * 2. **Hai thanh tỉ lệ "Tiền vào / Tiền ra"**. Tỉ lệ thật là 90,1 / 5,0 / 5,0 — quá lệch để
+ *    thanh đọc được, hai thanh chênh nhau đúng 5% nên trông y hệt nhau.
+ * 3. **Bảng lồng nhau 6 hàng**. Kéo dãn ra 1350px thì nhãn kết thúc ở x≈340 còn số của chính
+ *    hàng đó nằm ở x≈1400 — hơn 1000px trống, mắt lạc hàng.
  *
- *    Lý do thứ hai lúc gỡ — "ba lát sai số vì đọc `PlatformKept`, mà `released` hụt do lỗi đảo
- *    escrow" — nay đã được xử lý ở backend, không còn là lý do nữa: chặn `ledgerTouched` khử
- *    doanh thu ảo, chặn trên ở `PlatformFee` khử phần phồng. Lỗi đảo escrow thì VẪN CHƯA SỬA
- *    (950.000đ đảo lố, 2 gia sư thiếu 665.000đ, đo 01/09/2026) — nó chỉ không còn rò vào con số
- *    này nữa thôi.
- *
- * 2. **Hai thanh tỉ lệ "Tiền vào / Tiền ra"**. Tỉ lệ thật là 90,5 / 4,8 / 4,8 — quá lệch để
- *    thanh đọc được, hai thanh chênh nhau đúng 4,8% nên trông y hệt nhau.
- *
- * 3. **Bảng lồng nhau 6 hàng**. Hỏng vì hai lẽ. Một: kéo dãn hàng ra 1350px thì nhãn kết thúc
- *    ở x≈340 còn số của chính hàng đó nằm ở x≈1400 — hơn 1000px trống, mắt lạc hàng. Hai: bảng
- *    trộn hai loại thông tin khác bản chất — ĐÍCH ĐẾN của tiền (gia sư nhận, doanh thu tạm
- *    tính) với BƯỚC TÍNH trung gian (học phí gốc). Chính vì nhét "học phí gốc" vào cùng danh
- *    sách nên mới phải thụt cấp, phải vạch dọc, phải ghi chú từng hàng.
- *
- * Bài học chung của cả ba: **bề ngang phải dùng làm CỘT, không phải để kéo dãn hàng**, và
- * đừng vẽ tỉ lệ khi một lát chưa tới 5%.
- *
- * ─── "Học phí gốc" nằm ở đâu, và vì sao ───────────────────────────────────────
- *
- * Nó KHÔNG phải một hàng ngang hàng với hai vế của phép cộng — đó chính là lỗi của bản bảng
- * 6 hàng (mục 3 ở trên): trộn ĐÍCH ĐẾN của tiền với BƯỚC TÍNH trung gian, nên phải đẻ ra thụt
- * cấp và vạch dọc để phân biệt hai loại.
- *
- * Nhưng nó cũng không thể chỉ nằm trong tooltip: hai chip −5% / +5% tính TRÊN nó, không có nó
- * thì đọc "−5%" mà không biết 5% của cái gì. Nên từ 02/09/2026 nó là một DÒNG BỐI CẢNH cỡ nhỏ
- * ngay dưới tiêu đề — cùng tầng với con số tổng ở góc phải, tách hẳn khỏi phép cộng bên dưới.
+ * Bài học chung: **bề ngang phải dùng làm CỘT, không phải để kéo dãn hàng**, và đừng vẽ tỉ lệ
+ * khi một lát chưa tới 5%.
  *
  * ─── "Dòng nối" đã bỏ (02/09/2026, sống được đúng một bản) ────────────────────
  *
  * Từng có một dòng ở cuối thẻ: `Doanh thu đã ghi nhận = X đã thu được + Y gói AI ± Z chênh
  * mốc`. Ý định đúng — cho người đọc thấy hai con số khác mốc nối với nhau thế nào — nhưng
  * cách làm sai: nó bắt người đọc nuốt một số hạng "chênh mốc" mà bản thân nó cần cả một
- * tooltip mới hiểu, ngay dưới một hàng đã có ba con số.
- *
- * Thay bằng cách tách theo NGUỒN ở viên thuốc đầu biểu đồ: doanh thu dạy học + doanh thu gói
- * AI = doanh thu đã ghi nhận. Phép cộng đó KHÍT TUYỆT ĐỐI, không có số dư, không cần giải
- * thích gì thêm — vì nó chia một con số theo nguồn gốc chứ không đối chiếu hai mốc khác nhau.
+ * tooltip mới hiểu. Thay bằng cách tách theo NGUỒN ở viên thuốc đầu biểu đồ, khít tuyệt đối.
  *
  * `summary.commissionFromCancelled` vẫn CỐ Ý không vẽ ở đây: nó là số luỹ kế CẢ ĐỜI khoá, quy
  * về ngày huỷ, trong khi mọi con số của thẻ này neo theo "booking tạo trong kỳ". Cộng vào bất
@@ -132,32 +169,98 @@ const MoneySplit = (props: MoneySplitProps) => {
     const parentFee = Math.max(gmv - baseAmount, 0);
     const tutorCut = Math.max(baseAmount - tutorReceivable, 0);
 
+    // Tỉ lệ THỰC TẾ của kỳ, chia thẳng từ hai con số vừa tính. Kỳ không có lịch đặt nào thì
+    // mẫu số bằng 0 và cả dòng tỉ lệ tự ẩn — in "0.0%" ở đó là bịa ra một sự thật.
+    const rates = baseAmount > 0
+        ? { tutor: (tutorCut / baseAmount) * 100, parent: (parentFee / baseAmount) * 100 }
+        : null;
+
     /**
-     * Tooltip gánh phần mặt thẻ cố ý không in.
+     * Các mức phí có mặt trong kỳ, đã gộp phần đuôi.
      *
-     * Từ 02/09/2026 mặt thẻ không còn hai tỉ lệ 90.5% / 9.5% (phần của tiền khách trả),
-     * nên tooltip cũng bỏ đoạn giải thích "hai mẫu số khác nhau" — giờ trên thẻ chỉ còn MỘT
-     * loại phần trăm là chip −5% / +5%, và học phí gốc đã hiện thành dòng riêng ngay dưới tiêu
-     * đề nên người đọc thấy thẳng mẫu số của nó.
+     * Rỗng khi backend chưa trả `rateMix` — lúc đó thẻ lùi về in một tỉ lệ trung bình (`rates`).
+     *
+     * Số in ra là PHÍ của mỗi mức chứ không phải học phí gốc: ba con số ấy cộng đúng bằng
+     * "Doanh thu tạm tính" ngay phía trên, nên người đọc tự kiểm được. Lấy học phí gốc thì
+     * chúng cộng ra một số không có mặt trên thẻ.
+     */
+    const rateRows = (() => {
+        const mix = (props.rateMix ?? []).filter((r) => r.baseAmount > 0);
+        if (mix.length <= MAX_RATE_ROWS) return mix.map((r) => ({ ...r, other: false }));
+
+        const head = mix.slice(0, MAX_RATE_ROWS - 1).map((r) => ({ ...r, other: false }));
+        const tail = mix.slice(MAX_RATE_ROWS - 1);
+        return [...head, {
+            parentFeePercent: 0,
+            tutorFeePercent: 0,
+            baseAmount: tail.reduce((s, r) => s + r.baseAmount, 0),
+            fee: tail.reduce((s, r) => s + r.fee, 0),
+            bookings: tail.reduce((s, r) => s + r.bookings, 0),
+            other: true,
+        }];
+    })();
+
+    /* ─── Dòng "mức phí đang áp dụng" đã BỎ HẲN (03/09/2026, theo yêu cầu) ────────
+     *
+     * Nó từng nằm ngay dưới phép cộng, nền hổ phách: "Lịch đặt TỪ NAY tính mức X + Y, đặt ngày
+     * D. Phí chốt lúc khách bấm đặt và không hồi tố…". Bỏ vì đây là thẻ dùng để THUYẾT TRÌNH,
+     * mà dòng ấy nói về lịch CHƯA tồn tại — trong khi mọi con số còn lại trên thẻ đều nói về
+     * tiền đã phát sinh. Hai thì khác nhau đứng cạnh nhau chính là thứ làm người xem lạc.
+     *
+     * Không mất thông tin: hàng "N mức phí trong kỳ" ngay trên đã kể đủ thành phần thật của kỳ,
+     * và mức đang cấu hình vẫn còn trong tooltip ⓘ của tiêu đề cho ai cần tra.
+     *
+     * Cùng lượt này bỏ luôn `RATE_DRIFT_TOLERANCE` và `CommissionPercents.changedAt` — cả hai
+     * chỉ tồn tại để nuôi dòng đó. Muốn dựng lại thì phải dựng lại cả ba, và đọc kỹ lý do bỏ
+     * trước đã.
+     */
+
+
+    /**
+     * Tooltip gánh phần mặt thẻ cố ý không in: trị số học phí gốc, hai khoản phí, và mức đang
+     * cấu hình — từ 03/09/2026 đây là chỗ DUY NHẤT trên thẻ nói mức đang áp cho lịch mới.
+     *
+     * Từ 03/09/2026 KHÔNG còn con số phần trăm nào viết cứng trong chuỗi này. Bản trước ghi
+     * "Chip −5% / +5% và cả phí sàn 10% … ra khoảng 9,5% chứ không phải 10%" — bốn con số chết,
+     * và cả bốn nói sai ngay khi admin đổi mức, đúng điều mà doc của `useCommissionPercents`
+     * đã dặn là không được làm.
      */
     const allocationHint =
-        'Toàn bộ giá trị các lịch ĐẶT trong kỳ, theo giá hợp đồng, chia làm hai: phần chuyển về gia'
-        + ' sư và phần Tutora giữ lại.'
-        + '\n\nHọc phí gốc là giá gia sư niêm yết, bằng gia sư nhận cộng phí gia sư. Phí gia sư'
-        + ' trừ vào bên trong khoản đó, còn phí phụ huynh cộng thêm lên trên — nên tiền khách'
-        + ' trả luôn lớn hơn học phí gốc.'
-        + '\n\nChip −5% / +5% và cả phí sàn 10% đều tính trên HỌC PHÍ GỐC, KHÔNG phải trên giá trị'
-        + ' lịch đặt. Giá trị lịch đặt đã cộng thêm 5% phí phụ huynh, nên lấy doanh thu tạm tính'
-        + ' chia cho nó sẽ ra khoảng 9,5% chứ không phải 10% — đó không phải lỗi.'
-        // Nói thẳng để không ai đọc "Gia sư nhận" như số gia sư đã cầm về.
-        + '\n\nĐây là cách chia THEO HỢP ĐỒNG, chốt ngay lúc đặt lịch — nên gọi là TẠM TÍNH. Với'
-        + ' lịch bị huỷ giữa chừng, số thực nhận ít hơn: phần đã thành tiền thật xem ở tab Gia sư'
-        + ' (phí gia sư) và tab Khách hàng (phí dịch vụ).';
+        'Phần Tutora giữ lại từ các lịch ĐẶT trong kỳ, tính theo giá hợp đồng chốt lúc khách bấm'
+        + ' đặt — nên gọi là TẠM TÍNH, chưa phải tiền thật.'
+        + `\n\nHọc phí gốc của kỳ (giá gia sư niêm yết) là ${moneyVnd(baseAmount)}, tách thành`
+        + ` ${moneyVnd(tutorCut)} phí gia sư và ${moneyVnd(parentFee)} phí phụ huynh. Phí gia sư`
+        + ' trừ vào bên trong học phí gốc, còn phí phụ huynh cộng thêm lên trên.'
+        // Vế gia sư không còn trên mặt thẻ (bỏ 03/09/2026), nên tooltip phải chỉ cách suy lại nó
+        // — nếu không, con số ấy biến mất khỏi cả trang mà không ai biết tìm ở đâu.
+        + `\n\nPhần chuyển về gia sư là ${moneyVnd(tutorReceivable)}: lấy "Giá trị lịch đặt" ở`
+        + ' đầu trang trừ đi con số này.'
+        + '\n\nTỉ lệ hiện trên thẻ là mức phí THẬT của từng lịch, chốt lúc đặt và không hồi tố.'
+        + ' Đổi mức phí không làm đổi lịch đã đặt, nên một kỳ có thể chứa nhiều mức cùng lúc.'
+        + (percents
+            ? `\n\nMức đang cấu hình: ${percents.tutor}% phí gia sư + ${percents.parent}% phí phụ`
+              + ' huynh, áp cho lịch đặt từ nay trở đi.'
+            : '')
+        + '\n\nĐây là cách chia THEO HỢP ĐỒNG. Với lịch bị huỷ giữa chừng, số thực nhận ít hơn:'
+        + ' phần đã thành tiền thật xem ở tab Gia sư (phí gia sư) và tab Khách hàng (phí dịch vụ).';
+
+    /**
+     * Tooltip của hàng "N mức phí trong kỳ".
+     *
+     * Phải trả lời đúng câu người đọc hỏi đầu tiên: vì sao MỘT kỳ lại có NHIỀU mức phí.
+     */
+    const rateMixHint =
+        'Mỗi lịch giữ nguyên mức phí đã chốt lúc khách bấm đặt, nên một kỳ có bao nhiêu lần đổi'
+        + ' mức thì có bấy nhiêu mức cùng chạy song song.'
+        + '\n\nSố bên cạnh mỗi mức là phần doanh thu tạm tính sinh ra ở mức đó. Cộng tất cả ra'
+        + ' đúng “Doanh thu tạm tính” ngay phía trên — không dư, không thiếu.'
+        + '\n\nMức nào chiếm nhiều tiền nhất đứng trước. Các mức nhỏ nhất gộp vào “mức khác” khi'
+        + ' danh sách quá dài, nhưng tổng vẫn khít.';
 
     /**
      * Tooltip của lát "Đã thu được".
      *
-     * Lý do phải có: con số này giờ TRÙNG với phần "dạy học" ở viên thuốc xanh đầu biểu đồ, và
+     * Lý do phải có: con số này TRÙNG với phần "dạy học" ở viên thuốc xanh đầu biểu đồ, và
      * người đọc cần biết trùng đó là CỐ Ý chứ không phải trùng hợp — cũng như biết khi nào nó
      * hết trùng, để lúc lệch thì không tưởng là lỗi.
      */
@@ -174,70 +277,75 @@ const MoneySplit = (props: MoneySplitProps) => {
     return (
         <section className="rev-alloc" aria-labelledby="rev-alloc-title">
             <div className="rev-alloc-main">
-                {/* Con số TỔNG ở góc phải tiêu đề đã bỏ 02/09/2026. Nó từng là mẫu số cho hai
-                    tỉ lệ 90.5% / 9.5%; hai tỉ lệ đó bỏ trước rồi nên nó hết việc, mà vẫn lặp lại
-                    đúng thẻ đầu của dải chỉ số đầu trang. Tiêu đề nay chỉ còn chữ + ⓘ. */}
+                {/* Tiêu đề đổi từ "Phân bổ giá trị lịch đặt" 03/09/2026, cùng lượt bỏ vế
+                    "Gia sư nhận". Bắt buộc phải đổi: chữ "phân bổ" hứa một phép chia, mà thẻ
+                    chỉ còn MỘT vế thì không còn gì được chia nữa — giữ tiêu đề cũ là để lại
+                    một lời hứa suông ngay dòng đầu. */}
                 <h4 className="rev-alloc-title" id="rev-alloc-title">
-                    Phân bổ giá trị lịch đặt
+                    Doanh thu tạm tính
                     <InfoHint text={allocationHint} />
                 </h4>
 
-                {/* Học phí gốc — dòng bối cảnh, là MẪU SỐ của hai chip −5% / +5% bên dưới.
-                    Không có nó thì đọc "−5%" mà không biết 5% của cái gì.
+                {/* ─── Vế "Gia sư nhận" đã BỎ (03/09/2026, theo yêu cầu) ──────────────
+                    Kéo theo ba thứ biến mất cùng nó, đều là hệ quả bắt buộc chứ không phải
+                    lựa chọn thêm: dấu `+` (không còn số hạng thứ hai để cộng), nhãn "Doanh thu
+                    tạm tính" trong thân thẻ (tiêu đề gánh rồi), và cả lưới `.rev-eq`.
 
-                    Câu mô tả "giá gia sư niêm yết, chưa cộng phí" đã bỏ 02/09/2026 — nó lặp
-                    lại thứ tooltip ⓘ đã nói kỹ hơn, và làm dòng này dài gần bằng cả hàng số
-                    chính bên dưới. */}
-                <p className="rev-alloc-base">
-                    Học phí gốc
-                    <b>
-                        <VndAmount value={baseAmount} />
-                    </b>
-                </p>
+                    `.rev-eq` sinh ra để ghim HAI con số lớn lên cùng một đường baseline qua
+                    grid 3 cột đặt vị trí tường minh. Còn một số thì nó thành một lưới một cột —
+                    tức không còn là lưới. Nên chuyển hẳn sang `.rev-alloc-figure`, một flex cột
+                    đơn giản. Số tiền GIỮ NGUYÊN class `rev-eq-value rev-eq-c3` vì viên thuốc
+                    nền hổ phách nằm ở đó; hai thuộc tính grid trong selector là no-op ngoài
+                    lưới. Muốn dựng lại vế gia sư thì phải khôi phục cả `.rev-eq`.
 
-                {/* Grid 3 cột / 3 hàng, đặt vị trí TƯỜNG MINH bằng grid-column + grid-row thay
-                    vì để hai div con tự xếp. Lý do: hai con số lớn bắt buộc phải nằm đúng một
-                    đường baseline thì mắt mới đọc được thành một phép cộng. Cột phải cao hơn
-                    (có thêm hai dòng con) nên để tự xếp là lệch ngay, và dấu + cũng không còn
-                    cách nào canh cho khớp hàng số.
-
-                    Tên class vẫn là `c2` / `c3` / `o2` dù giờ chỉ còn hai vế: `c1`/`o1` là cột
-                    tổng và dấu = đã bỏ. Giữ nguyên tên để khỏi đổi một loạt selector cho một
-                    thay đổi thuần đánh số. */}
-                <div className="rev-eq">
-                    <span className="rev-eq-label rev-eq-c2">Gia sư nhận</span>
-                    <span className="rev-eq-value rev-eq-c2">
-                        <VndAmount value={tutorReceivable} />
-                    </span>
-
-                    <span className="rev-eq-op rev-eq-o2" aria-hidden="true">+</span>
-
-                    <span className="rev-eq-label rev-eq-c3">Doanh thu tạm tính</span>
+                    Con số gia sư nhận KHÔNG mất hẳn: nó vẫn suy được bằng "Giá trị lịch đặt" ở
+                    thẻ đầu trang trừ đi con số này, và tooltip ⓘ vẫn nói rõ quan hệ đó. */}
+                <div className="rev-alloc-figure">
                     <span className="rev-eq-value rev-eq-c3">
                         <VndAmount value={commissionSold} />
                     </span>
 
-                    {/* Hai nửa của phí sàn. Số căn trái thành một cột để mắt thấy ngay chúng
-                        BẰNG NHAU — sự thật dễ nhớ nhất về cấu trúc phí 5%+5%, mà cả ba bản
-                        trước đều giấu mất.
-
-                        Grid ĐÚNG HAI cột (số | tên+chip), chip nằm BÊN TRONG ô tên chứ không
-                        phải cột thứ ba. Mức phí đọc từ cấu hình admin nên `percents` có thể là
-                        `null` lúc chưa tải xong; nếu chip là một ô grid riêng thì lúc đó hàng
-                        thứ hai sẽ trượt lên chỗ trống của hàng đầu và cả khối lệch hẳn. */}
-                    <div className="rev-eq-parts">
-                        <span className="rev-eq-part-amt"><VndAmount value={tutorCut} /></span>
-                        <span className="rev-eq-part-name">
-                            phí gia sư
-                            {percents && <span className="rev-alloc-rate">−{percents.tutor}%</span>}
-                        </span>
-
-                        <span className="rev-eq-part-amt"><VndAmount value={parentFee} /></span>
-                        <span className="rev-eq-part-name">
-                            phí phụ huynh
-                            {percents && <span className="rev-alloc-rate">+{percents.parent}%</span>}
-                        </span>
-                    </div>
+                    {/* Cấu trúc phí hai vế, nói bằng TỈ LỆ chứ không bằng trị số — hai trị số
+                        cộng lại đúng bằng con số ngay trên đầu nên in ra là nói ba lần một
+                        chuyện. Mẫu số gọi tên ngay trong câu: không có nó thì đọc "5,2%" mà
+                        không biết 5,2% của cái gì, và giá trị lịch đặt ở thẻ đầu trang lại là
+                        một mẫu số khác (đã cộng phí phụ huynh) nên rất dễ lấy nhầm. */}
+                    {rateRows.length > 1 ? (
+                        <p className="rev-eq-rates is-mixed">
+                            <span className="rev-eq-rates-lead">
+                                {rateRows.length} mức phí trong kỳ
+                                <InfoHint text={rateMixHint} />
+                            </span>
+                            {rateRows.map((r) => (
+                                <span
+                                    className="rev-eq-rate-item"
+                                    key={r.other ? 'other' : `${r.tutorFeePercent}-${r.parentFeePercent}`}
+                                >
+                                    <b>{r.other ? 'mức khác' : ratePair(r.tutorFeePercent, r.parentFeePercent)}</b>
+                                    {/* Không kèm "VND" ở đây: đơn vị đã được con số lớn ngay
+                                        trên đầu xác lập, lặp ba lần trong một dòng chỉ là nhiễu. */}
+                                    <span className="rev-eq-rate-amt">{money(r.fee)}</span>
+                                </span>
+                            ))}
+                        </p>
+                    ) : rateRows.length === 1 ? (
+                        <p className="rev-eq-rates">
+                            phí gia sư <b>{onePct(rateRows[0].tutorFeePercent)}</b>
+                            <span className="rev-eq-rates-op" aria-hidden="true">+</span>
+                            phí phụ huynh <b>{onePct(rateRows[0].parentFeePercent)}</b>
+                            <span className="rev-eq-rates-of">của học phí gốc</span>
+                        </p>
+                    ) : rates && (
+                        /* Backend cũ chưa trả `rateMix`: lùi về tỉ lệ trung bình. Đọc được khi kỳ
+                           chỉ chạy một mức, còn kỳ pha nhiều mức thì nó ra một con số không trùng
+                           mức nào — đó chính là lý do có `rateMix`. */
+                        <p className="rev-eq-rates">
+                            phí gia sư <b>{pct(rates.tutor)}</b>
+                            <span className="rev-eq-rates-op" aria-hidden="true">+</span>
+                            phí phụ huynh <b>{pct(rates.parent)}</b>
+                            <span className="rev-eq-rates-of">của học phí gốc</span>
+                        </p>
+                    )}
                 </div>
 
                 {/* Ba số phận của doanh thu tạm tính — khôi phục 02/09/2026.
@@ -253,8 +361,7 @@ const MoneySplit = (props: MoneySplitProps) => {
                     mà không có cách nào tự nối. Đừng tách chính sách của hai chỗ này ra lần nữa.
 
                     Một HÀNG NGANG chứ không phải vành khuyên: tỉ lệ ba lát vẫn lệch tới mức không
-                    vẽ hình được (đã thu 25%, không thu 49%, chờ 26% — riêng lát nhỏ nhất từng chỉ
-                    còn 4,8% ở kỳ khác). Chữ nói tỉ lệ chính xác, hình thì không.
+                    vẽ hình được. Chữ nói tỉ lệ chính xác, hình thì không.
 
                     Bộ từ "Đã thu được / Còn chờ / Không thu được" là quy ước đã chốt 31/08/2026
                     cho ba số phận của khoản tạm tính — đừng đặt tên khác. Bản dựng lại đầu tiên
@@ -265,11 +372,15 @@ const MoneySplit = (props: MoneySplitProps) => {
                     tiền còn cơ hội về; khoản kia thì hết. Gộp chung là báo một khoản đã chết như
                     thể vẫn đang chờ — và nó sẽ không bao giờ giảm qua các kỳ. */}
                 <p className="rev-fate">
+                    {/* ⓘ đứng SAU con số, không chen giữa nhãn và số (đổi 03/09/2026).
+                        Hai lát còn lại là cặp "nhãn → số" liền mạch; chen icon vào giữa đúng
+                        một lát làm lát ấy lệch nhịp so với hai lát kia, và mắt phải nhảy qua
+                        icon mới tới được con số. Đặt ở cuối thì cả ba lát cùng một nhịp. */}
                     <span className="rev-fate-item">
                         <span className="rev-fate-dot is-matured" aria-hidden="true" />
                         Đã thu được
-                        <InfoHint text={maturedHint} />
                         <b><VndAmount value={matured} /></b>
+                        <InfoHint text={maturedHint} />
                     </span>
                     <span className="rev-fate-item">
                         <span className="rev-fate-dot is-pending" aria-hidden="true" />

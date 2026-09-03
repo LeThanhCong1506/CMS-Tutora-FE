@@ -54,6 +54,22 @@ export interface BarSeries {
     color?: string;
 }
 
+/**
+ * Vạch dọc đánh dấu một SỰ KIỆN trên trục thời gian — không phải một chuỗi dữ liệu.
+ *
+ * Sinh ra 03/09/2026 cho vạch "admin đổi mức phí sàn": người xem cần thấy mốc đổi chính sách
+ * nằm ở đâu so với hai đường doanh thu, vì phí chốt lúc đặt lịch nên lịch hai bên vạch mang hai
+ * mức khác nhau — nhìn riêng con số tổng thì không cách nào kể lại chuyện đó.
+ *
+ * `x` phải là ĐÚNG một giá trị đang có trên trục hoành. ECharts bỏ qua lặng lẽ vạch trỏ vào
+ * category không tồn tại, nên nơi gọi phải tự dò nhãn từ dữ liệu chứ đừng tự dựng chuỗi nhãn.
+ */
+export interface ChartMarker {
+    x: string;
+    /** Chữ in cạnh vạch. Giữ ngắn — nó nằm đè lên vùng vẽ. */
+    label: string;
+}
+
 export const LineTrendChart: React.FC<
     BaseProps & {
         data: ChartRow[];
@@ -71,8 +87,33 @@ export const LineTrendChart: React.FC<
          */
         bars?: BarSeries[];
         money?: boolean;
+        /** Vạch dọc đánh dấu sự kiện đổi chính sách — xem `ChartMarker`. */
+        markers?: ChartMarker[];
     }
-> = ({ data, xKey, series, bars = [], money = true, height = 300 }) => (
+> = ({ data, xKey, series, bars = [], markers = [], money = true, height = 300 }) => {
+    const categories = data.map((d) => String(cell(d, xKey)));
+
+    /**
+     * Vạch mốc nằm sát mép phải thì phải chừa thêm lề, nếu không nhãn bị CẮT CỤT.
+     *
+     * Nhãn của `markLine` căn giữa trên đầu vạch, nên một nửa bề ngang của nó tràn ra ngoài
+     * vùng vẽ. Ở giữa biểu đồ thì không sao, còn ở ô cuối cùng thì nửa ấy rơi ra ngoài khung
+     * SVG và bị xén — đo thật: "Phí sàn → 10% + 10%" hiện thành "Phí sàn → 10% + 1".
+     *
+     * Và đây KHÔNG phải ca hiếm: mốc đổi phí gần nhất thường rơi vào cuối kỳ đang xem.
+     *
+     * 80px là nửa bề ngang của nhãn dài nhất mà chỗ gọi đang dùng, làm tròn lên. Chỉ nới khi
+     * thật sự có vạch ở vùng cuối để mọi biểu đồ khác không mất bề ngang vô cớ.
+     *
+     * `position: 'insideEndTop'` từng được thử để tránh hẳn chuyện này: ECharts xoay nhãn dọc
+     * 90° nên đọc không ra. Đừng đổi sang nó.
+     */
+    const nearRightEdge = categories.length > 0 && markers.some((m) => {
+        const i = categories.indexOf(m.x);
+        return i >= 0 && i >= categories.length - Math.max(2, Math.ceil(categories.length * 0.12));
+    });
+
+    return (
     <Chart
         height={height}
         option={{
@@ -82,11 +123,20 @@ export const LineTrendChart: React.FC<
                 valueFormatter: (v) => fmt(money)(Number(v)),
             },
             legend: {
+                // Liệt kê TƯỜNG MINH nên chuỗi kỹ thuật mang `markLine` bên dưới tự đứng ngoài
+                // chú giải — vạch mốc là chú thích, không phải một chuỗi để bật/tắt.
                 ...legendStyle,
                 data: [...bars.map((b) => b.name), ...series.map((s) => s.name)],
             },
-            grid: { ...baseGrid, bottom: 26 },
-            xAxis: categoryAxis(data.map((d) => String(cell(d, xKey)))),
+            // Có vạch mốc thì phải nới đỉnh: nhãn của nó neo trên đầu vạch, mà `baseGrid.top`
+            // chỉ chừa 10px vừa đủ cho nửa dòng nhãn trục y trên cùng.
+            grid: {
+                ...baseGrid,
+                top: markers.length ? 34 : baseGrid.top,
+                right: nearRightEdge ? 80 : baseGrid.right,
+                bottom: 26,
+            },
+            xAxis: categoryAxis(categories),
             yAxis: valueAxis(money),
             series: [
                 ...bars.map((b, i) => ({
@@ -117,10 +167,50 @@ export const LineTrendChart: React.FC<
                         areaStyle: s.area ? { opacity: 0.12, color } : undefined,
                     };
                 }),
+                /* Vạch mốc treo trên một chuỗi RỖNG riêng, không gắn vào chuỗi dữ liệu nào.
+                   Gắn nhờ vào chuỗi đầu tiên thì vạch biến mất khi người dùng tắt chuỗi đó ở
+                   chú giải — một chú thích về chính sách không được phụ thuộc vào việc đang bật
+                   đường nào.
+
+                   Màu mực trung tính, cố ý KHÔNG lấy màu nào trong bảng chuỗi: nó là chú thích
+                   chứ không phải dữ liệu, và ba màu còn lại (emerald / blue / amber) đều đã mang
+                   nghĩa riêng trong khung này. */
+                ...(markers.length
+                    ? [{
+                        name: '__markers',
+                        type: 'line' as const,
+                        data: [],
+                        silent: true,
+                        markLine: {
+                            symbol: 'none' as const,
+                            silent: true,
+                            lineStyle: {
+                                color: 'rgba(26, 34, 56, 0.55)',
+                                type: 'dashed' as const,
+                                width: 1.5,
+                            },
+                            label: {
+                                position: 'end' as const,
+                                distance: 6,
+                                color: PALETTE.ink,
+                                fontSize: 11,
+                                fontWeight: 600 as const,
+                                backgroundColor: '#fff',
+                                borderColor: 'rgba(26, 34, 56, 0.18)',
+                                borderWidth: 1,
+                                borderRadius: 4,
+                                padding: [3, 6] as [number, number],
+                                formatter: (p: { name?: string }) => p.name ?? '',
+                            },
+                            data: markers.map((m) => ({ xAxis: m.x, name: m.label })),
+                        },
+                    }]
+                    : []),
             ],
         }}
     />
-);
+    );
+};
 
 // Bar ngang xếp hạng
 export const RankBarChart: React.FC<
