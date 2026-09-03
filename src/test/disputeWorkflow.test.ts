@@ -10,6 +10,7 @@ import {
     MIN_RESOLUTION_NOTE_LENGTH,
     TUTOR_ACTION_PERMISSIONS,
     validateResolution,
+    isDisputeSettled,
 } from '../pages/AdminDisputes/disputeWorkflow';
 import type { SessionLogSummary } from '../types/admin.types';
 
@@ -272,5 +273,23 @@ describe('dispute status display', () => {
         expect(getPriorityVariant('medium')).toBe('warning');
         expect(getPriorityVariant('low')).toBe('success');
         expect(getPriorityVariant(null)).toBe('neutral');
+    });
+});
+
+describe('isDisputeSettled', () => {
+    // Hoà giải ("hai bên học tiếp") đóng hồ sơ bằng 'closed', không phải 'resolved'. Chỉ xét
+    // 'resolved' khiến trang chi tiết vẫn hiện form "Hủy khóa học & hoàn tiền" trên hồ sơ đã đóng
+    // — admin bấm được và tiền đi lần hai. Đây là lỗi đã gặp thật ở phản ánh #155.
+    it('coi ca resolved lan closed la da chot xong', () => {
+        expect(isDisputeSettled('resolved')).toBe(true);
+        expect(isDisputeSettled('closed')).toBe(true);
+    });
+
+    it('van cho phan xu khi ho so con mo', () => {
+        expect(isDisputeSettled('pending')).toBe(false);
+        expect(isDisputeSettled('investigating')).toBe(false);
+        expect(isDisputeSettled('confirmed_no_show')).toBe(false);
+        expect(isDisputeSettled(null)).toBe(false);
+        expect(isDisputeSettled(undefined)).toBe(false);
     });
 });

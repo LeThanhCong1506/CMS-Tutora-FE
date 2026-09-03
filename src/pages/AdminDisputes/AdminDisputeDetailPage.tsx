@@ -1,6 +1,8 @@
 import { Fragment, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import SessionAllocationTable from './SessionAllocationTable';
+import { computeAllocationTotals } from './sessionAllocationTotals';
 import TutorWarningModal from '../AdminUserManagement/components/IssueWarningModal';
 import TutorSuspensionModal from '../AdminUserManagement/components/SuspendUserModal';
 import CloseDisputeModal from './components/CloseDisputeModal';
@@ -10,7 +12,6 @@ import {
     resolveDispute,
     closeDispute,
     investigateDispute,
-    confirmTutorNoShow,
     getDisputeChatHistory,
     getDisputeRecording,
     resolveRecordingStreamUrl,
@@ -22,6 +23,7 @@ import {
     getCancelCoursePreview,
     type DisputeRecording,
     type CourseCancelPreviewDto,
+    type SessionAllocation,
 } from '../../services/admin.service';
 import type {
     DisputeDetail,
@@ -45,6 +47,7 @@ import { Can } from '../../contexts/AccessContext';
 import { useTabParam } from '../../hooks/useTabParam';
 import {
     getDisputeStatusLabel,
+    isDisputeSettled,
     getDisputeStatusVariant,
     getPriorityMeta,
     getVerdictSuggestion,
@@ -188,6 +191,8 @@ const AdminDisputeDetailPage = () => {
     const [previewLoading, setPreviewLoading] = useState(false);
     const [courseCancelPreview, setCourseCancelPreview] = useState<CourseCancelPreviewDto | null>(null);
     const [courseCancelPreviewLoading, setCourseCancelPreviewLoading] = useState(false);
+    /** classSessionId -> 'tutor' | 'parent' | 'none'. Khởi tạo từ defaultAllocation của preview. */
+    const [allocations, setAllocations] = useState<Record<number, SessionAllocation>>({});
 
     /**
      * Latest attendance summary from the session log panel. Only used to offer a starting point for
@@ -293,7 +298,16 @@ const AdminDisputeDetailPage = () => {
         setCourseCancelPreviewLoading(true);
         setCourseCancelPreview(null);
         getCancelCoursePreview(disputeId)
-            .then((data) => setCourseCancelPreview(data))
+            .then((data) => {
+                setCourseCancelPreview(data);
+                // Tick sẵn theo backend: buổi chưa học → phụ huynh; buổi đã học → để trống, buộc
+                // admin đọc bằng chứng rồi tự quyết thay vì bấm xác nhận theo quán tính.
+                setAllocations(
+                    Object.fromEntries(
+                        data.sessions.map((s) => [s.classSessionId, s.defaultAllocation]),
+                    ),
+                );
+            })
             .catch((err) => {
                 console.error('Error fetching cancel-course preview:', err);
                 setCourseCancelPreview(null);
@@ -462,6 +476,17 @@ const AdminDisputeDetailPage = () => {
                 createTutorWarning: createWarning,
                 warningLevel: createWarning ? warningLevel : undefined,
                 customRefundPercentage: verdict === 'custom' ? customPercentage : undefined,
+                // Chỉ gửi cho cancel_course, và chỉ những buổi chưa settle — buổi đã giải ngân
+                // trước đó bị backend từ chối nếu có mặt trong danh sách.
+                sessionAllocations:
+                    verdict === 'cancel_course' && courseCancelPreview
+                        ? courseCancelPreview.sessions
+                              .filter((s) => s.isAllocatable)
+                              .map((s) => ({
+                                  classSessionId: s.classSessionId,
+                                  allocation: allocations[s.classSessionId] as 'tutor' | 'parent',
+                              }))
+                        : undefined,
             });
             toast.success('Đã hoàn tất xử lý hồ sơ.');
             // Refresh data
@@ -501,21 +526,6 @@ const AdminDisputeDetailPage = () => {
         }
     };
 
-    const handleConfirmNoShow = async () => {
-        if (!disputeDetail || !disputeId) return;
-
-        try {
-            setIsSubmitting(true);
-            await confirmTutorNoShow(disputeDetail.disputeId);
-            toast.success('Đã xác nhận gia sư vắng mặt. Người học có thể chọn phương án xử lý.');
-            await fetchDisputeDetail(disputeId);
-        } catch (err) {
-            console.error('Error confirming tutor no-show:', err);
-            toast.error(apiErrorMessage(err, 'Không thể xác nhận vắng mặt'));
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
     // Wrapper functions for modal callbacks
     const handleIssueWarning = async (tutorId: string, reason: string, severity: string, relatedBookingId?: string) => {
         if (!disputeId) return;
@@ -603,6 +613,15 @@ const AdminDisputeDetailPage = () => {
         warningcount: tutor.warningCount || 0,
         suspensioncount: 0,
     } : null;
+    // Bảng tick bắt buộc phủ đủ: buổi bị bỏ sót thì escrow của nó không được giải phóng cho ai,
+    // mà booking đóng ngay sau đó — tiền kẹt vĩnh viễn. Backend cũng từ chối, nhưng chặn ở nút bấm
+    // thì admin biết ngay thay vì soạn xong ghi chú mới nhận lỗi.
+    const allocationTotals =
+        verdict === 'cancel_course' && courseCancelPreview
+            ? computeAllocationTotals(courseCancelPreview, allocations)
+            : null;
+    const unassignedSessionCount = allocationTotals?.unassigned ?? 0;
+
     const suggestion = getVerdictSuggestion(sessionLogSummary);
     const priorityMeta = getPriorityMeta(disputeDetail.priority, disputeDetail.priorityDisplay);
     const hasHeaderActions = ['pending', 'investigating', 'confirmed_no_show']
@@ -675,32 +694,13 @@ const AdminDisputeDetailPage = () => {
                                 </div>
                                 </Can>
                             )}
-                            {disputeDetail.disputeType === 'no_show'
-                                && classSession?.status === 'no_show'
-                                && ['pending', 'investigating'].includes(disputeDetail.status || '') && (
-                                <Can permission="dispute.resolve">
-                                    <ConfirmPopover
-                                        danger
-                                        title="Xác nhận gia sư thực sự vắng mặt?"
-                                        description="Sau bước này phụ huynh / học sinh được tự chọn hoàn tiền, học bù hoặc huỷ khoá học — bạn không quay lại trạng thái cũ được."
-                                        okText="Xác nhận vắng mặt"
-                                        placement="bottomRight"
-                                        onConfirm={handleConfirmNoShow}
-                                    >
-                                        <button
-                                            type="button"
-                                            className="admin-ui-button admin-ui-button-primary"
-                                            disabled={isSubmitting}
-                                        >
-                                            <span className="material-symbols-outlined">verified</span>
-                                            Xác nhận gia sư vắng mặt
-                                        </button>
-                                    </ConfirmPopover>
-                                </Can>
-                            )}
+                            {/* Trạng thái legacy: nút "Xác nhận gia sư vắng mặt" và luồng phụ huynh tự
+                                chọn phương án (hoàn tiền / học bù / đổi gia sư) đã được gỡ bỏ. Mọi ca
+                                vắng mặt nay do Admin/Staff phân xử qua tranh chấp. Nhãn dưới đây chỉ để
+                                các tranh chấp cũ đã ở trạng thái này vẫn hiển thị đúng. */}
                             {disputeDetail.status === 'confirmed_no_show' && (
                                 <div style={{ maxWidth: '320px', padding: '10px 14px', borderRadius: '10px', background: '#ecfdf5', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
-                                    Đã xác nhận no-show. Đang chờ phụ huynh/học sinh chọn phương án xử lý.
+                                    Đã ghi nhận gia sư vắng mặt. Xử lý bằng cách phân xử tranh chấp bên dưới.
                                 </div>
                             )}
                         </div>
@@ -892,14 +892,6 @@ const AdminDisputeDetailPage = () => {
                                     >
                                         <span className="material-symbols-outlined dispute-evidence-tab-icon">forum</span>
                                         Trao đổi
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`dispute-evidence-tab ${activeTab === 'reliability' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('reliability')}
-                                    >
-                                        <span className="material-symbols-outlined dispute-evidence-tab-icon">query_stats</span>
-                                        Lịch sử gia sư
                                     </button>
                                 </div>
 
@@ -1364,13 +1356,22 @@ const AdminDisputeDetailPage = () => {
                                         </h2>
                                     </div>
 
-                                    {disputeDetail.status === 'resolved' ? (
+                                    {isDisputeSettled(disputeDetail.status) ? (
                                         <div className="dispute-resolved-summary">
                                             <span className="material-symbols-outlined">
                                                 check_circle
                                             </span>
-                                            <h3>Đã hoàn tất</h3>
-                                            <p>{disputeDetail.resolutionNote || 'Hồ sơ đã hoàn tất xử lý.'}</p>
+                                            <h3>
+                                                {disputeDetail.status === 'closed'
+                                                    ? 'Đã đóng'
+                                                    : 'Đã hoàn tất'}
+                                            </h3>
+                                            <p>
+                                                {disputeDetail.resolutionNote ||
+                                                    (disputeDetail.status === 'closed'
+                                                        ? 'Hồ sơ đã đóng, không phân xử tiền.'
+                                                        : 'Hồ sơ đã hoàn tất xử lý.')}
+                                            </p>
                                             {disputeDetail.refundAmount !== null && disputeDetail.refundAmount !== undefined && (
                                                 <div className="dispute-resolved-amount">
                                                     <span>Khoản hoàn</span>
@@ -1408,9 +1409,7 @@ const AdminDisputeDetailPage = () => {
                                                     <div>
                                                         <h3 className="dispute-plan__title">Hủy khóa học &amp; hoàn tiền</h3>
                                                         <p className="dispute-plan__summary">
-                                                            {courseCancelPreview
-                                                                ? `Hủy ${courseCancelPreview.remainingSessionsCount} buổi chưa dạy, hoàn phụ huynh theo giá gốc`
-                                                                : 'Hủy các buổi chưa dạy, hoàn phụ huynh theo giá gốc'}
+                                                            Tick từng buổi cho gia sư hoặc phụ huynh — mọi buổi đều phải chọn.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1420,21 +1419,16 @@ const AdminDisputeDetailPage = () => {
                                                 )}
 
                                                 {!courseCancelPreviewLoading && courseCancelPreview && (
-                                                    <dl className="dispute-plan__figures">
-                                                        <div>
-                                                            <dt>Hoàn phụ huynh</dt>
-                                                            <dd className="is-in">{formatCurrency(courseCancelPreview.parentRefundAmount)}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt>Trả gia sư · {courseCancelPreview.deliveredSessionsCount} buổi đã dạy</dt>
-                                                            <dd className="is-in">{formatCurrency(courseCancelPreview.tutorEscrowReleased)}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt>Thu hồi từ gia sư · buổi chưa dạy</dt>
-                                                            <dd className="is-out">{formatCurrency(courseCancelPreview.tutorEscrowReversed)}</dd>
-                                                        </div>
-                                                    </dl>
+                                                    <SessionAllocationTable
+                                                        preview={courseCancelPreview}
+                                                        allocations={allocations}
+                                                        onChange={(id, allocation) =>
+                                                            setAllocations((prev) => ({ ...prev, [id]: allocation }))
+                                                        }
+                                                        disabled={isSubmitting}
+                                                    />
                                                 )}
+
 
                                                 {!courseCancelPreviewLoading && courseCancelPreview?.warnings.map((w, i) => (
                                                     <p key={i} className="dispute-plan__warning">
@@ -1446,9 +1440,10 @@ const AdminDisputeDetailPage = () => {
                                                 <details className="dispute-plan__more">
                                                     <summary>Cách tính chi tiết</summary>
                                                     <p>
-                                                        Buổi đang khiếu nại giữ nguyên — gia sư không mất tiền buổi đó nếu đã dạy đủ.
-                                                        Các buổi chưa diễn ra bị hủy và hoàn cho phụ huynh theo giá gốc mỗi buổi,
-                                                        không gồm 5% phí dịch vụ.
+                                                        Buổi tick cho gia sư được tính là đã dạy và giải ngân theo giá gốc đã trừ
+                                                        phí sàn. Buổi tick cho phụ huynh bị hủy và hoàn theo giá gốc — chỉ hoàn kèm
+                                                        5% phí dịch vụ khi khóa chưa qua đợt thanh toán thứ hai. Tổng chi luôn bị
+                                                        chặn bởi số tiền thực đã thu của phụ huynh.
                                                     </p>
                                                 </details>
                                             </section>
@@ -1588,8 +1583,13 @@ const AdminDisputeDetailPage = () => {
                                                 title="Chốt phương án xử lý?"
                                                 description={(
                                                     <>
-                                                        {courseCancelPreview
-                                                            ? `Huỷ ${courseCancelPreview.remainingSessionsCount} buổi chưa dạy, hoàn phụ huynh ${formatCurrency(courseCancelPreview.parentRefundAmount)} và thu hồi ${formatCurrency(courseCancelPreview.tutorEscrowReversed)} từ gia sư.`
+                                                        {/* PHẢI đọc từ ô tick, không phải số tự động của
+                                                            backend: trước đây chỗ này hiện
+                                                            `remainingSessionsCount` nên nó nói "7 buổi"
+                                                            trong khi Admin/Staff đã tick 8 — hai màn hình
+                                                            cãi nhau ngay tại bước không hoàn tác được. */}
+                                                        {allocationTotals
+                                                            ? `Chuyển ${formatCurrency(allocationTotals.tutor)} cho gia sư (${allocationTotals.tutorCount} buổi) và hoàn ${formatCurrency(allocationTotals.parent)} cho phụ huynh (${allocationTotals.parentCount} buổi).`
                                                             : 'Huỷ các buổi chưa dạy và hoàn tiền cho phụ huynh theo giá gốc.'}
                                                         {createWarning && ` Gia sư nhận nhắc nhở mức ${warningLevel}.`}
                                                         {' '}Tiền đã chuyển thì không hoàn tác được.
@@ -1605,7 +1605,8 @@ const AdminDisputeDetailPage = () => {
                                                     isSubmitting ||
                                                     adminNotes.trim().length < 10 ||
                                                     (verdict === 'custom' && previewLoading) ||
-                                                    (verdict === 'cancel_course' && courseCancelPreviewLoading)
+                                                    (verdict === 'cancel_course' && courseCancelPreviewLoading) ||
+                                                    unassignedSessionCount > 0
                                                 }
                                                 style={{ opacity: adminNotes.trim().length < 10 ? 0.5 : 1 }}
                                             >
@@ -1644,7 +1645,6 @@ const AdminDisputeDetailPage = () => {
                 onClose={() => setIsCloseModalOpen(false)}
                 disputeId={disputeDetail.disputeId}
                 onConfirm={handleCloseDispute}
-                relearnAvailable={disputeDetail.relearnAvailable}
             />
             <TutorWarningModal
                 isOpen={isWarningModalOpen}

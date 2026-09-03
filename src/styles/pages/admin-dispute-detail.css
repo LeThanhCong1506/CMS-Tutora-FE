@@ -1279,3 +1279,162 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
+
+/* ── Bảng phân bổ từng buổi (Hủy khóa học & hoàn tiền) ─────────────────────────
+   Thay cho khối .dispute-plan__figures tự động: mỗi buổi một dòng, bằng chứng có
+   mặt đặt ngay cạnh số tiền, admin tự tick bên nào được nhận. Bảng nằm trong cột
+   hẹp bên phải nên phải cuộn ngang được thay vì ép co các cột số. */
+.dispute-alloc {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(26, 34, 56, 0.08);
+}
+
+/* Trần cứng của mọi khoản chi — đặt trên đầu bảng, không giấu trong cảnh báo:
+   thẻ cũ hiện "hoàn 450.000đ" rồi mới đính chính ở dưới, khiến admin hứa với phụ
+   huynh một khoản không chi được. */
+.dispute-alloc__budget {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(26, 34, 56, 0.04);
+    font-size: 12.5px;
+    color: var(--color-navy-60);
+}
+
+.dispute-alloc__budget strong {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-navy-90, #1a2238);
+}
+
+.dispute-alloc__rule {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-navy-50);
+}
+
+.dispute-alloc__scroll {
+    overflow-x: auto;
+}
+
+.dispute-alloc__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.dispute-alloc__table th,
+.dispute-alloc__table td {
+    padding: 7px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(26, 34, 56, 0.07);
+    vertical-align: middle;
+}
+
+.dispute-alloc__table thead th {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-navy-50);
+    white-space: nowrap;
+}
+
+/* Đơn giá nằm ngay dưới tên cột: hai số KHÁC nhau (gia sư đã trừ phí sàn, phụ
+   huynh theo giá gốc) nên phải hiện cả hai, không thể rút thành một con số. */
+.dispute-alloc__table thead th small {
+    display: block;
+    margin-top: 2px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-navy-70, #3a4560);
+}
+
+.dispute-alloc__table .is-center {
+    text-align: center;
+}
+
+.dispute-alloc__table tbody td strong {
+    display: block;
+    font-size: 13px;
+}
+
+.dispute-alloc__table tbody td small {
+    display: block;
+    margin-top: 1px;
+    font-size: 11px;
+    color: var(--color-navy-50);
+}
+
+.dispute-alloc__table tbody tr.is-disputed {
+    background: rgba(245, 158, 11, 0.07);
+}
+
+/* Buổi đã giải ngân: tiền đã rời escrow, tick lại là trả lần hai → radio bị
+   disabled ở JSX, ở đây chỉ làm mờ để mắt bỏ qua nhanh. */
+.dispute-alloc__table tbody tr.is-locked {
+    opacity: 0.55;
+}
+
+/* Dòng chưa chọn — nút xác nhận cũng bị khoá cho tới khi hết dòng nào như thế. */
+.dispute-alloc__table tbody tr.is-unassigned td:first-child {
+    box-shadow: inset 2px 0 0 #b91c1c;
+}
+
+.dispute-alloc__tag {
+    display: inline-block;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.16);
+    color: #92400e;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+.dispute-alloc__durations {
+    font-variant-numeric: tabular-nums;
+}
+
+.dispute-alloc__nodata {
+    color: var(--color-navy-50);
+    font-style: italic;
+}
+
+.dispute-alloc__table tfoot th,
+.dispute-alloc__table tfoot td {
+    padding-top: 9px;
+    border-bottom: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.dispute-alloc__table tfoot th {
+    color: var(--color-navy-60);
+    font-weight: 600;
+}
+
+.dispute-alloc__table tfoot td.is-in {
+    color: #065f46;
+}
+
+.dispute-alloc__table tfoot td.is-revenue {
+    color: var(--color-navy-90, #1a2238);
+}
+
+.dispute-alloc__blocker {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(185, 28, 28, 0.07);
+    color: #b91c1c;
+    font-size: 12px;
+    line-height: 1.45;
+}
