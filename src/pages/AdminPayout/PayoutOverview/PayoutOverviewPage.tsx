@@ -104,14 +104,10 @@ const PayoutOverviewPage: React.FC = () => {
             <span className="material-symbols-outlined">refresh</span>
             {loading ? 'Đang tải...' : 'Làm mới'}
           </button>
-          <button
-            type="button"
-            className="admin-ui-button admin-ui-button-secondary"
-            onClick={() => navigate('/admin-portal/payouts/transfers')}
-          >
-            <span className="material-symbols-outlined">send_money</span>
-            Chuyển tiền chủ động
-          </button>
+          {/* Nút "Chuyển tiền chủ động" đã gỡ 03/09/2026 theo yêu cầu.
+              Nó là lối vào DUY NHẤT của `/admin-portal/payouts/transfers` từ giao diện; route,
+              `TransferHistoryPage` và các modal vẫn còn nguyên nên gõ thẳng URL vẫn vào được.
+              Muốn khoá hẳn tính năng thì phải gỡ cả route trong App.tsx. */}
           <button
             type="button"
             className="admin-ui-button admin-ui-button-secondary"

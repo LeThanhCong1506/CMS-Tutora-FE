@@ -38,7 +38,7 @@ const metricMeta: Record<
         name: 'Phí gia sư',
         money: true,
         color: PALETTE.navy,
-        hint: 'Phần doanh thu đến TỪ GIA SƯ này: 5% cắt từ tiền gia sư, của những buổi họ đã dạy xong trong kỳ. KHÔNG gồm 5% phí dịch vụ khách trả — nửa đó đến từ khách hàng nên nằm ở tab Khách hàng. Vì vậy tổng trang này nhỏ hơn "Doanh thu đã ghi nhận" ở tab Doanh thu, đúng bằng một nửa nguồn.',
+        hint: 'Phần doanh thu đến TỪ GIA SƯ này: 5% cắt từ tiền gia sư, của những buổi họ đã dạy xong trong kỳ. KHÔNG gồm 5% phí dịch vụ khách trả — nửa đó đến từ khách hàng nên nằm ở tab Phụ huynh/học sinh. Vì vậy tổng trang này nhỏ hơn "Doanh thu đã ghi nhận" ở tab Doanh thu, đúng bằng một nửa nguồn.',
     },
     gmv: {
         label: 'Giá trị lịch đặt',
@@ -211,7 +211,7 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
                 `.rev-strip` — hai trang được chọn làm chuẩn mà không khớp nhau. */}
             {/* Thứ tự thẻ: HAI THẺ TIỀN trước, thẻ đếm người sau (đổi 02/09/2026).
 
-                Cùng thứ tự với tab Khách hàng — hai thẻ phí dịch vụ rồi mới tới giá trị booking
+                Cùng thứ tự với tab Phụ huynh/học sinh — hai thẻ phí dịch vụ rồi mới tới giá trị booking
                 trung bình. Đây là cụm báo cáo DOANH THU nên con số tiền phải đứng đầu; số gia sư
                 là bối cảnh để đọc hai số đó, không phải thứ cần đọc trước.
 
@@ -219,10 +219,10 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
                 đợi ghi nhận) đọc thành một cặp, thay vì bị thẻ trắng chen vào giữa. */}
             <div className="rev-strip">
                 {/* Hai thẻ phí gia sư đặt CẠNH NHAU và đặt tên song song với hai thẻ phí dịch
-                    vụ của tab Khách hàng ("Phí DV đã ghi nhận" / "Phí DV đợi ghi nhận").
+                    vụ của tab Phụ huynh/học sinh ("Phí DV đã ghi nhận" / "Phí DV đợi ghi nhận").
 
                     Trước 02/09/2026 tab này chỉ có vế ĐÃ ghi nhận, tên là "Doanh thu từ phí gia
-                    sư", trong khi tab Khách hàng có đủ hai vế. Hai tab là hai NỬA của cùng một
+                    sư", trong khi tab Phụ huynh/học sinh có đủ hai vế. Hai tab là hai NỬA của cùng một
                     phí sàn 10%, mà một bên báo đủ cặp còn bên kia báo một nửa thì không đọc
                     được như một cặp. */}
                 <MetricCard
@@ -232,7 +232,7 @@ const TutorsTab = ({ range }: { range: RevenueRange }) => {
                     subLabel="của buổi dạy trong kỳ"
                     valueTone="recognised"
                     badgeVariant="green"
-                    hint="Tổng 5% cắt từ tiền gia sư, của các buổi đã dạy xong trong kỳ — phần ĐÃ thành tiền thật. Đây là MỘT trong hai nguồn của phí sàn 10%; nguồn còn lại là 5% phí dịch vụ khách trả, xem tab Khách hàng. Cộng hai nguồn mới ra 'Doanh thu đã ghi nhận' của tab Doanh thu.
+                    hint="Tổng 5% cắt từ tiền gia sư, của các buổi đã dạy xong trong kỳ — phần ĐÃ thành tiền thật. Đây là MỘT trong hai nguồn của phí sàn 10%; nguồn còn lại là 5% phí dịch vụ khách trả, xem tab Phụ huynh/học sinh. Cộng hai nguồn mới ra 'Doanh thu đã ghi nhận' của tab Doanh thu.
 
 LƯU Ý MỐC THỜI GIAN: thẻ này neo theo NGÀY DẠY (doanh thu kế toán của kỳ), còn thẻ ‘đợi ghi nhận’ bên cạnh neo theo NGÀY ĐẶT LỊCH. Hai mốc khác nhau nên KHÔNG cộng hai thẻ lại để so với phí sàn — muốn xem phí sàn của lịch đặt trong kỳ đi về đâu thì xem khối ‘Phân bổ tiền khách trả’ ở tab Doanh thu, chỗ đó có đủ ba số phận và cộng khít."
                 />

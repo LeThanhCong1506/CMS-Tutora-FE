@@ -15,7 +15,10 @@ const BASE = '/admin-portal/revenue-reports';
 const TABS = [
     { slug: 'overview', label: 'Doanh thu', icon: 'donut_large' },
     { slug: 'tutors', label: 'Gia sư', icon: 'cast_for_education' },
-    { slug: 'customers', label: 'Khách hàng', icon: 'family_restroom' },
+    // Nhãn "Phụ huynh/học sinh" thay cho "Khách hàng" (03/09/2026): người trả tiền có thể là
+    // phụ huynh HOẶC học sinh tự đăng ký, và bảng bên trong vốn đã liệt kê cả hai. Slug giữ
+    // nguyên `customers` để link và bookmark cũ không rơi vào trang trống.
+    { slug: 'customers', label: 'Phụ huynh/học sinh', icon: 'family_restroom' },
     { slug: 'subjects', label: 'Môn & Lớp', icon: 'category' },
     { slug: 'ai', label: 'Doanh thu AI', icon: 'smart_toy' },
 ] as const;

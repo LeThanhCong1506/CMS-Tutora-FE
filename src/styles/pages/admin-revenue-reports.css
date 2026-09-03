@@ -1091,6 +1091,9 @@
 .rev-alloc-title {
     display: flex;
     align-items: center;
+    /* Chú thích màu đẩy sang mép phải bằng `margin-left: auto`; `wrap` để nó rớt xuống dòng
+       riêng ở khổ hẹp thay vì bóp tiêu đề. */
+    flex-wrap: wrap;
     gap: 6px;
     margin: 0;
     color: var(--color-navy);
@@ -1099,6 +1102,57 @@
     font-weight: 700;
     line-height: 1.35;
 }
+
+/* ─── Hai màu định danh cho hai vế phí sàn ──────────────────────────────────────
+ *
+ * Chuỗi "5% + 5%" không nói được vế nào của ai, và sẽ đọc SAI hẳn nếu admin đặt hai mức lệch
+ * nhau. Hai màu dưới đây gắn định danh cho hai vế, kèm chú thích ở góc phải tiêu đề.
+ *
+ * Vì sao là tím + xanh mòng két, không phải hai màu "hiển nhiên" hơn: thẻ này đã tiêu ba màu
+ * cho ngữ nghĩa (emerald = đã thu, hổ phách = còn chờ, đỏ = không thu được), và biểu đồ ngay
+ * trên đã tiêu xanh dương cho gói AI. Mọi cặp ấm đều đụng đỏ ở hàng ngay dưới — đo bằng
+ * validator: #b45309 ↔ #dc2626 chỉ ΔE 9,9 với mắt thường, dưới ngưỡng 15. Navy của tab Gia sư
+ * cũng bị loại: chroma 0,04 nên nó đọc ra là "chữ thường", không phải một màu định danh.
+ *
+ * Cặp #6d28d9 + #0e7490 qua hết các phép kiểm khi so với cả ba màu ngữ nghĩa cùng thẻ, và
+ * tương phản trên nền trắng là 7,1:1 và 5,36:1 — cả hai đạt WCAG AA cho cỡ chữ này. KHÔNG đổi
+ * #0e7490 sang #0891b2 cho tươi hơn: bản đó chỉ còn 3,68:1, trượt chuẩn.
+ *
+ * Màu KHÔNG phải manh mối duy nhất, và không được để nó thành manh mối duy nhất: thứ tự hai vế
+ * trong chú thích trùng thứ tự chúng xuất hiện trong "5% + 5%", mỗi vế có `title`, và ở kỳ chỉ
+ * chạy một mức thì dòng tỉ lệ viết thẳng tên hai vế ra chữ.
+ */
+/* Bọc trong `.rev-eq-rates` để thắng `.rev-eq-rates b` (0,1,1) — dòng một mức tô màu ngay trên
+   thẻ <b>, không có lớp bọc nào khác để mượn độ ưu tiên. */
+.rev-eq-rates .rev-rate-tutor { color: #6d28d9; }
+.rev-eq-rates .rev-rate-parent { color: #0e7490; }
+
+.rev-rate-legend {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-left: auto;
+    color: var(--color-navy-60);
+    font-family: var(--font-primary);
+    font-size: 11.5px;
+    font-weight: 500;
+}
+
+.rev-rate-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rev-rate-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.rev-rate-swatch.is-tutor { background: #6d28d9; }
+.rev-rate-swatch.is-parent { background: #0e7490; }
 /* ─── Con số chính của thẻ ──────────────────────────────────────────────────────
  *
  * Trước 03/09/2026 chỗ này là lưới `.rev-eq`: ba cột, đặt vị trí tường minh bằng

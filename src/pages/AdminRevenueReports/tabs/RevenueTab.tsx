@@ -356,7 +356,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                         // Vành khuyên đã gỡ 01/09/2026, nên nói thẳng vào chỗ khoản hoàn
                         // thực sự đã được trừ: doanh thu ghi nhận ở tab Gia sư / Khách hàng.
                         + 'Khoản hoàn của các lịch đã huỷ ĐÃ được trừ sẵn khi tính doanh thu ghi '
-                        + 'nhận (tab Gia sư và tab Khách hàng) — trừ lần nữa là trừ hai lần.\n\n'
+                        + 'nhận (tab Gia sư và tab Phụ huynh/học sinh) — trừ lần nữa là trừ hai lần.\n\n'
                         // Hai mốc thời gian khác nhau, và đây là chỗ DUY NHẤT nói ra điều đó.
                         // Thẻ này đếm theo ngày hoàn; cột "Đã hoàn" ở bảng cuối trang thì gắn
                         // vào từng lịch. Hôm nay hai số trùng nhau vì dữ liệu gọn trong một
