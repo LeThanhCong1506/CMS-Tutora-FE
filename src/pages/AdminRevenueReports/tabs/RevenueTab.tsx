@@ -14,6 +14,7 @@ import MetricCard from '../components/MetricCard';
 import { FilterChips, SearchInput, SortSelect, TableToolbar } from '../components/TableToolbar';
 import { PersonName } from '../components/PersonName';
 import { findDuplicateNames } from '../components/personIdentity';
+import { FEE_SIDE_COLOR } from '../components/feeSideColors';
 import MoneySplit from '../components/MoneySplit';
 import {
     ChartBlock,
@@ -269,7 +270,13 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
         // đổi: admin đổi 5→10 rồi 10→20 trong cùng ngày 03/09, biểu đồ chỉ hiện "→ 20% + 20%"
         // nên nhìn vào tưởng mức nhảy thẳng từ 5% lên 20%. Một chú thích giấu bớt sự kiện thì
         // tệ hơn là không có chú thích.
-        const byBucket = new Map<number, { at: number; rate: string; count: number }>();
+        //
+        // Giữ hai vế phí RỜI NHAU (không ghép sẵn thành chuỗi "5% + 5%" như bản đầu) vì mỗi vế
+        // được tô một màu riêng ở nhãn — xem `FEE_SIDE_COLOR`.
+        const byBucket = new Map<
+            number,
+            { at: number; tutor: number; parent: number; count: number }
+        >();
 
         for (const h of percents.history) {
             const at = Date.parse(h.changedAt);
@@ -284,7 +291,7 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
             const kept = byBucket.get(idx);
             const count = (kept?.count ?? 0) + 1;
             if (!kept || at > kept.at) {
-                byBucket.set(idx, { at, rate: `${h.tutor}% + ${h.parent}%`, count });
+                byBucket.set(idx, { at, tutor: h.tutor, parent: h.parent, count });
             } else {
                 byBucket.set(idx, { ...kept, count });
             }
@@ -294,13 +301,29 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
             .sort((a, b) => a[0] - b[0])
             .map(([idx, marker]) => ({
                 x: timeline[idx].month,
-                // Nhiều lần đổi trong cùng một ô thì nhãn phải kể ĐỦ CÂU, không chỉ dán thêm
-                // một con số. "Phí sàn → 5% + 5% (4 lần đổi)" đọc mơ hồ — 4 lần đổi cái gì, và
-                // 5% là lần nào trong bốn lần đó. "Đổi phí 4 lần → 5% + 5%" nói đúng thứ tự sự
-                // việc: đổi mấy lần, rồi dừng ở đâu.
-                label: marker.count > 1
-                    ? `Đổi phí ${marker.count} lần → ${marker.rate}`
-                    : `Phí sàn → ${marker.rate}`,
+                /* Nhiều lần đổi trong cùng một ô thì nhãn phải kể ĐỦ CÂU, không chỉ dán thêm
+                   một con số. "Phí sàn → 5% + 5% (4 lần đổi)" đọc mơ hồ — 4 lần đổi cái gì, và
+                   5% là lần nào trong bốn lần đó. "Đổi phí 4 lần → 5% + 5%" nói đúng thứ tự sự
+                   việc: đổi mấy lần, rồi dừng ở đâu.
+
+                   Chữ giữ nguyên từng ký tự so với bản một chuỗi; chỉ khác là hai con số % nay
+                   là hai ĐOẠN riêng để tô hai màu định danh (03/09/2026). "5% + 5%" tự nó không
+                   nói vế nào của ai, và đọc SAI hẳn khi admin đặt hai mức lệch nhau — đúng lý do
+                   thẻ "Doanh thu tạm tính" ngay dưới đã tô màu. Hai chỗ nói về cùng một mức phí
+                   nên phải dùng chung một cặp màu, xem `FEE_SIDE_COLOR`.
+
+                   Thứ tự tutor-trước-parent phải khớp thứ tự ở thẻ dưới: vị trí là manh mối thứ
+                   hai bên cạnh màu, cho người không phân biệt được hai màu. */
+                label: [
+                    {
+                        text: marker.count > 1
+                            ? `Đổi phí ${marker.count} lần → `
+                            : 'Phí sàn → ',
+                    },
+                    { text: `${marker.tutor}%`, color: FEE_SIDE_COLOR.tutor },
+                    { text: ' + ' },
+                    { text: `${marker.parent}%`, color: FEE_SIDE_COLOR.parent },
+                ],
             }));
     })();
 
@@ -422,6 +445,11 @@ const RevenueTab = ({ range }: { range: RevenueRange }) => {
                           + 'ngày đặt) đổi mức ngay tại vạch, còn đường xanh lá (đã ghi nhận, quy '
                           + 'về ngày dạy) đổi trễ hơn — trễ đúng bằng khoảng cách từ lúc đặt tới '
                           + 'lúc dạy. Hai đường phản ứng lệch nhau ở đây là đúng, không phải lỗi.'
+                          // Nhãn vạch tô hai màu thì phải nói ra màu nào là vế nào — cùng cặp
+                          // màu với thẻ Doanh thu tạm tính ngay dưới, xem `FEE_SIDE_COLOR`.
+                          + '\n\nTrong nhãn của vạch, vế TÍM là phí gia sư và vế XANH MÒNG KÉT '
+                          + 'là phí phụ huynh — đúng hai màu dùng ở thẻ "Doanh thu tạm tính" '
+                          + 'ngay dưới biểu đồ.'
                         : '')
                 }
                 /* Tổng của đường xanh lá cộng đường xanh dương, in ngay cạnh tiêu đề.

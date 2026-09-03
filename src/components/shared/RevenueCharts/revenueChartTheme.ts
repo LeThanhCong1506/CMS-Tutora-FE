@@ -29,7 +29,12 @@ export const SERIES_COLORS = [
     PALETTE.slate,
 ];
 
-const FONT = "'IBM Plex Sans', -apple-system, sans-serif";
+/**
+ * Font của mọi chart trong cụm. Xuất ra ngoài vì `rich` (nhãn tô nhiều màu) phải khai lại
+ * font TƯỜNG MINH cho từng đoạn — đoạn rich không chắc chắn kế thừa font của nhãn cha, mà
+ * lệch font ngay giữa một nhãn thì nhìn ra ngay.
+ */
+export const CHART_FONT = "'IBM Plex Sans', -apple-system, sans-serif";
 
 /**
  * Tiền tệ trong báo cáo LUÔN hiện đầy đủ và phân cách bằng dấu PHẨY.
@@ -48,14 +53,14 @@ export const tooltipStyle = {
     backgroundColor: PALETTE.navy,
     borderWidth: 0,
     padding: [9, 12] as [number, number],
-    textStyle: { color: '#f2f0e4', fontSize: 12, fontFamily: FONT },
+    textStyle: { color: '#f2f0e4', fontSize: 12, fontFamily: CHART_FONT },
     extraCssText: 'border-radius:9px;',
 };
 
 export const axisLabelStyle = {
     color: PALETTE.axis,
     fontSize: 11.5,
-    fontFamily: FONT,
+    fontFamily: CHART_FONT,
 };
 
 /** Khung mặc định: lưới ngang mảnh, không kẻ trục đậm. */
@@ -107,12 +112,12 @@ export const legendStyle = {
     itemWidth: 10,
     itemHeight: 10,
     icon: 'roundRect',
-    textStyle: { color: PALETTE.axis, fontSize: 11, fontFamily: FONT },
+    textStyle: { color: PALETTE.axis, fontSize: 11, fontFamily: CHART_FONT },
 };
 
 /** Gộp option với phần dùng chung để mỗi chart chỉ khai báo phần riêng. */
 export const withBase = (option: EChartsOption): EChartsOption => ({
     animationDuration: 420,
-    textStyle: { fontFamily: FONT },
+    textStyle: { fontFamily: CHART_FONT },
     ...option,
 });
