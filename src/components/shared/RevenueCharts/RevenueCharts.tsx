@@ -2,6 +2,7 @@ import React from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import {
+    CHART_FONT,
     PALETTE,
     SERIES_COLORS,
     axisLabelStyle,
@@ -55,6 +56,20 @@ export interface BarSeries {
 }
 
 /**
+ * Một đoạn của nhãn vạch mốc, tô màu riêng được. Không `color` thì đoạn đó dùng màu mực
+ * chung của nhãn.
+ *
+ * Chia nhãn ra nhiều đoạn CHỈ để gắn màu định danh cho vài chữ bên trong nó — ca có thật là
+ * mức phí sàn "5% + 5%", hai vế của hai người khác nhau, và cùng cặp màu ấy đang dùng ở thẻ
+ * "Doanh thu tạm tính" ngay dưới biểu đồ. Đừng dùng nó để nhồi thêm chữ vào nhãn: nhãn nằm
+ * đè lên vùng vẽ nên mọi ký tự thêm vào đều lấn vào dữ liệu.
+ */
+export interface ChartMarkerSegment {
+    text: string;
+    color?: string;
+}
+
+/**
  * Vạch dọc đánh dấu một SỰ KIỆN trên trục thời gian — không phải một chuỗi dữ liệu.
  *
  * Sinh ra 03/09/2026 cho vạch "admin đổi mức phí sàn": người xem cần thấy mốc đổi chính sách
@@ -66,8 +81,14 @@ export interface BarSeries {
  */
 export interface ChartMarker {
     x: string;
-    /** Chữ in cạnh vạch. Giữ ngắn — nó nằm đè lên vùng vẽ. */
-    label: string;
+    /**
+     * Chữ in cạnh vạch. Giữ ngắn — nó nằm đè lên vùng vẽ.
+     *
+     * Truyền mảng đoạn khi cần tô màu một phần. Các đoạn nối LIỀN nhau, không tự thêm dấu
+     * cách hay dấu phân cách nào: dấu nối phải là một đoạn không màu do nơi gọi tự đặt, vì
+     * chỉ nơi gọi biết câu đang viết là gì.
+     */
+    label: string | ChartMarkerSegment[];
 }
 
 export const LineTrendChart: React.FC<
@@ -112,6 +133,37 @@ export const LineTrendChart: React.FC<
         const i = categories.indexOf(m.x);
         return i >= 0 && i >= categories.length - Math.max(2, Math.ceil(categories.length * 0.12));
     });
+
+    /* ─── Nhãn vạch mốc tô nhiều màu ────────────────────────────────────────────────
+     *
+     * ECharts tô một phần nhãn bằng RICH TEXT: chuỗi mang thẻ `{cN|chữ}`, cộng một bảng
+     * `rich` khai style cho từng tên `cN`. Tên style chỉ được gồm chữ–số–gạch dưới, nên
+     * không nhét mã màu vào tên được — phải gom màu lại rồi trỏ theo CHỈ SỐ.
+     *
+     * Bảng `rich` là của CẢ markLine chứ không của từng vạch, nên nó phải gom màu của mọi
+     * vạch: hai vạch cùng màu thì dùng chung một style, không sinh trùng.
+     *
+     * Chuỗi rich được nướng sẵn vào `name` của từng mốc thay vì dựng trong `formatter`:
+     * tham số của formatter chỉ chắc chắn mang `name`, còn các trường khác của data item
+     * thì không có bảo đảm nào giữa các bản ECharts. `name` cũng không lộ ra đâu khác —
+     * chuỗi này im lặng ở cả chú giải (liệt kê tường minh) và tooltip (`silent: true`).
+     */
+    const markerColors = [...new Set(
+        markers
+            .flatMap((m) => (typeof m.label === 'string' ? [] : m.label))
+            .map((seg) => seg.color)
+            .filter((c): c is string => Boolean(c)),
+    )];
+
+    const markerLabel = (label: ChartMarker['label']): string => (
+        typeof label === 'string'
+            ? label
+            : label
+                .map((seg) => (seg.color
+                    ? `{c${markerColors.indexOf(seg.color)}|${seg.text}}`
+                    : seg.text))
+                .join('')
+    );
 
     return (
     <Chart
@@ -193,6 +245,7 @@ export const LineTrendChart: React.FC<
                                 position: 'end' as const,
                                 distance: 6,
                                 color: PALETTE.ink,
+                                fontFamily: CHART_FONT,
                                 fontSize: 11,
                                 fontWeight: 600 as const,
                                 backgroundColor: '#fff',
@@ -201,8 +254,25 @@ export const LineTrendChart: React.FC<
                                 borderRadius: 4,
                                 padding: [3, 6] as [number, number],
                                 formatter: (p: { name?: string }) => p.name ?? '',
+                                /* Chỉ ĐỔI MÀU, ba thuộc tính font lặp y hệt nhãn cha: đoạn
+                                   rich không chắc chắn kế thừa font, mà một chữ lệch cỡ hay
+                                   lệch nét ngay giữa nhãn thì đọc ra là lỗi hiển thị. Nền và
+                                   viền thì KHÔNG lặp — chúng là của cả viên nhãn, đặt lại
+                                   trong đoạn rich sẽ vẽ thêm hộp con lồng bên trong. */
+                                rich: Object.fromEntries(markerColors.map((color, i) => [
+                                    `c${i}`,
+                                    {
+                                        color,
+                                        fontFamily: CHART_FONT,
+                                        fontSize: 11,
+                                        fontWeight: 600 as const,
+                                    },
+                                ])),
                             },
-                            data: markers.map((m) => ({ xAxis: m.x, name: m.label })),
+                            data: markers.map((m) => ({
+                                xAxis: m.x,
+                                name: markerLabel(m.label),
+                            })),
                         },
                     }]
                     : []),
