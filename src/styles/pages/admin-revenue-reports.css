@@ -1121,11 +1121,21 @@
  * Màu KHÔNG phải manh mối duy nhất, và không được để nó thành manh mối duy nhất: thứ tự hai vế
  * trong chú thích trùng thứ tự chúng xuất hiện trong "5% + 5%", mỗi vế có `title`, và ở kỳ chỉ
  * chạy một mức thì dòng tỉ lệ viết thẳng tên hai vế ra chữ.
+ *
+ * Từ 03/09/2026 cặp màu này còn dùng ngoài phạm vi file CSS: nhãn vạch "đổi phí" trên biểu đồ
+ * "Dòng tiền theo thời gian" tô đúng hai vế ấy, nhưng ECharts nhận màu bằng GIÁ TRỊ nên không
+ * đọc được biến CSS. Bản JS nằm ở `pages/AdminRevenueReports/components/feeSideColors.ts` —
+ * đổi màu ở đây thì phải đổi cả file đó, nếu không hai chỗ nói về cùng một mức phí sẽ lệch màu.
  */
+:root {
+    --rev-fee-tutor: #6d28d9;
+    --rev-fee-parent: #0e7490;
+}
+
 /* Bọc trong `.rev-eq-rates` để thắng `.rev-eq-rates b` (0,1,1) — dòng một mức tô màu ngay trên
    thẻ <b>, không có lớp bọc nào khác để mượn độ ưu tiên. */
-.rev-eq-rates .rev-rate-tutor { color: #6d28d9; }
-.rev-eq-rates .rev-rate-parent { color: #0e7490; }
+.rev-eq-rates .rev-rate-tutor { color: var(--rev-fee-tutor); }
+.rev-eq-rates .rev-rate-parent { color: var(--rev-fee-parent); }
 
 .rev-rate-legend {
     display: inline-flex;
@@ -1151,8 +1161,9 @@
     border-radius: 2px;
 }
 
-.rev-rate-swatch.is-tutor { background: #6d28d9; }
-.rev-rate-swatch.is-parent { background: #0e7490; }
+.rev-rate-swatch.is-tutor { background: var(--rev-fee-tutor); }
+.rev-rate-swatch.is-parent { background: var(--rev-fee-parent); }
+
 /* ─── Con số chính của thẻ ──────────────────────────────────────────────────────
  *
  * Trước 03/09/2026 chỗ này là lưới `.rev-eq`: ba cột, đặt vị trí tường minh bằng
