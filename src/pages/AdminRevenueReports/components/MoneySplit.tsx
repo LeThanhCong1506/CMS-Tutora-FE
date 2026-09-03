@@ -29,8 +29,8 @@ const pct = (value: number) => `${value.toFixed(1)}%`;
  */
 const onePct = (value: number) => `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
 
-const ratePair = (tutorPercent: number, parentPercent: number) =>
-    `${onePct(tutorPercent)} + ${onePct(parentPercent)}`;
+/* `ratePair` (ghép sẵn chuỗi "5% + 5%") đã bỏ 03/09/2026: hai vế nay được tô hai màu khác nhau
+   nên phải là hai phần tử riêng, không thể là một chuỗi. */
 
 /**
  * Số mức phí in ra tối đa. Nhiều hơn thì phần còn lại gộp thành "khác" — vẫn cộng khít bằng
@@ -242,7 +242,7 @@ const MoneySplit = (props: MoneySplitProps) => {
               + ' huynh, áp cho lịch đặt từ nay trở đi.'
             : '')
         + '\n\nĐây là cách chia THEO HỢP ĐỒNG. Với lịch bị huỷ giữa chừng, số thực nhận ít hơn:'
-        + ' phần đã thành tiền thật xem ở tab Gia sư (phí gia sư) và tab Khách hàng (phí dịch vụ).';
+        + ' phần đã thành tiền thật xem ở tab Gia sư (phí gia sư) và tab Phụ huynh/học sinh (phí dịch vụ).';
 
     /**
      * Tooltip của hàng "N mức phí trong kỳ".
@@ -284,6 +284,24 @@ const MoneySplit = (props: MoneySplitProps) => {
                 <h4 className="rev-alloc-title" id="rev-alloc-title">
                     Doanh thu tạm tính
                     <InfoHint text={allocationHint} />
+
+                    {/* Chú thích màu, chỉ hiện khi kỳ có NHIỀU mức phí.
+                        Kỳ một mức thì dòng tỉ lệ ngay dưới đã viết thẳng "phí gia sư … phí phụ
+                        huynh" nên chú thích này chỉ là chữ thừa. Hai vế xếp đúng thứ tự chúng
+                        xuất hiện trong "5% + 5%" — vị trí là manh mối thứ hai bên cạnh màu, để
+                        người không phân biệt được màu vẫn đọc ra được vế nào là vế nào. */}
+                    {rateRows.length > 1 && (
+                        <span className="rev-rate-legend">
+                            <span className="rev-rate-legend-item">
+                                <span className="rev-rate-swatch is-tutor" aria-hidden="true" />
+                                phí gia sư
+                            </span>
+                            <span className="rev-rate-legend-item">
+                                <span className="rev-rate-swatch is-parent" aria-hidden="true" />
+                                phí phụ huynh
+                            </span>
+                        </span>
+                    )}
                 </h4>
 
                 {/* ─── Vế "Gia sư nhận" đã BỎ (03/09/2026, theo yêu cầu) ──────────────
@@ -321,7 +339,21 @@ const MoneySplit = (props: MoneySplitProps) => {
                                     className="rev-eq-rate-item"
                                     key={r.other ? 'other' : `${r.tutorFeePercent}-${r.parentFeePercent}`}
                                 >
-                                    <b>{r.other ? 'mức khác' : ratePair(r.tutorFeePercent, r.parentFeePercent)}</b>
+                                    <b>
+                                        {r.other ? 'mức khác' : (
+                                            <>
+                                                {/* `title` để chuột dừng lại là biết, không phải
+                                                    dò lên chú thích màu ở tiêu đề. */}
+                                                <span className="rev-rate-tutor" title="phí gia sư">
+                                                    {onePct(r.tutorFeePercent)}
+                                                </span>
+                                                {' + '}
+                                                <span className="rev-rate-parent" title="phí phụ huynh">
+                                                    {onePct(r.parentFeePercent)}
+                                                </span>
+                                            </>
+                                        )}
+                                    </b>
                                     {/* Không kèm "VND" ở đây: đơn vị đã được con số lớn ngay
                                         trên đầu xác lập, lặp ba lần trong một dòng chỉ là nhiễu. */}
                                     <span className="rev-eq-rate-amt">{money(r.fee)}</span>
@@ -330,9 +362,12 @@ const MoneySplit = (props: MoneySplitProps) => {
                         </p>
                     ) : rateRows.length === 1 ? (
                         <p className="rev-eq-rates">
-                            phí gia sư <b>{onePct(rateRows[0].tutorFeePercent)}</b>
+                            {/* Dòng này tự gọi tên hai vế nên không cần chú thích màu ở tiêu đề,
+                                nhưng vẫn tô đúng hai màu ấy: người xem học được bảng màu ở kỳ
+                                một mức, rồi đọc được ngay khi kỳ sau pha nhiều mức. */}
+                            phí gia sư <b className="rev-rate-tutor">{onePct(rateRows[0].tutorFeePercent)}</b>
                             <span className="rev-eq-rates-op" aria-hidden="true">+</span>
-                            phí phụ huynh <b>{onePct(rateRows[0].parentFeePercent)}</b>
+                            phí phụ huynh <b className="rev-rate-parent">{onePct(rateRows[0].parentFeePercent)}</b>
                             <span className="rev-eq-rates-of">của học phí gốc</span>
                         </p>
                     ) : rates && (
